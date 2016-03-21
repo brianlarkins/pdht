@@ -4,6 +4,8 @@
 # created: 3/20/16
 #
 
+PORTALS_INCLUDEDIR=/opt/hpctools/include
+
 CFLAGS=$(GCFLAGS) -I../include -I$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-lportals -lpmi
@@ -11,9 +13,14 @@ CFLAGS=$(GCFLAGS) -I../include -I$(PORTALS_INCLUDEDIR)
 RANLIB = /usr/bin/ranlib
 
 
-OBJS =  checker.o \
-        pmi.o     \
-        util.o    \
+OBJS =  assoc.o      \
+        commsynch.o  \
+        dht.o        \
+        init.o       \
+        nbputget.o   \
+        putget.o     \
+        pmi.o        \
+        util.o       \
         # line eater
 
 .PHONY: all

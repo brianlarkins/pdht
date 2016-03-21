@@ -1,11 +1,14 @@
-CC=gcc
-CFLAGS=--std=c99 -g -I/opt/hpctools/include
-LDFLAGS=-L/opt/hpctools/lib
+#
+# main makefile for portals distributed hash table
+# 
+# author: d. brian larkins
+# created: 3/20/2016
+#
 
-OBJS =  checker.o pmi.o util.o
-      
-checker: $(OBJS)
-	$(CC) $(LDFLAGS) -o checker $(OBJS) -lportals -lpmi
+PORTALS_INCLUDEDIR = /opt/hpctools/include
+PORTALS_LIBDIR = /opt/hpctools/lib
+PDHT_TOP = .
 
-checker.o: checker.c
-	$(CC) -c $(CFLAGS) checker.c
+include pdht.mk
+
+all: pdhtlibs

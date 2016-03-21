@@ -30,7 +30,7 @@
 /**
  *  global configuration data structure
  */
-struct cfg_s {
+struct pdht_context_s {
    int              rank;         //!< process rank
    int              size;         //!< process count
    ptl_handle_ni_t  phy;          //!< physical NI
@@ -38,17 +38,38 @@ struct cfg_s {
    ptl_ni_limits_t  ni_limits;    //!< logical NI limits
    ptl_process_t   *mapping;      //!< physical/logical NI mapping
 };
-typedef struct cfg_s cfg_t;
+typedef struct pdht_context_s pdht_context_t;
 
 
-// pdht_status_t
-// pdht_handle_t
-// pdht_datatype_t
-// pdht_oper_t
+struct pdht_s {
+   pdht_context_t *ctx;
+};
+typedef struct pdht_s pdht_t;
+
+enum pdht_status_e {
+   PdhtStatusOK,
+   PdhtStatusError
+};
+typedef enum pdht_status_e pdht_status_t;
+
+typedef int pdht_handle_t;
+
+enum pdht_oper_e {
+   AssocOpAdd
+};
+typedef enum pdht_oper_e pdht_oper_t;
+
+enum pdht_datatype_e {
+   IntType,
+   DoubleType,
+   CharType,
+   BoolType
+};
+typedef enum pdht_datatype_e pdht_datatype_t;
 
 
 // global (per-process private) data structures
-extern cfg_t c;
+extern pdht_context_t c;
 
 /********************************************************/
 /* portals distributed hash table prototypes            */
@@ -58,6 +79,11 @@ extern cfg_t c;
 void                 pdht_init(void);
 void                 pdht_fini(void);
 void                 pdht_clearall(void);
+
+
+// create / destroy single DHT
+pdht_t              *pdht_create(pdht_context_t *ctx);
+void                 pdht_free(pdht_t *dht);
 
 
 // Communication Completion Operations -- commsynch.c
@@ -87,8 +113,8 @@ pdht_handle_t        pdht_nbget(void *key, int ksize, void **value);
 #define pdht_nbgetf(k,v) pdht_nbput(k,sizeof(double),v)
 
 // Associative Update Operations -- assoc.c
-pdht_status_t pdht_acc(void *key, int ksize, pdht_datatype_t, pdht_oper_t op, void *value);
-pdht_handle_t pdht_nbacc(void *key, int ksize, pdht_datatype_t, pdht_oper_t op, void *value);
+pdht_status_t pdht_acc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
+pdht_handle_t pdht_nbacc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
 
 // pmi.c
 void init_pmi(void);

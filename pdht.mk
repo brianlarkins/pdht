@@ -20,21 +20,27 @@ MATH_LIB            = -lm
 PDHT_INSTALL_LIBDIR = $(PDHT_TOP)/lib
 PDHT_LIBPDHT        = $(PDHT_TOP)/libpdht.a
 
+PDHT_LIBDIRS = libpdht
+
 PDHT_LIBS = $(PDHT_LIBPDHT)
 
 .PHONY: all
+
+default: all
+
+
 checkflags:
 ifndef PORTALS_INCLUDEDIR
-  @echo You must define PORTALS_INCLUDEDIR with the path to your Portals4 headers
-  @false
+	@echo You must define PORTALS_INCLUDEDIR with the path to your Portals4 headers
+	@false
 endif
-ifndef PORTALS_LIBIDR
-  @echo You must define PORTALS_LIBDIR with the path to your Portals4 libraries
-  @false
+ifndef PORTALS_LIBDIR
+	@echo You must define PORTALS_LIBDIR with the path to your Portals4 libraries
+	@false
 endif
 ifndef PDHT_TOP
-  @echo You must define PDHT_TOP with the path of the top-level directory
-  @false
+	@echo You must define PDHT_TOP with the path of the top-level directory
+	@false
 endif
 
 .PHONY: pdhtlibs $(PDHT_LIBDIRS)
