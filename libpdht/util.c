@@ -1,4 +1,4 @@
-#include <pdht.h>
+#include <pdht_impl.h>
 
 /**
  *  eprintf - error printing wrapper
@@ -8,7 +8,7 @@ int eprintf(const char *format, ...) {
   va_list ap;
   int ret;
 
-  if (c.rank == 0) {
+  if (c->rank == 0) {
     va_start(ap, format);
     ret = vfprintf(stdout, format, ap);
     va_end(ap);
@@ -25,7 +25,7 @@ int eprintf(const char *format, ...) {
 int pdht_dbg_printf(const char *format, ...) {
   va_list ap;
   int ret;
-  
+
   va_start(ap, format);
   ret = vfprintf(stdout, format, ap);
   va_end(ap);
