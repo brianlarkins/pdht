@@ -47,7 +47,13 @@ struct pdht_context_s {
 };
 typedef struct pdht_context_s pdht_context_t;
 
+enum pdht_status_e {
+   PdhtStatusOK,
+   PdhtStatusError
+};
+typedef enum pdht_status_e pdht_status_t;
 
+typedef int pdht_handle_t;
 
 struct pdht_s {
    pdht_context_t *ctx;
@@ -57,14 +63,6 @@ struct pdht_s {
    pdht_handle_t (*nbget)(pdht_t *dht, void *k, int ksize, void **v);
 };
 typedef struct pdht_s pdht_t;
-
-enum pdht_status_e {
-   PdhtStatusOK,
-   PdhtStatusError
-};
-typedef enum pdht_status_e pdht_status_t;
-
-typedef int pdht_handle_t;
 
 enum pdht_oper_e {
    AssocOpAdd
