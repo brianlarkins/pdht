@@ -25,24 +25,36 @@
 
 #include <slurm/pmi.h>
 #include <portals4.h>
+#include <pdht.h>
 
 
-/**
- *  global configuration data structure
- */
-struct pdht_context_s {
-   int              rank;         //!< process rank
-   int              size;         //!< process count
+struct pdht_portals_s {
    ptl_handle_ni_t  phy;          //!< physical NI
    ptl_handle_ni_t  lni;          //!< logical NI
    ptl_ni_limits_t  ni_limits;    //!< logical NI limits
    ptl_process_t   *mapping;      //!< physical/logical NI mapping
 };
+typedef struct pdht_portals_s pdht_portals_t;
+
+/**
+ *  global configuration data structure
+ */
+struct pdht_context_s {
+   int              dhtcount;     //!< DHTs that have been created
+   int              rank;         //!< process rank
+   int              size;         //!< process count
+   pdht_portals_t   ptl;          //!< Portals 4 ADTs
+};
 typedef struct pdht_context_s pdht_context_t;
+
 
 
 struct pdht_s {
    pdht_context_t *ctx;
+   pdht_status_t (*put)(pdht_t *dht, void *k, int ksize, void *v);
+   pdht_status_t (*get)(pdht_t *dht, void *k, int ksize, void **v);
+   pdht_handle_t (*nbput)(pdht_t *dht, void *k, int ksize, void *v);
+   pdht_handle_t (*nbget)(pdht_t *dht, void *k, int ksize, void **v);
 };
 typedef struct pdht_s pdht_t;
 
@@ -67,21 +79,17 @@ enum pdht_datatype_e {
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
 
-
-// global (per-process private) data structures
-extern pdht_context_t c;
+struct pdht_iter_t {
+   // XXX teration state stuff needs added.
+   int   (*hasnext)(pdht_iter_t *it);
+   void *(*next)(pdht_iter_t *it);
+}
 
 /********************************************************/
-/* portals distributed hash table prototypes            */
+/* portals distributed hash table public interface      */
 /********************************************************/
 
-// Initialization / Finalization -- init.c
-void                 pdht_init(void);
-void                 pdht_fini(void);
-void                 pdht_clearall(void);
-
-
-// create / destroy single DHT
+// create / destroy single DHT -- init.c
 pdht_t              *pdht_create(pdht_context_t *ctx);
 void                 pdht_free(pdht_t *dht);
 
@@ -95,29 +103,21 @@ pdht_status_t        pdht_waitrank(int rank);
 pdht_status_t        pdht_waitall(void);
 
 // Put / Get Operations -- putget.c
-pdht_status_t        pdht_put(void *key, int ksize, void *value);
-pdht_status_t        pdht_get(void *key, int ksize, void **value);
-// XXX probably should make these inlined for type safety
-#define pdht_puti(k,v) pdht_put(k,sizeof(int),v)
-#define pdht_geti(k,v) pdht_put(k,sizeof(int),v)
-#define pdht_putf(k,v) pdht_put(k,sizeof(double),v)
-#define pdht_getf(k,v) pdht_put(k,sizeof(double),v)
+pdht_status_t        pdht_put(pdht_t *dht, void *key, int ksize, void *value);
+pdht_status_t        pdht_get(pdht_t *dht, void *key, int ksize, void **value);
 
 // Asynchronous Put / Get Operations -- nbputget.c
-pdht_handle_t        pdht_nbput(void *key, int ksize, void *value);
-pdht_handle_t        pdht_nbget(void *key, int ksize, void **value);
-// XXX probably should make these inlined for type safety
-#define pdht_nbputi(k,v) pdht_nbput(k,sizeof(int),v)
-#define pdht_nbgeti(k,v) pdht_nbput(k,sizeof(int),v)
-#define pdht_nbputf(k,v) pdht_nbput(k,sizeof(double),v)
-#define pdht_nbgetf(k,v) pdht_nbput(k,sizeof(double),v)
+pdht_handle_t        pdht_nbput(pdht_t *dht, void *key, int ksize, void *value);
+pdht_handle_t        pdht_nbget(pdht_t *dht, void *key, int ksize, void **value);
 
 // Associative Update Operations -- assoc.c
-pdht_status_t pdht_acc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
-pdht_handle_t pdht_nbacc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
+pdht_status_t        pdht_acc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
+pdht_handle_t        pdht_nbacc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
 
-// pmi.c
-void init_pmi(void);
+// Iteration operations -- iter.c
+pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);
+pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
+int                  pdht_hasnext(pdht_iter_t *it);
+void                *pdht_getnext(pdht_iter_t *it);
 
-// util.c
-int  eprintf(const char *format, ...);
+#include <pdht_inline.h>

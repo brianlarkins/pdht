@@ -32,7 +32,7 @@ libpdht.a: headers $(OBJS)
 
 .PHONY: headers
 headers:
-	cp *.h ../include/.
+	cp pdht.h ../include/.
 
 .PHONY: clean
 clean:

@@ -3,7 +3,7 @@
 static int encode(const void *inval, int invallen, char *outval, int outvallen);
 static int decode(const char *inval, void *outval, int outvallen);
 
-void init_pmi(void) {
+void init_pmi(pdht_context_t *c) {
     PMI_BOOL initialized;
     ptl_handle_ni_t pni_hdl;
     ptl_process_t me;
@@ -17,8 +17,8 @@ void init_pmi(void) {
     PMI_KVS_Get_key_length_max(&key_max);
     PMI_KVS_Get_value_length_max(&val_max);
 
-    PMI_Get_rank(&c.rank);
-    PMI_Get_size(&c.size);
+    PMI_Get_rank(&c->rank);
+    PMI_Get_size(&c->size);
 
     name = (char *)malloc(name_max);
     key  = (char *)malloc(key_max);
@@ -28,12 +28,12 @@ void init_pmi(void) {
 
     PtlGetId(pni_hdl, &me);
 
-    snprintf(key, key_max, "pcfg-%ld-nid", (long unsigned) c.rank);
+    snprintf(key, key_max, "pcfg-%ld-nid", (long unsigned) c->rank);
     //printf("%d: nid: %x\n", c.rank, me.phys.nid);
     encode(&me.phys.nid, sizeof(me.phys.nid), val, val_max);
     PMI_KVS_Put(name, key, val);
 
-    snprintf(key, key_max, "pcfg-%ld-pid", (long unsigned) c.rank);
+    snprintf(key, key_max, "pcfg-%ld-pid", (long unsigned) c->rank);
     //printf("%d: pid: %x\n", c.rank, me.phys.pid);
     encode(&me.phys.pid, sizeof(me.phys.pid), val, val_max);
     PMI_KVS_Put(name, key, val);
@@ -41,16 +41,16 @@ void init_pmi(void) {
     PMI_KVS_Commit(name);
     PMI_Barrier();
  
-    c.mapping = (ptl_process_t *)calloc(c.size, sizeof(ptl_process_t));
+    c->ptl.mapping = (ptl_process_t *)calloc(c->size, sizeof(ptl_process_t));
 
-    for (int i=0; i< c.size; i++) {
+    for (int i=0; i< c->size; i++) {
        snprintf(key, key_max, "pcfg-%lu-nid", (long unsigned) i);
        PMI_KVS_Get(name, key, val, val_max);
-       decode(val, &c.mapping[i].phys.nid, sizeof(c.mapping[i].phys.nid));
+       decode(val, &c->ptl.mapping[i].phys.nid, sizeof(c->ptl.mapping[i].phys.nid));
 
        snprintf(key, key_max, "pcfg-%lu-pid", (long unsigned) i);
        PMI_KVS_Get(name, key, val, val_max);
-       decode(val, &c.mapping[i].phys.pid, sizeof(c.mapping[i].phys.pid));
+       decode(val, &c->ptl.mapping[i].phys.pid, sizeof(c->ptl.mapping[i].phys.pid));
     }
 }
 
