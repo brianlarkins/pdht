@@ -77,11 +77,12 @@ enum pdht_datatype_e {
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
 
-struct pdht_iter_t {
+struct pdht_iter_s {
    // XXX teration state stuff needs added.
-   int   (*hasnext)(pdht_iter_t *it);
-   void *(*next)(pdht_iter_t *it);
-}
+   int   (*hasnext)(struct pdht_iter_s *it);
+   void *(*next)(struct pdht_iter_s *it);
+};
+typedef struct pdht_iter_s pdht_iter_t;
 
 /********************************************************/
 /* portals distributed hash table public interface      */
