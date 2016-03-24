@@ -89,7 +89,7 @@ typedef struct pdht_iter_s pdht_iter_t;
 /********************************************************/
 
 // create / destroy single DHT -- init.c
-pdht_t              *pdht_create(pdht_context_t *ctx);
+pdht_t              *pdht_create();
 void                 pdht_free(pdht_t *dht);
 
 

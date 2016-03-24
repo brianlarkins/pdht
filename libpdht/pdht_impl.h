@@ -8,6 +8,7 @@
 /***********************************************************/
 
 #pragma once
+#include <assert.h>
 #include <stdarg.h>
 #include <pdht.h>
 
@@ -28,7 +29,7 @@
 
 
 // global (per-process private) data structures
-extern pdht_context_t c;
+extern pdht_context_t *c;
 
 /********************************************************/
 /* portals distributed hash table prototypes            */
@@ -44,4 +45,4 @@ void init_pmi(pdht_context_t *c);
 
 // util.c
 int  eprintf(const char *format, ...);
-int  pdht_dbg_printf(const char *format, ...)
+int  pdht_dbg_printf(const char *format, ...);
