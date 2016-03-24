@@ -1,4 +1,4 @@
-#include <pdht.h>
+#include <pdht_impl.h>
 
 static int encode(const void *inval, int invallen, char *outval, int outvallen);
 static int decode(const char *inval, void *outval, int outvallen);

@@ -25,8 +25,8 @@
  *  @param v DHT entry to put
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_puti(pdht_t *dht,int k, void *v) {
-   return pdht_put(dht,k,sizeof(int), v);
+static inline pdht_status_t pdht_puti(pdht_t *dht, int k, void *v) {
+   return pdht_put(dht, &k, sizeof(int), v);
 }
 
 
@@ -37,8 +37,8 @@ static inline pdht_status_t pdht_puti(pdht_t *dht,int k, void *v) {
  *  @param v DHT entry to get
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_geti(pdht_t *dht,int k, void **v) {
-   return pdht_get(dht,k,sizeof(int), v);
+static inline pdht_status_t pdht_geti(pdht_t *dht, int k, void **v) {
+   return pdht_get(dht, &k, sizeof(int), v);
 }
 
 
@@ -49,8 +49,8 @@ static inline pdht_status_t pdht_geti(pdht_t *dht,int k, void **v) {
  *  @param v DHT entry to put
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_putf(pdht_t *dht,double k, void *v) {
-   return pdht_put(dht,k,sizeof(double), v);
+static inline pdht_status_t pdht_putf(pdht_t *dht, double k, void *v) {
+   return pdht_put(dht, &k, sizeof(double), v);
 }
 
 
@@ -61,8 +61,8 @@ static inline pdht_status_t pdht_putf(pdht_t *dht,double k, void *v) {
  *  @param v DHT entry to get
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_getf(pdht_t *dht,double k, void **v) {
-   return pdht_get(dht,k,sizeof(double), v);
+static inline pdht_status_t pdht_getf(pdht_t *dht, double k, void **v) {
+   return pdht_get(dht, &k, sizeof(double), v);
 }
 
 
@@ -74,8 +74,8 @@ static inline pdht_status_t pdht_getf(pdht_t *dht,double k, void **v) {
  *  @param v DHT entry to put
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_nbputi(pdht_t *dht,int k, void *v) {
-   return pdht_put(dht,k,sizeof(int), v);
+static inline pdht_status_t pdht_nbputi(pdht_t *dht, int k, void *v) {
+   return pdht_put(dht, &k, sizeof(int), v);
 }
 
 
@@ -86,8 +86,8 @@ static inline pdht_status_t pdht_nbputi(pdht_t *dht,int k, void *v) {
  *  @param v DHT entry to get
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_nbgeti(pdht_t *dht,int k, void **v) {
-   return pdht_get(dht,k,sizeof(int), v);
+static inline pdht_status_t pdht_nbgeti(pdht_t *dht, int k, void **v) {
+   return pdht_get(dht, &k, sizeof(int), v);
 }
 
 
@@ -98,8 +98,8 @@ static inline pdht_status_t pdht_nbgeti(pdht_t *dht,int k, void **v) {
  *  @param v DHT entry to put
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_putf(pdht_t *dht,double k, void *v) {
-   return pdht_nbput(dht,k,sizeof(double), v);
+static inline pdht_status_t pdht_nbputf(pdht_t *dht, double k, void *v) {
+   return pdht_nbput(dht, &k, sizeof(double), v);
 }
 
 
@@ -110,6 +110,6 @@ static inline pdht_status_t pdht_putf(pdht_t *dht,double k, void *v) {
  *  @param v DHT entry to get
  *  @returns status of the operation
  */
-static inline pdht_status_t pdht_nbgetf(pdht_t *dht,double k, void **v) {
-   return pdht_nbget(dht,k,sizeof(double), v);
+static inline pdht_status_t pdht_nbgetf(pdht_t *dht, double k, void **v) {
+   return pdht_nbget(dht, &k, sizeof(double), v);
 }

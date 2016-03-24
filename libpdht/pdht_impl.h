@@ -40,7 +40,7 @@ void                 pdht_fini(void);
 void                 pdht_clearall(void);
 
 // pmi.c
-void init_pmi(void);
+void init_pmi(pdht_context_t *c);
 
 // util.c
 int  eprintf(const char *format, ...);

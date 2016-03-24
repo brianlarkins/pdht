@@ -7,7 +7,7 @@
 /*                                                      */
 /********************************************************/
 
-#include <pdht.h>
+#include <pdht_impl.h>
 
 pdht_context_t *c = NULL; // a global variable. for shame.
 
