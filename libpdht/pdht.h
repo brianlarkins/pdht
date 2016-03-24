@@ -57,10 +57,10 @@ typedef int pdht_handle_t;
 
 struct pdht_s {
    pdht_context_t *ctx;
-   pdht_status_t (*put)(pdht_t *dht, void *k, int ksize, void *v);
-   pdht_status_t (*get)(pdht_t *dht, void *k, int ksize, void **v);
-   pdht_handle_t (*nbput)(pdht_t *dht, void *k, int ksize, void *v);
-   pdht_handle_t (*nbget)(pdht_t *dht, void *k, int ksize, void **v);
+   pdht_status_t (*put)(struct pdht_s *dht, void *k, int ksize, void *v);
+   pdht_status_t (*get)(struct pdht_s *dht, void *k, int ksize, void **v);
+   pdht_handle_t (*nbput)(struct pdht_s *dht, void *k, int ksize, void *v);
+   pdht_handle_t (*nbget)(struct pdht_s *dht, void *k, int ksize, void **v);
 };
 typedef struct pdht_s pdht_t;
 
