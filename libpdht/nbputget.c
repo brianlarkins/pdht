@@ -24,6 +24,13 @@
  *   @returns handle for completion operations
  */
 pdht_handle_t pdht_nbput(pdht_t *dht, void *key, int ksize, void *value) {
+  // worry about spending too much time finding a free NB handle here
+
+  // hash key to get dest rank + match bits
+  // find new entry in pending[rank] array
+  // fill out entry
+  // PtlPut()
+  // return index
   return PDHT_NULL_HANDLE;
 }
 
@@ -37,5 +44,12 @@ pdht_handle_t pdht_nbput(pdht_t *dht, void *key, int ksize, void *value) {
  *   @returns handle for completion operations
  */
 pdht_handle_t pdht_nbget(pdht_t *dht, void *key, int ksize, void **value) {
+  // worry about spending too much time finding a free NB handle here
+
+  // hash key to get dest rank + match bits
+  // find new entry in pending[rank] array
+  // fill out entry
+  // PtlPut()
+  // return index
   return PDHT_NULL_HANDLE;
 }

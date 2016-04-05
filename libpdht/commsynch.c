@@ -23,14 +23,40 @@
  * @param rank rank of process to ensure completion
  */
 void pdht_fence(int rank) {
+  // Q: this is only important for NB ops, put/get are blocking/synch, no?
+  // Q: full events or counting? (more vs. less accounting data)
+  // Q: what happens to pdht_handles for outstanding nb xfers after fence?
+  //   - would be nice to invalidate them all after fencing (done!)
+  //   - otherwise, need to mandate explicit call to a wait() op
+
+  // requires: bookeeping on pending put/get/atomics
+  //  - use an array of pending to each rank (100 for each process * 1K * size + status <= 1MB)
+  //    - pending queues should self-flush when full (with call to this routine)
+  //  - put needs to match all outstanding puts with PTL_EVENT_ACKs at Initiator
+  //  - get needs to match all outstanding gets with PTL_EVENT_REPLYs at Initiator
+  //  - fetchatomic matches PTL_EVENT_REPLY too (distinguishing?) (use atomic_op/type in event)
+
+  // for i in pending[rank]:
+  //   sum count or bytes transferred
+  // call update bookkeeping from EQ
+  //   - once EQ entry is retrieved, it's gone from the EQ
+  //   - do all processing on EQ somewhere else, then use most
+  //     recent metadata to perform fence
+
+  // check global accounting state for outstanding communication counts/sizes
+  // if pending > completed
+  //   call handler which calls PtlEQWait and handles a single event (may not be one we're looking for)n
 }
 
 
 
 /**
  * pdht_allfence - ensures completion of all pending put/get operations
+ *    
  */
 void pdht_allfence(void) {
+  // same as above, but handle all ranks
+  // only deal with EQ once for all ranks
 }
 
 
@@ -41,6 +67,8 @@ void pdht_allfence(void) {
  * @returns status of operation
  */
 pdht_status_t pdht_test(pdht_handle_t h) {
+  // handle is index into pending communication array
+  // simply return status of entry
   return PdhtStatusOK;
 }
 
@@ -52,6 +80,10 @@ pdht_status_t pdht_test(pdht_handle_t h) {
  * @returns status of operation
  */
 pdht_status_t pdht_wait(pdht_handle_t h) {
+  // handle is index into pending communication array
+  // if status is complete, then return OK
+  // if status is pending, then deal with EQ shit until our prince has arrived
+  // anybody who wants our EQ handling to be re-entrant should be killed.
   return PdhtStatusOK;
 }
 
@@ -63,6 +95,7 @@ pdht_status_t pdht_wait(pdht_handle_t h) {
  * @returns status of operation
  */
 pdht_status_t pdht_waitrank(int rank) {
+  // same as above, but for all outstanding entries in pending array for a given rank
   return PdhtStatusOK;
 }
 
@@ -73,6 +106,7 @@ pdht_status_t pdht_waitrank(int rank) {
  * @returns status of operation
  */
 pdht_status_t pdht_waitall(void) {
+  // same as above, but for all outstanding entries in pending array for all ranks
   return PdhtStatusOK;
 }
 

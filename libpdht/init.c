@@ -35,6 +35,19 @@ pdht_t *pdht_create(void) {
   dht->ctx = c;
   dht->ctx->dhtcount++; // register ourselves globally on this process
 
+  // allocate store for dht entries
+  // bind MD for hash table to LNI PtlMDBind
+  // create event queue for logging dht operations
+  // create PT entry for HT PtlPTAlloc
+
+  // initialize HT state, considering:
+  //   - how do we allocate each new ht object?
+  //     - if we allow for arbitrary object sizes + updates / frees
+  //       we probably need a malloc-like allocator (ugh)
+  //     - if we fix object size, we can avoid, but less ht-like
+  //   - do we allow for ht object deletion?
+
+
   return dht;
 }
 
@@ -51,6 +64,11 @@ void pdht_free(pdht_t *dht) {
   if (dht->ctx->dhtcount <= 0) {
     pdht_fini();
   }
+
+  // PtlPTFree() on dht portals table entry
+  // PtlMDRelease() on MD
+
+  // release all storage for ht objects
 
   free(dht);
 }
@@ -161,6 +179,9 @@ error:
  * pdht_fini - initializes PDHT system
  */
 void pdht_fini(void) {
+
+  // free up barrier initialization stuff (PT Entry, MD)
+
   free(c);
   c = NULL;
 }
