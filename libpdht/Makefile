@@ -6,7 +6,7 @@
 
 PORTALS_INCLUDEDIR=/opt/hpctools/include
 
-CFLAGS=$(GCFLAGS) -I../include -I$(PORTALS_INCLUDEDIR)
+CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-lportals -lpmi
 
@@ -15,7 +15,6 @@ RANLIB = /usr/bin/ranlib
 
 OBJS =  assoc.o      \
         commsynch.o  \
-        dht.o        \
         init.o       \
         nbputget.o   \
         putget.o     \
@@ -32,7 +31,7 @@ libpdht.a: headers $(OBJS)
 
 .PHONY: headers
 headers:
-	cp pdht.h ../include/.
+	cp pdht_inline.h pdht.h ../include/.
 
 .PHONY: clean
 clean:

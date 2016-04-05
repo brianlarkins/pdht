@@ -22,7 +22,8 @@
  *   @param value - value for table entry
  *   @returns status of operation
  */
-pdht_status_t        pdht_put(void *key, int ksize, void *value) {
+pdht_status_t pdht_put(pdht_t *dht, void *key, int ksize, void *value) {
+  return PdhtStatusOK;
 }
 
 
@@ -34,5 +35,6 @@ pdht_status_t        pdht_put(void *key, int ksize, void *value) {
  *   @param value - value for table entry
  *   @returns status of operation
  */
-pdht_status_t        pdht_get(void *key, int ksize, void **value) {
+pdht_status_t pdht_get(pdht_t *dht, void *key, int ksize, void **value) {
+  return PdhtStatusOK;
 }

@@ -29,10 +29,13 @@
 
 
 struct pdht_portals_s {
-   ptl_handle_ni_t  phy;          //!< physical NI
-   ptl_handle_ni_t  lni;          //!< logical NI
-   ptl_ni_limits_t  ni_limits;    //!< logical NI limits
-   ptl_process_t   *mapping;      //!< physical/logical NI mapping
+   ptl_handle_ni_t  phy;           //!< physical NI
+   ptl_handle_ni_t  lni;           //!< logical NI
+   ptl_ni_limits_t  ni_limits;     //!< logical NI limits
+   ptl_process_t   *mapping;       //!< physical/logical NI mapping
+   ptl_handle_md_t  barrier_md;    //!< barrier MD handle
+   ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
+   ptl_size_t       barrier_count; //!< barrier count
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -53,6 +56,8 @@ enum pdht_status_e {
 };
 typedef enum pdht_status_e pdht_status_t;
 
+
+#define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
 struct pdht_s {
@@ -100,6 +105,7 @@ pdht_status_t        pdht_test(pdht_handle_t h);
 pdht_status_t        pdht_wait(pdht_handle_t h);
 pdht_status_t        pdht_waitrank(int rank);
 pdht_status_t        pdht_waitall(void);
+void                 pdht_barrier(void);
 
 // Put / Get Operations -- putget.c
 pdht_status_t        pdht_put(pdht_t *dht, void *key, int ksize, void *value);

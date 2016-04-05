@@ -13,16 +13,18 @@ GCFLAGS = --std=c99 -g
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 #GCFLAGS = -pg -O3
 #GCFLAGS = -O3
-CFLAGS = $(GCFLAGS) -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDE)
+CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
+PMI_LIB             = -lpmi
+PORTALS_LIB         = -lportals
 PDHT_INSTALL_LIBDIR = $(PDHT_TOP)/lib
-PDHT_LIBPDHT        = $(PDHT_TOP)/libpdht.a
+PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
 
-PDHT_LIBDIRS = libpdht
+PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 
-PDHT_LIBS = $(PDHT_LIBPDHT)
+PDHT_LIBS = -L$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PMI_LIB) $(PORTALS_LIB)
 
 .PHONY: all
 

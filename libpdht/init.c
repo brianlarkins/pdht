@@ -44,7 +44,7 @@ pdht_t *pdht_create(void) {
  * pdht_free -- frees a new dht
  * @param dht - the dht to free
  */
-void dht_free(pdht_t *dht) {
+void pdht_free(pdht_t *dht) {
   assert(dht);
 
   dht->ctx->dhtcount--;
@@ -78,7 +78,6 @@ void pdht_init(void) {
   memset(c,0,sizeof(pdht_context_t));
 
 
-  eprintf("Initializing Portals 4\n");
 
   ret = PtlInit();
   if (ret != PTL_OK) {
@@ -87,14 +86,16 @@ void pdht_init(void) {
   }
 
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
-      PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
-      PTL_PID_ANY, NULL, NULL, &c->ptl.phy);
+                  PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
+                  PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
   if (ret != PTL_OK) {
     pdht_dprintf("Portals physical NI initialization problem. (return=%d)\n", ret);
     exit(-1);
   }
 
   init_pmi(c);
+
+  eprintf("Initializing Portals 4\n");
 
   eprintf("Initializing Network Interface\n");
   // request portals NI limits
@@ -126,8 +127,8 @@ void pdht_init(void) {
       PTL_NI_NO_MATCHING | PTL_NI_LOGICAL,
       PTL_PID_ANY,
       &ni_req_limits,
-      &c->ptl.ni_limits,
-      &c->ptl.lni);
+      &(c->ptl.ni_limits),
+      &(c->ptl.lni));
   if (ret != PTL_OK) {
     eprintf("Portals logical NI initialization error\n");
     goto error;
@@ -135,9 +136,16 @@ void pdht_init(void) {
 
   ret = PtlSetMap(c->ptl.lni, c->size, c->ptl.mapping);
   if (ret != PTL_OK) {
-    eprintf("Portals physical/logical mapping failed.\n");
+    eprintf("Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
     goto error;
   }
+
+  /*
+   * have to call one more PMI/MPI barrier to guarantee we have our own counters 
+   * ready for our internal barrier operation... 
+   */
+  pdht_barrier_init(c);
+  init_only_barrier(); // safe to use pdht_barrier() after this
 
   return;
 

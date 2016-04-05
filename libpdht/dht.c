@@ -21,6 +21,7 @@
  *   @returns a new hash table
  */
 pdht_t *pdht_create(pdht_context_t *ctx) {
+  return NULL;
 }
 
 

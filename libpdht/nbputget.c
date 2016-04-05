@@ -23,7 +23,8 @@
  *   @param value - value for table entry
  *   @returns handle for completion operations
  */
-pdht_handle_t        pdht_nbput(void *key, int ksize, void *value) {
+pdht_handle_t pdht_nbput(pdht_t *dht, void *key, int ksize, void *value) {
+  return PDHT_NULL_HANDLE;
 }
 
 
@@ -35,5 +36,6 @@ pdht_handle_t        pdht_nbput(void *key, int ksize, void *value) {
  *   @param value - value of the global entry
  *   @returns handle for completion operations
  */
-pdht_handle_t        pdht_nbget(void *key, int ksize, void **value) {
+pdht_handle_t pdht_nbget(pdht_t *dht, void *key, int ksize, void **value) {
+  return PDHT_NULL_HANDLE;
 }

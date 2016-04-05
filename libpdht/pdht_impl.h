@@ -40,9 +40,14 @@ void                 pdht_init(void);
 void                 pdht_fini(void);
 void                 pdht_clearall(void);
 
+// commsynch.c
+void                 pdht_barrier_init(pdht_context_t *c);
+
 // pmi.c
 void init_pmi(pdht_context_t *c);
+void init_only_barrier(void);
 
 // util.c
 int  eprintf(const char *format, ...);
 int  pdht_dbg_printf(const char *format, ...);
+char *pdht_ptl_error(int error_code);

@@ -24,7 +24,8 @@
  *   @param op operation to perform
  *   @param value to accumulate into entry
  */
-pdht_status_t pdht_acc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value) {
+pdht_status_t pdht_acc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value) {
+  return PdhtStatusOK;
 }
 
 
@@ -37,5 +38,6 @@ pdht_status_t pdht_acc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t o
  *   @param op operation to perform
  *   @param value to accumulate into entry
  */
-pdht_handle_t pdht_nbacc(void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value) {
+pdht_handle_t pdht_nbacc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value) {
+  return PdhtStatusOK;
 }
