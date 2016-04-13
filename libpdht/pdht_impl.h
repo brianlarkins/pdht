@@ -8,18 +8,26 @@
 /***********************************************************/
 
 #pragma once
+#define _XOPEN_SOURCE 700
+
 #include <assert.h>
 #include <stdarg.h>
+#include <time.h>
 #include <pdht.h>
-
 
 #define PDHT_DEBUG
 
 #ifdef PDHT_DEBUG
   #define pdht_dprintf(...) pdht_dbg_printf(__VA_ARGS__)
 #else
-  #define pdht_dprintf(...)
+  #define pdht_dprintf(...) ;
 #endif
+
+#define PDHT_DEFAULT_TABLE_SIZE 100000
+#define PDHT_EVENTQ_SIZE        400
+
+#define __PDHT_BARRIER_INDEX 23
+#define __PDHT_BARRIER_MATCH 0xdeadbeef
 
 /**
  * @file
@@ -27,6 +35,14 @@
  * portals distributed hash table implementations ADTs
  */
 
+
+// overlay struct for casting
+struct _pdht_ht_entry_s {
+   ptl_handle_me_t   me;
+   ptl_handle_ct_t   ct;
+   char              data[0];
+};
+typedef struct _pdht_ht_entry_s _pdht_ht_entry_t;
 
 // global (per-process private) data structures
 extern pdht_context_t *c;
@@ -44,7 +60,7 @@ void                 pdht_clearall(void);
 void                 pdht_barrier_init(pdht_context_t *c);
 
 // pmi.c
-void init_pmi(pdht_context_t *c);
+void init_pmi();
 void init_only_barrier(void);
 
 // util.c

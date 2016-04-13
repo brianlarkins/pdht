@@ -34,6 +34,7 @@ struct pdht_portals_s {
    ptl_ni_limits_t  ni_limits;     //!< logical NI limits
    ptl_process_t   *mapping;       //!< physical/logical NI mapping
    ptl_handle_md_t  barrier_md;    //!< barrier MD handle
+   ptl_handle_me_t  barrier_me;    //!< barrier ME handle
    ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
    ptl_size_t       barrier_count; //!< barrier count
 };
@@ -50,22 +51,45 @@ struct pdht_context_s {
 };
 typedef struct pdht_context_s pdht_context_t;
 
+enum pdht_mode_e {
+  PdhtModeStrict,     // blocking,synchronous
+  PdhtModeBundled,    // batched puts, fence at end of bundled puts
+  PdhtModeAsync       // anything goes
+};
+typedef enum pdht_mode_e pdht_mode_t;
+#define PDHT_DEFAULT_MODE PdhtModeStrict
+
 enum pdht_status_e {
    PdhtStatusOK,
    PdhtStatusError
 };
 typedef enum pdht_status_e pdht_status_t;
 
-
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
+struct pdht_htportals_s {
+  ptl_handle_ni_t lni;           //!< portals logical NI
+  unsigned        ptindex;       //!< portal table entry index
+  ptl_handle_md_t md;            //!< memory descriptor for ht
+  ptl_handle_eq_t eq;            //!< event queue for PT entry
+  ptl_me_t me;                   //!< default match entry for ht
+};
+typedef struct pdht_htportals_s pdht_htportals_t;
+
 struct pdht_s {
-   pdht_context_t *ctx;
-   pdht_status_t (*put)(struct pdht_s *dht, void *k, int ksize, void *v);
-   pdht_status_t (*get)(struct pdht_s *dht, void *k, int ksize, void **v);
-   pdht_handle_t (*nbput)(struct pdht_s *dht, void *k, int ksize, void *v);
-   pdht_handle_t (*nbget)(struct pdht_s *dht, void *k, int ksize, void **v);
+   pdht_context_t   *ctx;
+   pdht_mode_t       mode;
+   void             *ht;  
+   unsigned          keysize;
+   unsigned          elemsize;
+   unsigned          entrysize;
+   unsigned          nextfree;
+   pdht_htportals_t  ptl;
+   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
+   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
+   pdht_handle_t   (*nbput)(struct pdht_s *dht, void *k, void *v);
+   pdht_handle_t   (*nbget)(struct pdht_s *dht, void *k, void **v);
 };
 typedef struct pdht_s pdht_t;
 
@@ -83,7 +107,7 @@ enum pdht_datatype_e {
 typedef enum pdht_datatype_e pdht_datatype_t;
 
 struct pdht_iter_s {
-   // XXX teration state stuff needs added.
+   // XXX iteration state stuff needs added.
    int   (*hasnext)(struct pdht_iter_s *it);
    void *(*next)(struct pdht_iter_s *it);
 };
@@ -94,7 +118,7 @@ typedef struct pdht_iter_s pdht_iter_t;
 /********************************************************/
 
 // create / destroy single DHT -- init.c
-pdht_t              *pdht_create();
+pdht_t              *pdht_create(int keysize, int elemsize, pdht_mode_t mode);
 void                 pdht_free(pdht_t *dht);
 
 
@@ -108,16 +132,16 @@ pdht_status_t        pdht_waitall(void);
 void                 pdht_barrier(void);
 
 // Put / Get Operations -- putget.c
-pdht_status_t        pdht_put(pdht_t *dht, void *key, int ksize, void *value);
-pdht_status_t        pdht_get(pdht_t *dht, void *key, int ksize, void **value);
+pdht_status_t        pdht_put(pdht_t *dht, void *key, void *value);
+pdht_status_t        pdht_get(pdht_t *dht, void *key, void **value);
 
 // Asynchronous Put / Get Operations -- nbputget.c
-pdht_handle_t        pdht_nbput(pdht_t *dht, void *key, int ksize, void *value);
-pdht_handle_t        pdht_nbget(pdht_t *dht, void *key, int ksize, void **value);
+pdht_handle_t        pdht_nbput(pdht_t *dht, void *key, void *value);
+pdht_handle_t        pdht_nbget(pdht_t *dht, void *key, void **value);
 
 // Associative Update Operations -- assoc.c
-pdht_status_t        pdht_acc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
-pdht_handle_t        pdht_nbacc(pdht_t *dht, void *key, int ksize, pdht_datatype_t type, pdht_oper_t op, void *value);
+pdht_status_t        pdht_acc(pdht_t *dht, void *key, pdht_datatype_t type, pdht_oper_t op, void *value);
+pdht_handle_t        pdht_nbacc(pdht_t *dht, void *key, pdht_datatype_t type, pdht_oper_t op, void *value);
 
 // Iteration operations -- iter.c
 pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);

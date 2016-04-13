@@ -12,6 +12,7 @@ int eprintf(const char *format, ...) {
     va_start(ap, format);
     ret = vfprintf(stdout, format, ap);
     va_end(ap);
+    fflush(stdout);
     return ret;
   }
   else

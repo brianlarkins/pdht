@@ -6,7 +6,7 @@
 static int encode(const void *inval, int invallen, char *outval, int outvallen);
 static int decode(const char *inval, void *outval, int outvallen);
 
-void init_pmi(pdht_context_t *c) {
+void init_pmi() {
     PMI_BOOL initialized;
     ptl_process_t me;
     int name_max, key_max, val_max;
@@ -49,7 +49,7 @@ void init_pmi(pdht_context_t *c) {
     for (int i=0; i< c->size; i++) {
        snprintf(key, key_max, "pdht-%lu-nid", (long unsigned) i);
        PMI_KVS_Get(name, key, val, val_max);
-       decode(val, &(c->ptl.mapping[i].phys.nid), sizeof(c->ptl.mapping[i].phys.nid));
+       decode(val, &(c->ptl.mapping[i]).phys.nid, sizeof(c->ptl.mapping[i].phys.nid));
 
        snprintf(key, key_max, "pdht-%lu-pid", (long unsigned) i);
        PMI_KVS_Get(name, key, val, val_max);

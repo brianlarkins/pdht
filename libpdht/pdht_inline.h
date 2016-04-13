@@ -16,6 +16,7 @@
 
 #pragma once
 
+#ifdef DEPRECATED
 
 /* blocking shortcuts */
 
@@ -113,3 +114,4 @@ static inline pdht_status_t pdht_nbputf(pdht_t *dht, double k, void *v) {
 static inline pdht_status_t pdht_nbgetf(pdht_t *dht, double k, void **v) {
    return pdht_nbget(dht, &k, sizeof(double), v);
 }
+#endif
