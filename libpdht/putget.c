@@ -15,7 +15,6 @@
  * portals distributed hash table put/get ops
  */
 
-// XXX i think we need value size too
 //  - maybe make keys a specific struct with void* + size to reduce clutter
 
 /**
@@ -42,11 +41,14 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
  *   @returns status of operation
  */
 pdht_status_t pdht_get(pdht_t *dht, void *key, void **value) {
+  int ret;
+  ptl_match_bits_t mbits = pdht_hash(dht, key);
+
+  ret = PtlGet(dht->ptl.md, 
   return PdhtStatusOK;
 }
 
 
-// XXX - may need to add "bucket" parameter
 /**
  * pdht_insert - manually inserts a hash table entry into the global hash table
  *  @param bits - Portals match bits for the table entry

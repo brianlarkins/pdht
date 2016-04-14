@@ -15,6 +15,7 @@ RANLIB = /usr/bin/ranlib
 
 OBJS =  assoc.o      \
         commsynch.o  \
+        hash.o       \
         init.o       \
         nbputget.o   \
         putget.o     \

@@ -67,3 +67,6 @@ void init_only_barrier(void);
 int  eprintf(const char *format, ...);
 int  pdht_dbg_printf(const char *format, ...);
 char *pdht_ptl_error(int error_code);
+
+// hash.c - PDHT hash function operations
+ptl_match_bits pdht_hash(pdht_t *dht, void *key);

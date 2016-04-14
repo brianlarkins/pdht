@@ -77,12 +77,20 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->ptl.eq = PTL_EQ_NONE; // default is to not use event queues
   eq = 0;
 
+  // allocate counter for strict communication operations to our local MD
+  ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.strict_ct);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_create: PtlCTAlloc failure\n");
+    exit(1);
+  }
+  dht->ptl.strict_acks = 0;
+
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start   = dht->ht;
   md.length  = tablesize;
   md.options = 0; // PTL_MD_VOLATILE if we re-use small buffers immediately after calling PtlPut/Atomic
   md.eq_handle = PTL_EQ_NONE; // don't track put/get/atomic events from remote requests
-  md.ct_handle = PTL_CT_NONE; // don't track put/get/atomic counts from remote requests
+  md.ct_handle = dht->ptl.strict_ct; // XXX - count strict operations 
 
   // set up counters/event queues depending on our usage mode
   switch (dht->mode) {
@@ -118,6 +126,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pdht_dprintf("pdht_create: PtlPTAlloc failure\n");
     exit(1);
   }
+
 
   // initialize HT state, considering: (* = current choice)
   //   - how do we allocate each new ht object?

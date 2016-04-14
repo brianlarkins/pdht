@@ -74,6 +74,8 @@ struct pdht_htportals_s {
   ptl_handle_md_t md;            //!< memory descriptor for ht
   ptl_handle_eq_t eq;            //!< event queue for PT entry
   ptl_me_t me;                   //!< default match entry for ht
+  ptl_handle_ct_t strict_ct;     //!< counter for strict communications
+  ptl_size_t      strict_acks;   //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
 
