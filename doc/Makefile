@@ -1,6 +1,11 @@
+SOURCES=abstract.tex conclusion.tex\
+        implementation.tex introduction.tex\
+        overview.tex paper.tex\
+        progmodel.tex related.tex results.tex 
+
 all: paper.pdf
 
-paper.pdf: 
+paper.pdf:  $(SOURCES)
 	pdflatex paper
 	pdflatex paper
 	pdflatex paper
