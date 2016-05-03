@@ -24,8 +24,8 @@
   #define pdht_dprintf(...) ;
 #endif
 
-#define PDHT_DEFAULT_TABLE_SIZE 1000
-#define PDHT_EVENTQ_SIZE         500
+#define PDHT_DEFAULT_TABLE_SIZE 10000
+#define PDHT_PENDINGQ_SIZE        500
 
 #define __PDHT_PUT_INDEX 22
 #define __PDHT_PUT_MATCH 0xcafef00d
@@ -42,7 +42,8 @@
 
 // overlay struct for casting
 struct _pdht_ht_entry_s {
-   ptl_handle_me_t   me;
+   ptl_handle_me_t   pme;  // pending ME handle
+   ptl_handle_me_t   gme;  // get ME handle
    char              data[0];
 };
 typedef struct _pdht_ht_entry_s _pdht_ht_entry_t;
@@ -68,6 +69,9 @@ void init_only_barrier(void);
 int  eprintf(const char *format, ...);
 int  pdht_dbg_printf(const char *format, ...);
 char *pdht_ptl_error(int error_code);
+char *pdht_event_to_string(ptl_event_kind_t evtype);
+void pdht_dump_event(ptl_event_t *ev);
+
 
 // hash.c - PDHT hash function operations
 void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);

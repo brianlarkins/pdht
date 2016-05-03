@@ -15,7 +15,6 @@
  * portals distributed hash table put/get ops
  */
 
-//  - maybe make keys a specific struct with void* + size to reduce clutter
 
 /**
  * pdht_put - puts or overwrites an entry in the global hash table
@@ -45,13 +44,14 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   }
 
   // increment our counter for local put/gets from our MD
-  dht->ptl.lcount++;
+  dht->ptl.lcount++; // for PTL_EVENT_ACK (we're not counting PTL_EVENT_SENDs)
 
   // 3. need to check for fail event or success count (200ms timeout)
   ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
   if (ret == PTL_OK) {
     return PdhtStatusOK;
   } else if (ret == PTL_CT_NONE_REACHED) {
+
     // timed out, repeatdly check for fault or success
     while (1) {
       // check failure EQ for flow control
@@ -73,6 +73,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
         return PdhtStatusOK;
       }
     }
+
     return PdhtStatusOK; // never gets here due to infinite loop
   } else {
      pdht_dprintf("pdht_put: PtlCTPoll() error\n");
@@ -92,16 +93,18 @@ error:
  *   @param value - value for table entry
  *   @returns status of operation
  */
-pdht_status_t pdht_get(pdht_t *dht, void *key, void **value) {
+pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   ptl_match_bits_t mbits; 
-  int roffset = sizeof(_pdht_ht_entry_t);
+  unsigned long roffset = 0;
   ptl_ct_event_t ctevent;
   ptl_process_t rank;
-  ptl_size_t loffset = (ptl_size_t)(*value); // this might be totally wrong
+  ptl_size_t loffset = (ptl_size_t)(value); // this might be totally wrong
   int ret;
 
-#if 0
   pdht_hash(dht, key, &mbits, &rank);
+  
+  PtlCTGet(dht->ptl.lmdct, &ctevent);
+  //pdht_dprintf("mdcount: %lu lcount: %lu\n", ctevent.success, dht->ptl.lcount);
 
   // assumes: that loffset = address of *value
   ret = PtlGet(dht->ptl.lmd, loffset, dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
@@ -112,15 +115,28 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void **value) {
 
   dht->ptl.lcount++;
 
-  ret = PtlCTWait(dht->ptl.lct, dht->ptl.lcount, &ctevent);
+  // really need to change the way we do this 
+  //   - need to check for success / failure similar to put:w
+  //   - success/failures will hit the counter
+  //   - failures will hit the event queue
+
+  ret = PtlCTWait(dht->ptl.lmdct, dht->ptl.lcount, &ctevent);
   if (ret != PTL_OK) {
      pdht_dprintf("pdht_get: PtlCTWait() failed\n");
      goto error;
   }
+
+#if 0
+  ptl_event_t ev;
+  while ((ret = PtlEQGet(dht->ptl.lmdeq, &ev)) != PTL_EQ_EMPTY) {
+    pdht_dprintf("found fail event: %s\n", pdht_event_to_string(ev.type));   
+    pdht_dump_event(&ev);
+  }
+#endif
+
   if (ctevent.success != dht->ptl.lcount)
     dht->ptl.lcount = ctevent.success;
 
-#endif
   return PdhtStatusOK;
 
 error:

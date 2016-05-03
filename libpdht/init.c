@@ -58,7 +58,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   }
 
   // allocate event queue
-  ret = PtlEQAlloc(dht->ptl.lni, PDHT_EVENTQ_SIZE, &dht->ptl.lmdeq);
+  ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.lmdeq);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlEQAlloc failure\n");
     exit(1);
@@ -67,7 +67,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start  = NULL;
   md.length = PTL_SIZE_MAX; 
-  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_SEND | PTL_MD_EVENT_CT_REPLY;
+  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY;
   md.eq_handle = dht->ptl.lmdeq;
   md.ct_handle = dht->ptl.lmdct;
 
@@ -145,6 +145,9 @@ void pdht_init(void) {
   ptl_ni_limits_t ni_req_limits;
   ptl_process_t me;
   int ret;
+
+  // turn off output buffering for everyone's sanity
+  setbuf(stdout, NULL);
 
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));

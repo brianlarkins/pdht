@@ -9,9 +9,6 @@
 
 #include <pdht_impl.h>
 
-#define __PDHT_BARRIER_INDEX 23
-#define __PDHT_BARRIER_MATCH 0xdeadbeef
-
 /**
  * @file
  * 
@@ -136,7 +133,7 @@ void pdht_barrier_init(pdht_context_t *c) {
 
   ret = PtlMDBind(c->ptl.lni, &md, &c->ptl.barrier_md);
   if (ret != PTL_OK) {
-    pdht_dprintf("barrier_init: MD Bind failed\n");
+    pdht_dprintf("barrier_init: MD Bind failed: %s\n", pdht_ptl_error(ret));
     exit(1);
   }
 

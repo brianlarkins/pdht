@@ -9,8 +9,6 @@
 
 #include <pdht_impl.h>
 
-static char *pdht_event_to_string(ptl_event_kind_t evtype);
-
 /**
  * @file
  * 
@@ -18,20 +16,24 @@ static char *pdht_event_to_string(ptl_event_kind_t evtype);
  */
 
 
-
+/**
+ * pdht_polling_init -- initializes polling thread
+ * @param dht - hash table data structure
+ */
 void pdht_polling_init(pdht_t *dht) {
   int tablesize, ret;
   _pdht_ht_entry_t *hte;
   char *iter; // used for pointer math
   ptl_me_t me;
+  ptl_event_t ev;
 
 
   // allocate event queue for pending puts
-  ret = PtlEQAlloc(dht->ptl.lni, PDHT_EVENTQ_SIZE, &dht->ptl.eq);
-    if (ret != PTL_OK) {
-      pdht_dprintf("pdht_polling_init: PtlEQAlloc failure\n");
-      exit(1);
-    }
+  ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.eq);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_polling_init: PtlEQAlloc failure\n");
+    exit(1);
+  }
 
   // allocate PTE for pending put
   ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
@@ -64,16 +66,37 @@ void pdht_polling_init(pdht_t *dht) {
   me.match_bits  = __PDHT_PUT_MATCH; // this is ignored, each one of these is a wildcard
   me.ignore_bits = 0xffffffffffffffff; // ignore it all
 
+  dht->nextfree = PDHT_PENDINGQ_SIZE; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
+
   // append one-time match entres to the put PTE to catch incoming puts
   for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
     hte = (_pdht_ht_entry_t *)iter;
-    me.start  = &hte->data; // each entry has a unique memory buffer
-    ret = PtlMEAppend(dht->ptl.lni, __PDHT_PUT_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->me);
+    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
+    hte->gme = PTL_INVALID_HANDLE; // initialize active/get ME as invalid
+
+    if (i<PDHT_PENDINGQ_SIZE) {
+      me.start  = &hte->data; // each entry has a unique memory buffer
+      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PUT_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      if (ret != PTL_OK) {
+        pdht_dprintf("pdht_polling_init: PtlMEAppend error\n");
+        exit(1);
+      } 
+      // clean out the LINK events from the event queue
+      PtlEQWait(dht->ptl.eq, &ev);
+    }
+
     iter += dht->entrysize; // pointer math, danger.
+
   }
+
 }
 
 
+
+/**
+ * pdht_polling_fini - cleans up polling structures
+ * @param dht - hash table data structure
+ */
 void pdht_polling_fini(pdht_t *dht) {
   struct timespec ts;
   _pdht_ht_entry_t *hte;
@@ -94,13 +117,25 @@ void pdht_polling_fini(pdht_t *dht) {
   for (int i=0; i<PDHT_DEFAULT_TABLE_SIZE; i++) {
     hte = (_pdht_ht_entry_t *)iter;
 
-    if (!PtlHandleIsEqual(hte->me, PTL_INVALID_HANDLE)) {
-      ret = PtlMEUnlink(hte->me);
+    // pending/put ME entries
+    if (!PtlHandleIsEqual(hte->pme, PTL_INVALID_HANDLE)) {
+      ret = PtlMEUnlink(hte->pme);
       while (ret == PTL_IN_USE) {
         ts.tv_sec = 0;
         ts.tv_nsec = 20000;  // 20ms
         nanosleep(&ts, NULL);
-        ret = PtlMEUnlink(hte->me);
+        ret = PtlMEUnlink(hte->pme);
+      }
+    }
+
+    // active/get ME entries
+    if (!PtlHandleIsEqual(hte->gme, PTL_INVALID_HANDLE)) {
+      ret = PtlMEUnlink(hte->gme);
+      while (ret == PTL_IN_USE) {
+        ts.tv_sec = 0;
+        ts.tv_nsec = 20000;  // 20ms
+        nanosleep(&ts, NULL);
+        ret = PtlMEUnlink(hte->gme);
       }
     }
     iter += dht->entrysize; // pointer math, danger.
@@ -115,10 +150,15 @@ void pdht_polling_fini(pdht_t *dht) {
 
 
 
+/**
+ * pdht_poll - runs periodic polling events
+ * @param dht distributed hash table data structure
+ */
 void pdht_poll(pdht_t *dht) {
   _pdht_ht_entry_t *hte;
   ptl_event_t ev;
   ptl_me_t me;
+  char *index;
   int init, ret;
 
   init = 0;
@@ -132,25 +172,59 @@ void pdht_poll(pdht_t *dht) {
       me.length        = dht->elemsize; // storing ME handle _and_ HT entry in each elem.
       me.ct_handle     = PTL_CT_NONE;
       me.uid           = PTL_UID_ANY;
-      // disable AUTO unlink events, we just check for PUT completion
-      me.options       = PTL_ME_OP_PUT | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
+      // disable auto-unlink events, we just check for PUT completion
+      me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
       me.match_id.rank = PTL_RANK_ANY;
-      me.ignore_bits   = 0;
 
       init = 1; // remember this day, my son.
     }
+
 
     // found something to do, is it something we care about?
     if (ev.type == PTL_EVENT_PUT) {
       hte = (_pdht_ht_entry_t *)ev.user_ptr;
 
-      me.start = &hte->data; // hte points to entire entry
-      me.match_bits = ev.match_bits; // copy over match_bits from put
+      // if get ME is inactive, then this is a new put()
+      if (PtlHandleIsEqual(hte->gme, PTL_INVALID_HANDLE)) {
+
+        me.start = &hte->data; // hte points to entire entry
+        me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
+        me.match_bits = ev.match_bits; // copy over match_bits from put
+        me.ignore_bits   = 0;
     
-      ret = PtlMEAppend(dht->ptl.lni, __PDHT_GET_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->me);
-      if (ret != PTL_OK) {
-        pdht_dprintf("pdht_poll: ME append failed\n");
-        exit(1);
+        // append this pending put to the active PTE match list
+        ret = PtlMEAppend(dht->ptl.lni, __PDHT_GET_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->gme);
+        if (ret != PTL_OK) {
+          pdht_dprintf("pdht_poll: ME append failed (get)\n");
+          exit(1);
+        }
+
+        // setup ME entry to replace the one that was just consumed
+        index =  (char *)dht->ht;
+        index += (dht->nextfree * dht->entrysize); // pointer math, caution
+
+        hte = (_pdht_ht_entry_t *)index; // index into HT entry table
+        me.start       = &hte->data;
+        me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
+                       | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
+        me.match_bits  = __PDHT_PUT_MATCH; // this is ignored, each one of these is a wildcard
+        me.ignore_bits = 0xffffffffffffffff; // ignore it all
+
+        dht->nextfree++; // update next free space in local HT table
+        assert(dht->nextfree < PDHT_DEFAULT_TABLE_SIZE);
+
+        // add replacement entry to put/pending ME
+        ret = PtlMEAppend(dht->ptl.lni, __PDHT_PUT_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+        if (ret != PTL_OK) {
+           pdht_dprintf("pdht_poll: PtlMEAppend error (put)\n");
+        }
+        // clean out the LINK events from the event queue
+        PtlEQWait(dht->ptl.eq, &ev);
+
+      // otherwise this is an overwrite of an existing value
+      } else {
+         // XXX - what to do about overwrites?
+         ; // do nothing -- overwrites are potential race conditions
       }
 
     } else {
@@ -165,57 +239,3 @@ void pdht_poll(pdht_t *dht) {
 }
 
 
-static char *pdht_event_to_string(ptl_event_kind_t evtype) {
-  char *ret = "(unmatched)";
-  switch (evtype) {
-    case PTL_EVENT_GET:
-      ret = "PTL_EVENT_GET";
-      break;
-    case PTL_EVENT_GET_OVERFLOW:
-      ret = "PTL_EVENT_GET_OVERFLOW";
-      break;
-    case PTL_EVENT_PUT:
-      ret = "PTL_EVENT_PUT";
-      break;
-    case PTL_EVENT_PUT_OVERFLOW:
-      ret = "PTL_EVENT_PUT_OVERFLOW";
-      break;
-    case PTL_EVENT_ATOMIC:
-      ret = "PTL_EVENT_ATOMIC";
-      break;
-    case PTL_EVENT_ATOMIC_OVERFLOW:
-      ret = "PTL_EVENT_ATOMIC_OVERFLOW";
-      break;
-    case PTL_EVENT_FETCH_ATOMIC:
-      ret = "PTL_EVENT_FETCH_ATOMIC";
-      break;
-    case PTL_EVENT_FETCH_ATOMIC_OVERFLOW:
-      ret = "PTL_EVENT_FETCH_ATOMIC_OVERFLOW";
-      break;
-    case PTL_EVENT_REPLY:
-      ret = "PTL_EVENT_REPLY";
-      break;
-    case PTL_EVENT_SEND:
-      ret = "PTL_EVENT_SEND";
-      break;
-    case PTL_EVENT_ACK:
-      ret = "PTL_EVENT_ACK";
-      break;
-    case PTL_EVENT_PT_DISABLED:
-      ret = "PTL_EVENT_PT_DISABLED";
-      break;
-    case PTL_EVENT_LINK:
-      ret = "PTL_EVENT_LINK";
-      break;
-    case PTL_EVENT_AUTO_UNLINK:
-      ret = "PTL_EVENT_AUTO_UNLINK";
-      break;
-    case PTL_EVENT_AUTO_FREE:
-      ret = "PTL_EVENT_AUTO_FREE";
-      break;
-    case PTL_EVENT_SEARCH:
-      ret = "PTL_EVENT_SEARCH";
-      break;
-  }
-  return ret;
-}
