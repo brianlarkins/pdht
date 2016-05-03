@@ -22,12 +22,45 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include <slurm/pmi.h>
 #include <portals4.h>
 #include <pdht.h>
 
 
+/**********************************************/
+/* sub structures contained in global context */
+/**********************************************/
+
+// polling queue - ME append list entry
+struct pdht_append_s {
+   void            *start;
+   ptl_size_t       length;
+   ptl_match_bits_t bits;
+   char             entry[0];
+};
+typedef struct pdht_append_s pdht_append_t;
+   
+// per-process queue of pending ME appends
+struct pdht_pollqent_s {
+   ptl_handle_md_t  md;            // memory descriptor for queue
+   ptl_handle_ct_t  ct;            // event counter for queue
+   u_int64_t        completed;     // polling thread counts completion 
+   pdht_append_t   *appendlist;    // ME entries to process
+};
+typedef struct pdht_pollqent_s pdht_pollqent_t;
+
+// overall ME append queue
+struct pdht_pollq_s {
+   u_int32_t          qlen;              // entries per process queue
+   u_int32_t          qentrysize;        // max elemsize for an ht entry
+   pdht_pollqent_t   *q;                 // queue data
+};
+typedef struct pdht_pollq_s pdht_pollq_t;
+
+
+/* portals specific data for global context */
 struct pdht_portals_s {
    ptl_handle_ni_t  phy;           //!< physical NI
    ptl_handle_ni_t  lni;           //!< logical NI
@@ -40,9 +73,9 @@ struct pdht_portals_s {
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
-/**
- *  global configuration data structure
- */
+/**********************************************/
+/* global context data structure              */
+/**********************************************/
 struct pdht_context_s {
    int              dhtcount;     //!< DHTs that have been created
    int              rank;         //!< process rank
@@ -51,6 +84,14 @@ struct pdht_context_s {
 };
 typedef struct pdht_context_s pdht_context_t;
 
+extern pdht_context_t *c;
+
+
+/*************************************************/
+/* sub structures contained in per-DHT structure */
+/*************************************************/
+
+/* communication mode */
 enum pdht_mode_e {
   PdhtModeStrict,     // blocking,synchronous
   PdhtModeBundled,    // batched puts, fence at end of bundled puts
@@ -59,6 +100,7 @@ enum pdht_mode_e {
 typedef enum pdht_mode_e pdht_mode_t;
 #define PDHT_DEFAULT_MODE PdhtModeStrict
 
+/* DHT operatation status */
 enum pdht_status_e {
    PdhtStatusOK,
    PdhtStatusError
@@ -68,19 +110,26 @@ typedef enum pdht_status_e pdht_status_t;
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
+
+/* portals-specific data structures */
 struct pdht_htportals_s {
   ptl_handle_ni_t lni;           //!< portals logical NI
-  unsigned        ptindex;       //!< portal table entry index
-  ptl_handle_md_t md;            //!< memory descriptor for ht
-  ptl_handle_eq_t eq;            //!< event queue for PT entry
-  ptl_me_t me;                   //!< default match entry for ht
-  ptl_handle_ct_t strict_ct;     //!< counter for strict communications
-  ptl_size_t      strict_acks;   //!< number of strict messages received
+  unsigned        getindex;      //!< portal table entry index
+  unsigned        putindex;      //!< portal table entry index
+  ptl_handle_eq_t eq;            //!< event queue for put PT entry
+  ptl_me_t        me;            //!< default match entry for ht
+  ptl_handle_md_t lmd;           //!< memory descriptor for any outgoing put/gets
+  ptl_handle_eq_t lmdeq;         //!< event queue for local MD
+  ptl_handle_ct_t lmdct;         //!< counter for local MD
+  ptl_size_t      lcount;        //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
 
+
+/**********************************************/
+/* main DHT data structure                    */
+/**********************************************/
 struct pdht_s {
-   pdht_context_t   *ctx;
    pdht_mode_t       mode;
    void             *ht;  
    unsigned          keysize;

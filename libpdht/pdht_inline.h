@@ -16,6 +16,14 @@
 
 #pragma once
 
+/**
+ * pdht_get_rank - gets rank of calling process
+ *  @returns rank of calling process
+ */
+static inline long pdht_get_rank(void) {
+  return c->rank;
+}
+
 #ifdef DEPRECATED
 
 /* blocking shortcuts */

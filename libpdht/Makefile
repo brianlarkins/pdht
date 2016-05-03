@@ -18,8 +18,9 @@ OBJS =  assoc.o      \
         hash.o       \
         init.o       \
         nbputget.o   \
-        putget.o     \
         pmi.o        \
+        poll.o       \
+        putget.o     \
         util.o       \
         # line eater
 

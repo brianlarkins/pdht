@@ -29,13 +29,7 @@ static void print_fucking_mapping(void);
 pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   pdht_t *dht;
   ptl_md_t md;
-  ptl_handle_eq_t ht_events;
-  ptl_handle_ct_t ht_counts;
-  char *iter;
-  _pdht_ht_entry_t *hte;
-  unsigned entrysize = (sizeof(_pdht_ht_entry_t) + keysize + elemsize);
-  unsigned tablesize = PDHT_DEFAULT_TABLE_SIZE * entrysize;
-  int eq, ret;
+  int ret;
 
   if (!c) {
     pdht_init();
@@ -44,96 +38,52 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
 
-  dht->ctx = c;
-  dht->ctx->dhtcount++; // register ourselves globally on this process
+  c->dhtcount++; // register ourselves globally on this process
 
-  // allocate store for dht entries
-  //   each entry in the hash table is:
-  //      Portals ME Handle
-  //      Portals CT Handle
-  //      Key
-  //      Object
-  dht->keysize  = keysize;
+  dht->keysize = keysize;
   dht->elemsize = elemsize;
-  dht->entrysize = entrysize;
-  dht->ht = malloc(tablesize);
-  memset(dht->ht, 0, tablesize);
-  dht->nextfree = 0;
-
-  // set all initial match list entry handles to invalid
-  iter = dht->ht;
-  for (int i=0; i<PDHT_DEFAULT_TABLE_SIZE; i++) {
-    hte = (_pdht_ht_entry_t *)iter;
-    hte->me = PTL_INVALID_HANDLE;
-    hte->ct = PTL_INVALID_HANDLE;
-    iter += entrysize; // pointer math, danger.
-  }
-
   dht->mode = mode;
 
   // portals info
-
   dht->ptl.lni = c->ptl.lni;
-  dht->ptl.eq = PTL_EQ_NONE; // default is to not use event queues
-  eq = 0;
 
-  // allocate counter for strict communication operations to our local MD
-  ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.strict_ct);
+  // setup polling data structures for pending puts
+  pdht_polling_init(dht);
+
+  // allocate event counter
+  ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlCTAlloc failure\n");
     exit(1);
   }
-  dht->ptl.strict_acks = 0;
 
-  // create memory descriptor (MD) to allow for remote access of our memory
-  md.start   = dht->ht;
-  md.length  = tablesize;
-  md.options = 0; // PTL_MD_VOLATILE if we re-use small buffers immediately after calling PtlPut/Atomic
-  md.eq_handle = PTL_EQ_NONE; // don't track put/get/atomic events from remote requests
-  md.ct_handle = dht->ptl.strict_ct; // XXX - count strict operations 
-
-  // set up counters/event queues depending on our usage mode
-  switch (dht->mode) {
-    case PdhtModeStrict:
-      break;
-    case PdhtModeBundled:
-      md.options |= PTL_MD_UNORDERED;
-      break;
-    case PdhtModeAsync:
-      eq = 1;
-      md.options |= PTL_MD_UNORDERED;
-      break;
+  // allocate event queue
+  ret = PtlEQAlloc(dht->ptl.lni, PDHT_EVENTQ_SIZE, &dht->ptl.lmdeq);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_create: PtlEQAlloc failure\n");
+    exit(1);
   }
 
+  // create memory descriptor (MD) to allow for remote access of our memory
+  md.start  = NULL;
+  md.length = PTL_SIZE_MAX; 
+  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_SEND | PTL_MD_EVENT_CT_REPLY;
+  md.eq_handle = dht->ptl.lmdeq;
+  md.ct_handle = dht->ptl.lmdct;
+
   // bind MD to our matching interface
-  ret = PtlMDBind(dht->ptl.lni, &md, &dht->ptl.md);
+  ret = PtlMDBind(c->ptl.lni, &md, &dht->ptl.lmd);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlMDBind failure\n");
     exit(1);
   }
 
-  // allocate event queue, if needed
-  if (eq) {
-    ret = PtlEQAlloc(dht->ptl.lni, PDHT_EVENTQ_SIZE, &dht->ptl.eq);
-    if (ret != PTL_OK) {
-      pdht_dprintf("pdht_create: PtlEQAlloc failure\n");
-      exit(1);
-    }
-  }
-
-  ret = PtlPTAlloc(dht->ptl.lni, 0, dht->ptl.eq, PTL_PT_ANY, &dht->ptl.ptindex);
+  // create PTE for matching gets, will be populated by pending put poller
+  ret = PtlPTAlloc(dht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_GET_INDEX, &dht->ptl.getindex);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlPTAlloc failure\n");
     exit(1);
   }
-
-
-  // initialize HT state, considering: (* = current choice)
-  //   - how do we allocate each new ht object?
-  //     - if we allow for arbitrary object sizes + updates / frees
-  //       we probably need a malloc-like allocator (ugh)
-  //     * if we fix object size, we can avoid, but less ht-like
-  //   - do we allow for ht object deletion?
 
   return dht;
 }
@@ -146,53 +96,30 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
  */
 void pdht_free(pdht_t *dht) {
   assert(dht);
-  char *iter;
-  _pdht_ht_entry_t *hte;
   struct timespec ts;
   int ret;
 
-  dht->ctx->dhtcount--;
+  c->dhtcount--;
 
-  // kill off event queue, if present
-  if (!PtlHandleIsEqual(dht->ptl.eq, PTL_EQ_NONE)) {
-    PtlEQFree(dht->ptl.eq);
-  }
+  // disable incoming gets
+  PtlPTDisable(dht->ptl.lni, dht->ptl.getindex);
 
-
-  // disable any new messages arriving on the portals table entry
-  PtlPTDisable(dht->ptl.lni, dht->ptl.ptindex);
-
-  // remove all match entries from the table
-  iter = dht->ht;
-  for (int i=0; i<PDHT_DEFAULT_TABLE_SIZE; i++) {
-    hte = (_pdht_ht_entry_t *)iter;
-    if (!PtlHandleIsEqual(hte->ct, PTL_INVALID_HANDLE)) {
-      PtlCTFree(hte->ct);
-    }
-
-    if (!PtlHandleIsEqual(hte->me, PTL_INVALID_HANDLE)) {
-      ret = PtlMEUnlink(hte->me);
-      while (ret == PTL_IN_USE) {
-        ts.tv_sec = 0;
-        ts.tv_nsec = 20000;  // 20ms
-        nanosleep(&ts, NULL);
-        ret = PtlMEUnlink(hte->me);
-      }
-    }
-    iter += dht->entrysize; // pointer math, danger.
-  }
+  // cleans up from pending put MEs 
+  // -- also removes all MEs from both put/get PTEs
+  pdht_polling_fini(dht);
 
   // free our table entry
-  PtlPTFree(dht->ptl.lni, dht->ptl.ptindex);
+  PtlPTFree(dht->ptl.lni, dht->ptl.getindex);
 
   // free our memory descriptor
-  PtlMDRelease(dht->ptl.md);
+  PtlMDRelease(dht->ptl.lmd);
 
-  // release all storage for ht objects
-  free(dht->ht);
+  // release event queue and counter
+  PtlCTFree(dht->ptl.lmdct);
+  PtlEQFree(dht->ptl.lmdeq);
 
   // clean up everything if we're last out the door
-  if (dht->ctx->dhtcount <= 0) {
+  if (c->dhtcount <= 0) {
     pdht_fini();
   }
 
@@ -210,6 +137,7 @@ void pdht_clear(pdht_t *dht) {
 }
 
 
+
 /**
  * pdht_init - initializes PDHT system
  */
@@ -221,8 +149,6 @@ void pdht_init(void) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
-
-
   ret = PtlInit();
   if (ret != PTL_OK) {
     pdht_dprintf("portals initialization error\n");
@@ -230,8 +156,8 @@ void pdht_init(void) {
   }
 
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
-                  PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
-                  PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
+      PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
+      PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
   if (ret != PTL_OK) {
     pdht_dprintf("Portals physical NI initialization problem. (return=%d)\n", ret);
     exit(-1);
@@ -241,7 +167,7 @@ void pdht_init(void) {
 
   eprintf("Initializing Portals 4\n");
   eprintf("Initializing Network Interface\n");
-  
+
   // request portals NI limits
   ni_req_limits.max_entries = 1024;
   ni_req_limits.max_unexpected_headers = 1024;
@@ -266,7 +192,7 @@ void pdht_init(void) {
 #endif
 
 
-// we are never using non-matching
+  // we are not using non-matching right now
 #if USE_NON_MATCHING
   // create non-matching logical NI
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
@@ -298,7 +224,6 @@ void pdht_init(void) {
     eprintf("Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
     goto error;
   }
-
   /*
    * have to call one more PMI/MPI barrier to guarantee we have our own counters 
    * ready for our internal barrier operation... 
@@ -323,6 +248,8 @@ void pdht_fini(void) {
 
   // free up barrier initialization stuff (PT Entry, MD)
 
+
+  // barrier structures
   PtlMEUnlink(c->ptl.barrier_me);
   PtlCTFree(c->ptl.barrier_ct);
   PtlPTFree(c->ptl.lni, __PDHT_BARRIER_INDEX);

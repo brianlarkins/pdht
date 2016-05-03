@@ -11,6 +11,7 @@
 #define _XOPEN_SOURCE 700
 
 #include <assert.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <time.h>
 #include <pdht.h>
@@ -23,10 +24,14 @@
   #define pdht_dprintf(...) ;
 #endif
 
-#define PDHT_DEFAULT_TABLE_SIZE 100000
-#define PDHT_EVENTQ_SIZE        400
+#define PDHT_DEFAULT_TABLE_SIZE 1000
+#define PDHT_EVENTQ_SIZE         500
 
-#define __PDHT_BARRIER_INDEX 23
+#define __PDHT_PUT_INDEX 22
+#define __PDHT_PUT_MATCH 0xcafef00d
+#define __PDHT_GET_INDEX 23
+
+#define __PDHT_BARRIER_INDEX 24
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
 
 /**
@@ -35,17 +40,13 @@
  * portals distributed hash table implementations ADTs
  */
 
-
 // overlay struct for casting
 struct _pdht_ht_entry_s {
    ptl_handle_me_t   me;
-   ptl_handle_ct_t   ct;
    char              data[0];
 };
 typedef struct _pdht_ht_entry_s _pdht_ht_entry_t;
 
-// global (per-process private) data structures
-extern pdht_context_t *c;
 
 /********************************************************/
 /* portals distributed hash table prototypes            */
@@ -69,4 +70,9 @@ int  pdht_dbg_printf(const char *format, ...);
 char *pdht_ptl_error(int error_code);
 
 // hash.c - PDHT hash function operations
-ptl_match_bits pdht_hash(pdht_t *dht, void *key);
+void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
+
+// poll.c - PDHT polling tasks
+void pdht_polling_init(pdht_t *dht);
+void pdht_polling_fini(pdht_t *dht);
+void pdht_poll(pdht_t *dht);
