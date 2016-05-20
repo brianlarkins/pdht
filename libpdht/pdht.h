@@ -100,6 +100,14 @@ enum pdht_mode_e {
 typedef enum pdht_mode_e pdht_mode_t;
 #define PDHT_DEFAULT_MODE PdhtModeStrict
 
+/* pending mode */
+enum pdht_pmode_e {
+  PdhtPendingPoll,
+  PdhtPendingTrig
+};
+typedef enum pdht_pmode_e pdht_pmode_t;
+#define PDHT_DEFAULT_PMODE PdhtPendingTrig
+
 /* DHT operatation status */
 enum pdht_status_e {
    PdhtStatusOK,
@@ -130,12 +138,13 @@ typedef struct pdht_htportals_s pdht_htportals_t;
 /* main DHT data structure                    */
 /**********************************************/
 struct pdht_s {
-   pdht_mode_t       mode;
    void             *ht;  
    unsigned          keysize;
    unsigned          elemsize;
    unsigned          entrysize;
    unsigned          nextfree;
+   pdht_mode_t       mode;
+   pdht_pmode_t      pmode;
    pdht_htportals_t  ptl;
    pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
    pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);

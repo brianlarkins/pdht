@@ -43,12 +43,17 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->keysize = keysize;
   dht->elemsize = elemsize;
   dht->mode = mode;
+  dht->pmode = PDHT_DEFAULT_PMODE;
 
   // portals info
   dht->ptl.lni = c->ptl.lni;
 
-  // setup polling data structures for pending puts
-  pdht_polling_init(dht);
+  // setup data structures for pending puts
+  if (dht->pmode == PdhtPendingPoll) {
+    pdht_polling_init(dht);
+  } else {
+    pdht_trig_init(dht);
+  }
 
   // allocate event counter
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);

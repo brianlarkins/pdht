@@ -1,4 +1,4 @@
-/*******************************************************/
+/********************************************************/
 /*                                                      */
 /*  nbputget.c - PDHT asynch non-blocking operations    */
 /*                                                      */
@@ -37,7 +37,7 @@ void pdht_polling_init(pdht_t *dht) {
 
   // allocate PTE for pending put
   ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
-                   dht->ptl.eq, __PDHT_PUT_INDEX, &dht->ptl.putindex);
+                   dht->ptl.eq, __PDHT_PENDING_INDEX, &dht->ptl.putindex);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_polling_init: PtlPTAlloc failure\n");
     exit(1);
@@ -63,7 +63,7 @@ void pdht_polling_init(pdht_t *dht) {
   me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
                  | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
-  me.match_bits  = __PDHT_PUT_MATCH; // this is ignored, each one of these is a wildcard
+  me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
   me.ignore_bits = 0xffffffffffffffff; // ignore it all
 
   dht->nextfree = PDHT_PENDINGQ_SIZE; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
@@ -72,11 +72,11 @@ void pdht_polling_init(pdht_t *dht) {
   for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
     hte = (_pdht_ht_entry_t *)iter;
     hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
-    hte->gme = PTL_INVALID_HANDLE; // initialize active/get ME as invalid
+    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
 
     if (i<PDHT_PENDINGQ_SIZE) {
       me.start  = &hte->data; // each entry has a unique memory buffer
-      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PUT_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_polling_init: PtlMEAppend error\n");
         exit(1);
@@ -129,13 +129,13 @@ void pdht_polling_fini(pdht_t *dht) {
     }
 
     // active/get ME entries
-    if (!PtlHandleIsEqual(hte->gme, PTL_INVALID_HANDLE)) {
-      ret = PtlMEUnlink(hte->gme);
+    if (!PtlHandleIsEqual(hte->ame, PTL_INVALID_HANDLE)) {
+      ret = PtlMEUnlink(hte->ame);
       while (ret == PTL_IN_USE) {
         ts.tv_sec = 0;
         ts.tv_nsec = 20000;  // 20ms
         nanosleep(&ts, NULL);
-        ret = PtlMEUnlink(hte->gme);
+        ret = PtlMEUnlink(hte->ame);
       }
     }
     iter += dht->entrysize; // pointer math, danger.
@@ -185,7 +185,7 @@ void pdht_poll(pdht_t *dht) {
       hte = (_pdht_ht_entry_t *)ev.user_ptr;
 
       // if get ME is inactive, then this is a new put()
-      if (PtlHandleIsEqual(hte->gme, PTL_INVALID_HANDLE)) {
+      if (PtlHandleIsEqual(hte->ame, PTL_INVALID_HANDLE)) {
 
         me.start = &hte->data; // hte points to entire entry
         me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
@@ -193,7 +193,7 @@ void pdht_poll(pdht_t *dht) {
         me.ignore_bits   = 0;
     
         // append this pending put to the active PTE match list
-        ret = PtlMEAppend(dht->ptl.lni, __PDHT_GET_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->gme);
+        ret = PtlMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->ame);
         if (ret != PTL_OK) {
           pdht_dprintf("pdht_poll: ME append failed (get)\n");
           exit(1);
@@ -207,14 +207,14 @@ void pdht_poll(pdht_t *dht) {
         me.start       = &hte->data;
         me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
                        | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
-        me.match_bits  = __PDHT_PUT_MATCH; // this is ignored, each one of these is a wildcard
+        me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
         me.ignore_bits = 0xffffffffffffffff; // ignore it all
 
         dht->nextfree++; // update next free space in local HT table
         assert(dht->nextfree < PDHT_DEFAULT_TABLE_SIZE);
 
         // add replacement entry to put/pending ME
-        ret = PtlMEAppend(dht->ptl.lni, __PDHT_PUT_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+        ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
         if (ret != PTL_OK) {
            pdht_dprintf("pdht_poll: PtlMEAppend error (put)\n");
         }

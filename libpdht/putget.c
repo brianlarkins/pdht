@@ -26,23 +26,50 @@
 pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   ptl_match_bits_t mbits; 
   ptl_process_t rank;
-  ptl_size_t loffset = (ptl_size_t)(value); // this might be totally wrong
+  ptl_size_t loffset;
+  ptl_size_t lsize;
   ptl_ct_event_t ctevent;
   ptl_event_t fault;
   int ret;
   unsigned which;
-
+  ptl_me_t *mep, me;
+    
   // 1. hash key -> rank + match bits + element
   pdht_hash(dht, key, &mbits, &rank);
 
+  
+  // 1.5 figure out what we need to send to far end
+  //   - send just HT element usually, need to also send
+  //     match bits for triggered-only updates
+  switch (dht->pmode) {
+  case PdhtPendingTrig:
+    // XXX - THIS CODE IS HIGHLY DEPENDENDENT ON PORTALS ME DATA DEFINITION - XXX
+    // to workaround, could issue two puts, one for match_bits, one for data
+    //  trigger on +2 event counts
+    mep = alloca(sizeof(ptl_me_t) + dht->elemsize); // no need to free later.
+    memcpy(mep->data, value, dht->elemsize); // ugh. copying.
+    mep->match_bits = mbits;
+    mep->ignore_bits = 0;
+    mep->min_free = 0;
+
+    loffset = &mep->match_bits; // only send from match_bits field and beyond
+    lsize = (sizeof(me) - offsetof(me, match_bits)) + dht->elemsize; 
+    break;
+  case PdhtPendingPoll:
+  default:
+    loffset = (ptl_size_t)(value);
+    lsize = dht->elemsize;
+    break;
+  }
+
   // 2. put hash entry on target
-  ret = PtlPut(dht->ptl.lmd, loffset, dht->elemsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex, 
+  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex, 
                mbits, 0, value, 0);
   if (ret != PTL_OK) {
      pdht_dprintf("pdht_get: PtlPut() failed\n");
      goto error;
   }
-
+  
   // increment our counter for local put/gets from our MD
   dht->ptl.lcount++; // for PTL_EVENT_ACK (we're not counting PTL_EVENT_SENDs)
 
@@ -116,7 +143,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   dht->ptl.lcount++;
 
   // really need to change the way we do this 
-  //   - need to check for success / failure similar to put:w
+  //   - need to check for success / failure similar to put
   //   - success/failures will hit the counter
   //   - failures will hit the event queue
 
