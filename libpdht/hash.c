@@ -24,6 +24,6 @@
 void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
    // THIS IS ALL TOTAL BULLSHIT
    *mbits = *(ptl_match_bits_t *)key;
-   printf("mbits: %lu %lu\n", *mbits, *(unsigned long *)key);
+   //printf("mbits: %lu %lu\n", *mbits, *(unsigned long *)key);
    (*rank).rank  = 1; // always assume that 0 is where the hash table entries are
 }

@@ -7,6 +7,7 @@
 /*                                                      */
 /********************************************************/
 
+#include <alloca.h>
 #include <pdht_impl.h>
 
 /**
@@ -32,7 +33,8 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   ptl_event_t fault;
   int ret;
   unsigned which;
-  ptl_me_t *mep, me;
+  ptl_me_t *mep;
+  char *valp;
     
   // 1. hash key -> rank + match bits + element
   pdht_hash(dht, key, &mbits, &rank);
@@ -47,13 +49,14 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
     // to workaround, could issue two puts, one for match_bits, one for data
     //  trigger on +2 event counts
     mep = alloca(sizeof(ptl_me_t) + dht->elemsize); // no need to free later.
-    memcpy(mep->data, value, dht->elemsize); // ugh. copying.
+    valp = (char *)mep + sizeof(ptl_me_t);
+    memcpy(valp, value, dht->elemsize); // ugh. copying.
     mep->match_bits = mbits;
     mep->ignore_bits = 0;
     mep->min_free = 0;
 
-    loffset = &mep->match_bits; // only send from match_bits field and beyond
-    lsize = (sizeof(me) - offsetof(me, match_bits)) + dht->elemsize; 
+    loffset = (ptl_size_t)&mep->match_bits; // only send from match_bits field and beyond
+    lsize = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + dht->elemsize; 
     break;
   case PdhtPendingPoll:
   default:
@@ -75,6 +78,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
 
   // 3. need to check for fail event or success count (200ms timeout)
   ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
+  printf("success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
   if (ret == PTL_OK) {
     return PdhtStatusOK;
   } else if (ret == PTL_CT_NONE_REACHED) {

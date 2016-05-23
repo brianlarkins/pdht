@@ -21,6 +21,7 @@ OBJS =  assoc.o      \
         pmi.o        \
         poll.o       \
         putget.o     \
+        trig.o       \
         util.o       \
         # line eater
 

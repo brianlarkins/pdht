@@ -209,4 +209,7 @@ pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
 void                *pdht_getnext(pdht_iter_t *it);
 
+//trig.c - temp
+void print_count(pdht_t *dht, char *msg);
+
 #include <pdht_inline.h>

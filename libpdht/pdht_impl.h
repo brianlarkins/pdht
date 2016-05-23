@@ -25,7 +25,7 @@
 #endif
 
 #define PDHT_DEFAULT_TABLE_SIZE 10000
-#define PDHT_PENDINGQ_SIZE        500
+#define PDHT_PENDINGQ_SIZE         10
 
 #define __PDHT_PENDING_INDEX 22
 #define __PDHT_PENDING_MATCH 0xcafef00d
@@ -90,3 +90,7 @@ void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *ra
 void pdht_polling_init(pdht_t *dht);
 void pdht_polling_fini(pdht_t *dht);
 void pdht_poll(pdht_t *dht);
+
+// trig.c - PDHT triggered tasks
+void pdht_trig_init(pdht_t *dht);
+void pdht_trig_fini(pdht_t *dht);

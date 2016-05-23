@@ -9,7 +9,7 @@ PDHT_TOP=..
 include $(PDHT_TOP)/pdht.mk
 
 .PHONY: all
-all: simple
+all: trigmult
 
 
 barrier: pdhtlibs barrier.c
@@ -17,3 +17,9 @@ barrier: pdhtlibs barrier.c
 
 simple: pdhtlibs simple.c
 	$(CC) $(CFLAGS) -o simple simple.c $(PDHT_LIBS)
+
+trig: pdhtlibs trig.c
+	$(CC) $(CFLAGS) -o trig trig.c $(PDHT_LIBS)
+
+trigmult: pdhtlibs trigmult.c
+	$(CC) $(CFLAGS) -o trigmult trigmult.c $(PDHT_LIBS)
