@@ -118,6 +118,8 @@ typedef enum pdht_status_e pdht_status_t;
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
+typedef void (*pdht_hashfunc)(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
+
 
 /* portals-specific data structures */
 struct pdht_htportals_s {
@@ -142,6 +144,7 @@ struct pdht_s {
    unsigned          keysize;
    unsigned          elemsize;
    unsigned          entrysize;
+   pdht_hashfunc     hashfn;
    unsigned          nextfree;
    pdht_mode_t       mode;
    pdht_pmode_t      pmode;
@@ -203,6 +206,10 @@ pdht_handle_t        pdht_nbget(pdht_t *dht, void *key, void **value);
 pdht_status_t        pdht_acc(pdht_t *dht, void *key, pdht_datatype_t type, pdht_oper_t op, void *value);
 pdht_handle_t        pdht_nbacc(pdht_t *dht, void *key, pdht_datatype_t type, pdht_oper_t op, void *value);
 
+// Hash Function Operations -- hash.c
+void                 pdht_sethash(pdht_t *dht, pdht_hashfunc hfun);
+
+  
 // Iteration operations -- iter.c
 pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);
 pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);

@@ -135,7 +135,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_hash(dht, key, &mbits, &rank);
   
   PtlCTGet(dht->ptl.lmdct, &ctevent);
-  //pdht_dprintf("mdcount: %lu lcount: %lu\n", ctevent.success, dht->ptl.lcount);
+  pdht_dprintf("pre: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
 
   // assumes: that loffset = address of *value
   ret = PtlGet(dht->ptl.lmd, loffset, dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
@@ -165,6 +165,11 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   }
 #endif
 
+  // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
+  // in PTL_EVENT_REPLY event, we should get ni_fail_type
+  // ni_fail_type should be: PTL_NI_DROPPED
+  pdht_dprintf("post: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
+  
   if (ctevent.success != dht->ptl.lcount)
     dht->ptl.lcount = ctevent.success;
 
