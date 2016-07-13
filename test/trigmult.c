@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
     }
 
   } else {
-    //print_count(ht, "before barrier:");
+    print_count(ht, "before barrier:");
     pdht_barrier();
-    //print_count(ht, "after barrier:");
+    print_count(ht, "after barrier:");
   }
 
   pdht_barrier();

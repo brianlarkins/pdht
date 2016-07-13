@@ -4,8 +4,10 @@
 # created: 3/20/16
 #
 
-PORTALS_INCLUDEDIR = /opt/hpctools/include
-PORTALS_LIBDIR     = /opt/hpctools/lib
+PORTALS_INCLUDEDIR = $(PDHT_TOP)/opt/include
+PORTALS_LIBDIR     = $(PDHT_TOP)/opt/lib
+#PORTALS_INCLUDEDIR = /opt/hpctools/include
+#PORTALS_LIBDIR     = /opt/hpctools/lib
 
 CC = clang
 GCFLAGS = --std=c99 -g
@@ -55,7 +57,7 @@ pdhtheaders:
   done
 
 $(PDHT_LIBDIRS):
-	$(MAKE) -C $@ GCFLAGS="$(GCFLAGS)" CC="$(CC)"
+	$(MAKE) -C $@ GCFLAGS="$(GCFLAGS)" CC="$(CC)" PORTALS_INCLUDEDIR="$(PORTALS_INCLUDEDIR)" PORTALS_LIBDIR="$(PORTALS_LIBDIR)"
 
 clean:
 	for dir in $(PDHT_LIBDIRS); do \

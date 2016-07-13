@@ -4,7 +4,7 @@
 # created: 3/20/16
 #
 
-PORTALS_INCLUDEDIR=/opt/hpctools/include
+#PORTALS_INCLUDEDIR=/opt/hpctools/include
 
 CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
