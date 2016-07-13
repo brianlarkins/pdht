@@ -77,12 +77,14 @@ obj newobj(void)
 numb f(obj o, numb *numi)
 /* Our hash function, this should do: */
 {
-  numb hashlen = 2*NHASH*(*numi)+1;
+    obj o2 = o;
+    numb hashlen = 2*NHASH*(*numi)+1;
     numb x = 0;
     int i;
     for (i = m/sizeof(numb); i > 0; i--){
       x += *o++;
     }
+    printf("%d: o: %ld x: %ld hash: %ld hashlen: %ld\n", *numi, *o2, x, x % hashlen, hashlen);
     return x % hashlen;
 }
 

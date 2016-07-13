@@ -1,8 +1,4 @@
 *.[oa]
 *~
 .deps/
-doc/*.log
-doc/*.aux
-doc/*.bbl
-doc/*.rel
 *.swp
