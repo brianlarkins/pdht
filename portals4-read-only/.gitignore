@@ -44,3 +44,7 @@ make_test_move
 make_test_swap
 ptl_test
 test
+strsep
+strsep.log
+strsep.trs
+test-suite.log
