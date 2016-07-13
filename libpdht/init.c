@@ -45,6 +45,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->mode = mode;
   dht->pmode = PDHT_DEFAULT_PMODE;
 
+  dht->hashfn = pdht_hash;
+
   // portals info
   dht->ptl.lni = c->ptl.lni;
 

@@ -27,3 +27,14 @@ void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *r
    //printf("mbits: %lu %lu\n", *mbits, *(unsigned long *)key);
    (*rank).rank  = 1; // always assume that 0 is where the hash table entries are
 }
+
+
+
+/**
+ * pdht_sethash() - use an alternate hash function over the default
+ *   @param dht hash table structure
+ *   @param hfun pointer to hash function
+ */
+void pdht_sethash(pdht_t *dht, pdht_hashfunc hfun) {
+  dht->hashfn = hfun;
+}
