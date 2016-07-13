@@ -1,0 +1,12 @@
+output.*
+traces.*
+config.log
+config.status
+config.h
+stamp-*
+Makefile
+libtool
+hydra-doxygen.cfg
+hydra_config.h
+localdefs
+bsci_init.c
