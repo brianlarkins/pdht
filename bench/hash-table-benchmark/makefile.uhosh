@@ -18,8 +18,12 @@ CFLAGS=-O3 -D NHASH=$(NHASH) -DPROGRESS_BAR # -DUSE_AMO
 LDFLAGS=
 
 # link the files
-all: shmemhash.o hashobj.o
-	$(CC) $(LDFLAGS) shmemhash.o hashobj.o -o shmemhash-$(NHASH)
+#all: shmemhash.o hashobj.o
+#	$(CC) $(LDFLAGS) shmemhash.o hashobj.o -o shmemhash-$(NHASH)
+#	rm *.o
+
+all: rewrite.o
+	$(CC) $(LDFLAGS) $^ -o shmemhash-$(NHASH)
 	rm *.o
 
 # compile commands
@@ -28,6 +32,9 @@ shmemhash.o: shmemhash.c
 
 hashobj.o: hashobj.c
 	$(CC) $(CFLAGS) -c hashobj.c
+
+rewrite.o: rewrite.c
+	$(CC) $(CFLAGS) -c rewrite.c
 
 .PHONY: clean
 
