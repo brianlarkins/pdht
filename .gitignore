@@ -2,3 +2,4 @@
 *~
 .deps/
 *.swp
+.DS_Store
