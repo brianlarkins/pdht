@@ -84,7 +84,7 @@ numb f(obj o, numb *numi)
     for (i = m/sizeof(numb); i > 0; i--){
       x += *o++;
     }
-    printf("%d: o: %ld x: %ld hash: %ld hashlen: %ld\n", *numi, *o2, x, x % hashlen, hashlen);
+    //printf("%d: o: %ld x: %ld hash: %ld hashlen: %ld\n", *numi, *o2, x, x % hashlen, hashlen);
     return x % hashlen;
 }
 

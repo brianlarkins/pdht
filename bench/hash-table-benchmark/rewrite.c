@@ -15,7 +15,7 @@ typedef unsigned long int numb;
 /* Should be 64 bit wide, to hold the square of: */
 /* If you change this, also change "atol" in main */
 
-#define NITER 10
+#define ITERCOUNT 2
 
 /* global vars */
 
@@ -32,7 +32,7 @@ long p_sync[_SHMEM_REDUCE_SYNC_SIZE];
 
 numb N=NHASH;     /* Number of objects to hash */
 size_t m=8;  /* Size of objects in bytes, rounded up to be a multiple of
-		sizeof(numb) */
+                sizeof(numb) */
 
 /*numb k;*/     /* Number of times each object is expected */
 
@@ -50,7 +50,7 @@ numb val = 1234567;
 void resetvalue()
 {
   val = 1234567;
-  
+
   for(int j=0;j < (rank*NHASH);j++){
     val = (val * multipl) % modulus;
   }
@@ -60,11 +60,11 @@ void resetvalue()
 void fnew(numb *key, numb *obj) {
   numb hashlen = 2 * NHASH * size + 1;
 
-  *obj = val; // val is a global "randomish" thing
+  // val is a global "randomish" thing
+  val = ((val * multipl) % modulus); // re-scramble
 
-  val = (val * multipl) % modulus; // re-scramble
-
-  *key = *obj % hashlen; // the key is the same as the value! brilliant.
+  *obj = val; 
+  *key = *obj % hashlen + 1; // the key is the same as the value! brilliant.
 }
 
 
@@ -137,7 +137,7 @@ void hashlookup_with_amo(long k, long v)
       collisions += 1;
       k += 1;
       if (k > hashlen) {
-	k = 1;
+        k = 1;
       }
     }
   }
@@ -179,25 +179,25 @@ void hashlookup(long k, long v)
     } else {
       /* check to see if it is a collision */
       if (local_hash == v) {
-	/* its a repetition */
-	shmem_int_inc(&hashcount[dest_pos-1], dest_pe);
-	shmem_clear_lock( &pe_lock[dest_pe] );
+        /* its a repetition */
+        shmem_int_inc(&hashcount[dest_pos-1], dest_pe);
+        shmem_clear_lock( &pe_lock[dest_pe] );
 #ifdef _DEBUG
-	fprintf(outfile, "%d writing %d to pe %d at position %d\n", rank, v, dest_pe, dest_pos);
+        fprintf(outfile, "%d writing %d to pe %d at position %d\n", rank, v, dest_pe, dest_pos);
 #endif
-	return;
+        return;
       } else {
-	/* its a collision */
+        /* its a collision */
 #ifdef _DEBUG
-	fprintf(outfile, "%d writing %d to pe %d at position %d ***\n", rank, v, dest_pe, dest_pos);
-	printf("%d:%d collision!\n", rank);
+        fprintf(outfile, "%d writing %d to pe %d at position %d ***\n", rank, v, dest_pe, dest_pos);
+        printf("%d:%d collision!\n", rank);
 #endif
-	collisions += 1;
-	k += 1;
-	if (k > hashlen) {
-	  k = 1;
-	}
-	shmem_clear_lock( &pe_lock[dest_pe] );
+        collisions += 1;
+        k += 1;
+        if (k > hashlen) {
+          k = 1;
+        }
+        shmem_clear_lock( &pe_lock[dest_pe] );
       }
     }
 
@@ -227,6 +227,10 @@ int main()
 
   shmem_barrier_all();
 
+  if (rank == 0) {
+     printf("starting OpenSHMEM hash table benchmark: NHASH is %d\n", NHASH);
+  }
+
 #ifdef _DEBUG
   sprintf(filename, "output.%d", rank);
   outfile = fopen(filename, "w+");
@@ -243,26 +247,29 @@ int main()
 
 #ifdef PROGRESS_BAR
     if (rank == 0) {
-      printf("Pass %d: ", j);
+      printf("Pass %d: ", iter);
     }
 #endif
 
-    for (i = 1; i <= NHASH; i++) {
+    for (int i = 1; i <= NHASH; i++) {
       fnew(&key, &value);
+      //printf("k: %lu v: %lu\n", key, value);
 #ifndef USE_AMO
       hashlookup(key,value);
 #else
       hashlookup_with_amo(key,value);
 #endif
-
 #ifdef PROGRESS_BAR
       if (rank == 0 && i%M == 1) {
-	printf(".");
-	fflush(stdout);
+        printf(".");
+        fflush(stdout);
       }
 #endif
+     // printf("%d : %d\n", rank, i);
+      //fflush(stdout);
 
     }
+
 #ifdef PROGRESS_BAR
     if (rank == 0) {
       printf(" DONE!\n");
@@ -278,19 +285,19 @@ int main()
   if (rank == 0 && NHASH < 1000) {
     for (int j = 0; j < size; j++) {
       for (int i = 0; i < localhashlen; i++) {
-	int count;
-	shmem_int_get(&count, &hashcount[i], 1, j);
-	if (count > 0) {
-	  int tab;
-	  shmem_int_get(&tab, &hashtab[i], 1, j);
-	  printf("%d %d %d %d\n", j+1, i+1, tab, count);
-	}
+        int count;
+        shmem_int_get(&count, &hashcount[i], 1, j);
+        if (count > 0) {
+          int tab;
+          shmem_int_get(&tab, &hashtab[i], 1, j);
+          printf("%d %d %d %d\n", j+1, i+1, tab, count);
+        }
       }
     }
   }
 
   shmem_int_sum_to_all(&total_collisions, &collisions, 1, 0, 0, size,
-		       p_wrk, p_sync);
+      p_wrk, p_sync);
 
   if (rank == 0) {
     printf("Avg # collisions: %12.2f\n", total_collisions/(1.0*size));

@@ -14,21 +14,29 @@
 
 CC=oshcc
 NHASH=160000
-CFLAGS=-D NHASH=$(NHASH) -DPROGRESS_BAR -DUSE_AMO
+CFLAGS=-O3 -D NHASH=$(NHASH) -DPROGRESS_BAR # -DUSE_AMO
 LDFLAGS=
 
-.PHONY: all clean
-
 # link the files
-all: shmemhash.o hashobj.o
+all: rewrite.o
+	$(CC) $(LDFLAGS) $^ -o shmemhash-$(NHASH)
+	rm *.o
+
+old: shmemhash.o hashobj.o
 	$(CC) $(LDFLAGS) shmemhash.o hashobj.o -o shmemhash-$(NHASH)
+	rm *.o
 
 # compile commands
-# shmemhash.o: shmemhash.c
-# 	$(CC) $(CFLAGS) -c shmemhash.c
-# 
-# hashobj.o: hashobj.c
-# 	$(CC) $(CFLAGS) -c hashobj.c
+#shmemhash.o: shmemhash.c
+#	$(CC) $(CFLAGS) -c shmemhash.c
+#
+#hashobj.o: hashobj.c
+#	$(CC) $(CFLAGS) -c hashobj.c
+#
+#rewrite.o: rewrite.c
+#	$(CC) $(CFLAGS) -c rewrite.c
+#
+.PHONY: clean
 
 clean:
 	@rm -f *.o shmemhash-$(NHASH)
