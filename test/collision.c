@@ -17,7 +17,7 @@ int main(int argc, char **argv);
 void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
   // everything hashes to 1,1
   *mbits = 1;
-  *rank = 1;
+  (*rank).rank = 1;
 }
 
 
@@ -38,11 +38,13 @@ int main(int argc, char **argv) {
     goto done;
   }
 
+  pdht_sethash(ht, f_hash);
+
 
   if (c->rank == 0) {
     for (int i=0; i<ASIZE; i++) {
-       pbuf[i] = i * 1.1;
-       gbuf[i] = i * 2.2;
+       pbuf[i] = i * 1.1 + 13.0;
+       gbuf[i] = i * 2.2 + 13.0;
     }
 
     //printf("%d: putting object\n", c->rank);

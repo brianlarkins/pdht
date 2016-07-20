@@ -34,10 +34,10 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   int ret;
   unsigned which;
   ptl_me_t *mep;
-  char *valp;
+  char *valp, *kval;
     
   // 1. hash key -> rank + match bits + element
-  pdht_hash(dht, key, &mbits, &rank);
+  dht->hashfn(dht, key, &mbits, &rank);
 
   
   // 1.5 figure out what we need to send to far end
@@ -48,20 +48,27 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
     // XXX - THIS CODE IS HIGHLY DEPENDENDENT ON PORTALS ME DATA DEFINITION - XXX
     // to workaround, could issue two puts, one for match_bits, one for data
     //  trigger on +2 event counts
-    mep = alloca(sizeof(ptl_me_t) + dht->elemsize); // no need to free later.
+    mep = alloca(sizeof(ptl_me_t) + PDHT_MAXKEYSIZE + dht->elemsize); // no need to free later.
     valp = (char *)mep + sizeof(ptl_me_t);
-    memcpy(valp, value, dht->elemsize); // ugh. copying.
+    memcpy(valp, key, PDHT_MAXKEYSIZE); // ugh. copying. copy key into element.
+    memcpy(valp + PDHT_MAXKEYSIZE, value, dht->elemsize); // double ugh. -- pointer math
     mep->match_bits = mbits;
     mep->ignore_bits = 0;
     mep->min_free = 0;
 
     loffset = (ptl_size_t)&mep->match_bits; // only send from match_bits field and beyond
-    lsize = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + dht->elemsize; 
+    lsize = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + PDHT_MAXKEYSIZE + dht->elemsize; 
     break;
+
   case PdhtPendingPoll:
   default:
-    loffset = (ptl_size_t)(value);
-    lsize = dht->elemsize;
+    kval = alloca(PDHT_MAXKEYSIZE + dht->elemsize); // no need to free later.
+    memcpy(kval,key,PDHT_MAXKEYSIZE);
+    memcpy(kval + PDHT_MAXKEYSIZE,value,dht->elemsize);
+    loffset = (ptl_size_t)kval;
+    lsize = PDHT_MAXKEYSIZE + dht->elemsize;
+    pdht_dprintf("put: key: %lu\n", *(u_int64_t *)kval);
+    pdht_dprintf("put: value: %f\n", *(double *)((char *)kval + PDHT_MAXKEYSIZE));
     break;
   }
 
@@ -69,7 +76,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex, 
                mbits, 0, value, 0);
   if (ret != PTL_OK) {
-     pdht_dprintf("pdht_get: PtlPut() failed\n");
+     pdht_dprintf("pdht_put: PtlPut() failed\n");
      goto error;
   }
   
@@ -130,15 +137,16 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   ptl_ct_event_t ctevent;
   ptl_process_t rank;
   char buf[dht->keysize + dht->elemsize];
+  ptl_event_t ev;
   int ret;
 
-  pdht_hash(dht, key, &mbits, &rank);
+  dht->hashfn(dht, key, &mbits, &rank);
   
   PtlCTGet(dht->ptl.lmdct, &ctevent);
   pdht_dprintf("pre: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
 
   // assumes: that loffset = address of *value
-  ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, dht->keysize + dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
+  ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
   if (ret != PTL_OK) {
      pdht_dprintf("pdht_get: PtlGet() failed\n");
      goto error;
@@ -157,19 +165,22 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
      goto error;
   }
 
-  ptl_event_t ev;
   while ((ret = PtlEQGet(dht->ptl.lmdeq, &ev)) != PTL_EQ_EMPTY) {
-    pdht_dprintf("found fail event: %s\n", pdht_event_to_string(ev.type));   
-    pdht_dump_event(&ev);
+    if (ev.type == PTL_EVENT_REPLY) {
+      dht->stats.notfound++;
+      return PdhtStatusNotFound;
+    } else {
+      pdht_dprintf("found fail event: %s\n", pdht_event_to_string(ev.type));   
+      pdht_dump_event(&ev);
+    }
   }
 
-
   // fetched entry has key + value concatenated, validate key
-  if (memcpy(value, key, dht->keysize) != 0) {
+  if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
-    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)value);
-    dht->stat.collisions++;
-    return PdhtNotFound;
+    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
+    dht->stats.collisions++;
+    return PdhtStatusCollision;
   }
 
   // looks good, copy value to application buffer

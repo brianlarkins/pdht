@@ -20,8 +20,9 @@ int main(int argc, char **argv) {
   // create hash table
   ht = pdht_create(sizeof(unsigned long), ASIZE * sizeof(double), PdhtModeStrict);
 
+  
   if (c->size != 2) {
-    if (c->rank == 0) { 
+    if (c->rank == 0) {
       printf("requires two (and only two) processes to run\n");
     }
     goto done;
@@ -33,14 +34,14 @@ int main(int argc, char **argv) {
        pbuf[i] = i * 1.1;
     }
 
-    printf("%d: getting object\n", c->rank);
-    printf("%d: gbuf: %p &gbuf: %p\n", c->rank, gbuf, &gbuf);
     ret = pdht_get(ht, &key, gbuf);
-    if (ret == PdhtNotFound) {
-      printf("hooray!\n");
+    if (ret == PdhtStatusNotFound) {
+      printf("passed\n");
     } else {
-      printf("boo!\n");
+      printf("failed\n");
     }
+
+    pdht_barrier();
 
 #if 0
     for (int i=0; i<ASIZE; i++) {
@@ -50,7 +51,6 @@ int main(int argc, char **argv) {
 
   } else {
 
-    printf("%d: calling poll()\n", c->rank); 
     pdht_poll(ht);
     pdht_barrier();
 

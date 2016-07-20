@@ -56,7 +56,7 @@ void pdht_polling_init(pdht_t *dht) {
   iter = (char *)dht->ht;
 
   // default match-list entry values
-  me.length      = dht->elemsize; // storing ME handle _and_ HT entry in each elem.
+  me.length      = PDHT_MAXKEYSIZE + dht->elemsize; // storing key _and_ value for each entry
   me.ct_handle   = PTL_CT_NONE;
   me.uid         = PTL_UID_ANY;
   // disable AUTO unlink events, we just check for PUT completion
@@ -75,7 +75,7 @@ void pdht_polling_init(pdht_t *dht) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
 
     if (i<PDHT_PENDINGQ_SIZE) {
-      me.start  = &hte->data; // each entry has a unique memory buffer
+      me.start  = &hte->key; // each entry has a unique memory buffer (starts with key)
       ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_polling_init: PtlMEAppend error\n");
@@ -86,9 +86,7 @@ void pdht_polling_init(pdht_t *dht) {
     }
 
     iter += dht->entrysize; // pointer math, danger.
-
   }
-
 }
 
 
@@ -169,7 +167,7 @@ void pdht_poll(pdht_t *dht) {
     // only initialize ME data if a) have pending events and b) we haven't already
     if (init == 0) {
       // default match-list entry values
-      me.length        = dht->elemsize; // storing ME handle _and_ HT entry in each elem.
+      me.length        = PDHT_MAXKEYSIZE + dht->elemsize; // storing HT key _and_ HT entry in each elem.
       me.ct_handle     = PTL_CT_NONE;
       me.uid           = PTL_UID_ANY;
       // disable auto-unlink events, we just check for PUT completion
@@ -187,11 +185,11 @@ void pdht_poll(pdht_t *dht) {
       // if get ME is inactive, then this is a new put()
       if (PtlHandleIsEqual(hte->ame, PTL_INVALID_HANDLE)) {
 
-        me.start = &hte->data; // hte points to entire entry
+        me.start         = &hte->key; // hte points to entire entry, start at key+val
         me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
         me.match_bits = ev.match_bits; // copy over match_bits from put
         me.ignore_bits   = 0;
-    
+
         // append this pending put to the active PTE match list
         ret = PtlMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->ame);
         if (ret != PTL_OK) {
@@ -204,11 +202,12 @@ void pdht_poll(pdht_t *dht) {
         index += (dht->nextfree * dht->entrysize); // pointer math, caution
 
         hte = (_pdht_ht_entry_t *)index; // index into HT entry table
-        me.start       = &hte->data;
+        me.start       = &hte->key; // put stores key+val into ht
         me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
                        | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
         me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
         me.ignore_bits = 0xffffffffffffffff; // ignore it all
+
 
         dht->nextfree++; // update next free space in local HT table
         assert(dht->nextfree < PDHT_DEFAULT_TABLE_SIZE);

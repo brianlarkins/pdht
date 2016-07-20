@@ -36,6 +36,7 @@ struct pdht_stats_s {
   u_int64_t puts;
   u_int64_t gets;
   u_int64_t collisions;
+  u_int64_t notfound;
   double    ptime;
   double    gtime;
 };
@@ -119,20 +120,22 @@ enum pdht_pmode_e {
   PdhtPendingTrig
 };
 typedef enum pdht_pmode_e pdht_pmode_t;
-#define PDHT_DEFAULT_PMODE PdhtPendingTrig
+#define PDHT_DEFAULT_PMODE PdhtPendingPoll
 
 /* DHT operatation status */
 enum pdht_status_e {
   PdhtStatusOK,
   PdhtStatusError,
-  PdhtStatusNotFound
+  PdhtStatusNotFound,
+  PdhtStatusCollision
 };
 typedef enum pdht_status_e pdht_status_t;
 
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
-typedef void (*pdht_hashfunc)(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
+struct pdht_s;
+typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
 
 
 /* portals-specific data structures */
