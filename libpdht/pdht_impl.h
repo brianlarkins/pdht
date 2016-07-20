@@ -36,6 +36,10 @@
 #define __PDHT_BARRIER_INDEX 24
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
 
+#define PDHT_START_TIMER(HT,TMR) HT->stats.TMR.last   = pdht_get_wtime();
+#define PDHT_STOP_TIMER(HT,TMR)  HT->stats.TMR.total += pdht_get_wtime() - HT->stats.TMR.last;
+#define PDHT_READ_TIMER(HT,TMR)  HT->stats.TMR.total
+
 /**
  * @file
  * 

@@ -35,6 +35,9 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   unsigned which;
   ptl_me_t *mep;
   char *valp, *kval;
+
+  PDHT_START_TIMER(dht, ptimer);
+  dht->stats.puts++;
     
   // 1. hash key -> rank + match bits + element
   dht->hashfn(dht, key, &mbits, &rank);
@@ -67,8 +70,8 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
     memcpy(kval + PDHT_MAXKEYSIZE,value,dht->elemsize);
     loffset = (ptl_size_t)kval;
     lsize = PDHT_MAXKEYSIZE + dht->elemsize;
-    pdht_dprintf("put: key: %lu\n", *(u_int64_t *)kval);
-    pdht_dprintf("put: value: %f\n", *(double *)((char *)kval + PDHT_MAXKEYSIZE));
+    //pdht_dprintf("put: key: %lu\n", *(u_int64_t *)kval);
+    //pdht_dprintf("put: value: %f\n", *(double *)((char *)kval + PDHT_MAXKEYSIZE));
     break;
   }
 
@@ -85,8 +88,9 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
 
   // 3. need to check for fail event or success count (200ms timeout)
   ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
-  printf("success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
+  //printf("success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
   if (ret == PTL_OK) {
+    PDHT_STOP_TIMER(dht, ptimer);
     return PdhtStatusOK;
   } else if (ret == PTL_CT_NONE_REACHED) {
 
@@ -108,6 +112,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
       // check for success again
       ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
       if (ret == PTL_OK) {
+        PDHT_STOP_TIMER(dht, ptimer);
         return PdhtStatusOK;
       }
     }
@@ -119,6 +124,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   }
 
 error:
+  PDHT_STOP_TIMER(dht, ptimer);
   return PdhtStatusError;
 }
 
@@ -139,6 +145,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   char buf[dht->keysize + dht->elemsize];
   ptl_event_t ev;
   int ret;
+
+  PDHT_START_TIMER(dht, gtimer);
+  dht->stats.gets++;
 
   dht->hashfn(dht, key, &mbits, &rank);
   
@@ -178,8 +187,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   // fetched entry has key + value concatenated, validate key
   if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
-    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
     dht->stats.collisions++;
+    //pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
+    PDHT_STOP_TIMER(dht, gtimer);
     return PdhtStatusCollision;
   }
 
@@ -196,9 +206,11 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   if (ctevent.success != dht->ptl.lcount)
     dht->ptl.lcount = ctevent.success;
 
+  PDHT_STOP_TIMER(dht, gtimer);
   return PdhtStatusOK;
 
 error:
+  PDHT_STOP_TIMER(dht, gtimer);
   return PdhtStatusError;
 }
 

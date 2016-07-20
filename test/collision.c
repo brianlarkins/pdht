@@ -57,9 +57,11 @@ int main(int argc, char **argv) {
 
     //printf("%d: putting object\n", c->rank);
     key += 1;
-    ret = pdht_put(ht, &key, gbuf);
+
+    // try getting with different key, but same match bits (see shitty hash)
+    ret = pdht_get(ht, &key, gbuf);
     if (ret != PdhtStatusCollision) {
-       printf("failed\n");
+       printf("failed : %d\n",ret);
     } else {
        printf("passed\n");
     } 
@@ -86,5 +88,6 @@ int main(int argc, char **argv) {
   pdht_barrier();
 
 done:
+  pdht_print_stats(ht);
   pdht_free(ht);
 }

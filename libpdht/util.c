@@ -22,6 +22,22 @@ int eprintf(const char *format, ...) {
 
 
 /**
+ *  pdht_get_wtime - get a wall clock time for performance analysis
+ */
+double pdht_get_wtime() {
+  double t;
+  struct timeval tv;
+
+  gettimeofday(&tv, NULL);
+
+  t = (tv.tv_sec*1000000LL + tv.tv_usec)/1000000.0;
+
+  return t;
+}
+
+
+
+/**
  *  pdht_dbg_printf - optionally compiled debug printer
  *    @return number of bytes written to stderr
  */
@@ -206,4 +222,22 @@ void pdht_dump_event(ptl_event_t *ev) {
    }
    pdht_dprintf("\tni_fail: %s\n", fail);
    
+}
+
+
+/**
+ * pdht_print_stats - prints out runtime statistics
+ */
+void pdht_print_stats(pdht_t *dht) {
+
+  for (int p=0; p<c->size; p++)  {
+     if (p == c->rank) {
+       printf("pdht statistics for rank %d\n", p);
+       printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
+       printf("\tcollisions: %12lu \tnotfound: %12lu\n", dht->stats.collisions, dht->stats.notfound);
+       printf("\tputtime:    %10.4f \tgets:     %10.4f\n", PDHT_READ_TIMER(dht,ptimer), PDHT_READ_TIMER(dht,gtimer));
+       fflush(stdout);
+     }
+     pdht_barrier();
+  } 
 }

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <sys/types.h>
 
 #include <slurm/pmi.h>
@@ -32,13 +33,24 @@
 /**********************************************/
 /* statistics/performance data                */
 /**********************************************/
+
+/**
+ *  timer counter/accumulator
+ */
+struct pdht_timer_s {
+  double total;  //!< total time accumulated
+  double last;   //!< keeps last start time
+};
+typedef struct pdht_timer_s pdht_timer_t;
+
+
 struct pdht_stats_s {
-  u_int64_t puts;
-  u_int64_t gets;
-  u_int64_t collisions;
-  u_int64_t notfound;
-  double    ptime;
-  double    gtime;
+  u_int64_t    puts;
+  u_int64_t    gets;
+  u_int64_t    collisions;
+  u_int64_t    notfound;
+  pdht_timer_t ptimer; // put timer
+  pdht_timer_t gtimer; // get timer
 };
 typedef struct pdht_stats_s pdht_stats_t;
 
@@ -236,5 +248,10 @@ void                *pdht_getnext(pdht_iter_t *it);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);
+
+
+//util.c
+double pdht_get_wtime(void);
+void   pdht_print_stats(pdht_t *dht);
 
 #include <pdht_inline.h>

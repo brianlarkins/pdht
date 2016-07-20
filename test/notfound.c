@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
   }
 
   pdht_barrier();
+  pdht_print_stats(ht);
 
 done:
   pdht_free(ht);
