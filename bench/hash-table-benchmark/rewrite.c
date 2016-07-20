@@ -64,7 +64,7 @@ void fnew(numb *key, numb *obj) {
   val = ((val * multipl) % modulus); // re-scramble
 
   *obj = val; 
-  *key = *obj % hashlen + 1; // the key is the same as the value! brilliant.
+  *key = *obj % hashlen + 1; 
 }
 
 

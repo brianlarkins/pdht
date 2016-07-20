@@ -40,6 +40,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   c->dhtcount++; // register ourselves globally on this process
 
+  if (keysize > PDHT_MAXKEYSIZE) {
+    pdht_dprintf("pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
+    pdht_dprintf("\t (update value in pdht_impl.h and recompile)\n");
+  }
+  
   dht->keysize = keysize;
   dht->elemsize = elemsize;
   dht->mode = mode;

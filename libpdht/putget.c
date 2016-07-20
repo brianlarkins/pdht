@@ -129,7 +129,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   unsigned long roffset = 0;
   ptl_ct_event_t ctevent;
   ptl_process_t rank;
-  ptl_size_t loffset = (ptl_size_t)(value); // this might be totally wrong
+  char buf[dht->keysize + dht->elemsize];
   int ret;
 
   pdht_hash(dht, key, &mbits, &rank);
@@ -138,11 +138,11 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_dprintf("pre: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
 
   // assumes: that loffset = address of *value
-  ret = PtlGet(dht->ptl.lmd, loffset, dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
+  ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, dht->keysize + dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
   if (ret != PTL_OK) {
      pdht_dprintf("pdht_get: PtlGet() failed\n");
      goto error;
-  } 
+  }
 
   dht->ptl.lcount++;
 
@@ -157,13 +157,25 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
      goto error;
   }
 
-#if 0
   ptl_event_t ev;
   while ((ret = PtlEQGet(dht->ptl.lmdeq, &ev)) != PTL_EQ_EMPTY) {
     pdht_dprintf("found fail event: %s\n", pdht_event_to_string(ev.type));   
     pdht_dump_event(&ev);
   }
-#endif
+
+
+  // fetched entry has key + value concatenated, validate key
+  if (memcpy(value, key, dht->keysize) != 0) {
+    // keys don't match, this must be a collision
+    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)value);
+    dht->stat.collisions++;
+    return PdhtNotFound;
+  }
+
+  // looks good, copy value to application buffer
+  // skipping over the embedded key data (for collision detection)
+  memcpy(value, buf + dht->keysize, dht->elemsize); // pointer math
+  
 
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type

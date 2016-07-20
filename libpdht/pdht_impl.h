@@ -27,6 +27,8 @@
 #define PDHT_DEFAULT_TABLE_SIZE 10000
 #define PDHT_PENDINGQ_SIZE         10
 
+#define PDHT_MAXKEYSIZE 8
+
 #define __PDHT_PENDING_INDEX 22
 #define __PDHT_PENDING_MATCH 0xcafef00d
 #define __PDHT_ACTIVE_INDEX 23
@@ -44,6 +46,7 @@
 struct _pdht_ht_entry_s {
    ptl_handle_me_t   pme;  // pending ME handle
    ptl_handle_me_t   ame;  // active ME handle
+   char              key[PDHT_MAXKEYSIZE]; // fixed data size for key right now.
    char              data[0]; // opaque payload
 };
 typedef struct _pdht_ht_entry_s _pdht_ht_entry_t;
@@ -53,7 +56,8 @@ struct _pdht_ht_trigentry_s {
    ptl_handle_me_t   pme;  // pending ME handle
    ptl_handle_me_t   ame;  // active ME handle
    ptl_handle_ct_t   tct;  // trigger counter for each entry
-   ptl_me_t           me;  // ME buffer for copying match bits over
+   ptl_me_t          me;   // ME buffer for copying match bits over
+   char              key[PDHT_MAXKEYSIZE]; // fixed data size for key right now.
    char              data[0]; // opaque payload
 };
 typedef struct _pdht_ht_trigentry_s _pdht_ht_trigentry_t;

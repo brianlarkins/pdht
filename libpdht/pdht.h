@@ -30,46 +30,59 @@
 
 
 /**********************************************/
+/* statistics/performance data                */
+/**********************************************/
+struct pdht_stats_s {
+  u_int64_t puts;
+  u_int64_t gets;
+  u_int64_t collisions;
+  double    ptime;
+  double    gtime;
+};
+typedef struct pdht_stats_s pdht_stats_t;
+
+
+/**********************************************/
 /* sub structures contained in global context */
 /**********************************************/
 
 // polling queue - ME append list entry
 struct pdht_append_s {
-   void            *start;
-   ptl_size_t       length;
-   ptl_match_bits_t bits;
-   char             entry[0];
+  void            *start;
+  ptl_size_t       length;
+  ptl_match_bits_t bits;
+  char             entry[0];
 };
 typedef struct pdht_append_s pdht_append_t;
    
 // per-process queue of pending ME appends
 struct pdht_pollqent_s {
-   ptl_handle_md_t  md;            // memory descriptor for queue
-   ptl_handle_ct_t  ct;            // event counter for queue
-   u_int64_t        completed;     // polling thread counts completion 
-   pdht_append_t   *appendlist;    // ME entries to process
+  ptl_handle_md_t  md;            // memory descriptor for queue
+  ptl_handle_ct_t  ct;            // event counter for queue
+  u_int64_t        completed;     // polling thread counts completion 
+  pdht_append_t   *appendlist;    // ME entries to process
 };
 typedef struct pdht_pollqent_s pdht_pollqent_t;
 
 // overall ME append queue
 struct pdht_pollq_s {
-   u_int32_t          qlen;              // entries per process queue
-   u_int32_t          qentrysize;        // max elemsize for an ht entry
-   pdht_pollqent_t   *q;                 // queue data
+  u_int32_t          qlen;              // entries per process queue
+  u_int32_t          qentrysize;        // max elemsize for an ht entry
+  pdht_pollqent_t   *q;                 // queue data
 };
 typedef struct pdht_pollq_s pdht_pollq_t;
 
 
 /* portals specific data for global context */
 struct pdht_portals_s {
-   ptl_handle_ni_t  phy;           //!< physical NI
-   ptl_handle_ni_t  lni;           //!< logical NI
-   ptl_ni_limits_t  ni_limits;     //!< logical NI limits
-   ptl_process_t   *mapping;       //!< physical/logical NI mapping
-   ptl_handle_md_t  barrier_md;    //!< barrier MD handle
-   ptl_handle_me_t  barrier_me;    //!< barrier ME handle
-   ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
-   ptl_size_t       barrier_count; //!< barrier count
+  ptl_handle_ni_t  phy;           //!< physical NI
+  ptl_handle_ni_t  lni;           //!< logical NI
+  ptl_ni_limits_t  ni_limits;     //!< logical NI limits
+  ptl_process_t   *mapping;       //!< physical/logical NI mapping
+  ptl_handle_md_t  barrier_md;    //!< barrier MD handle
+  ptl_handle_me_t  barrier_me;    //!< barrier ME handle
+  ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
+  ptl_size_t       barrier_count; //!< barrier count
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -77,10 +90,10 @@ typedef struct pdht_portals_s pdht_portals_t;
 /* global context data structure              */
 /**********************************************/
 struct pdht_context_s {
-   int              dhtcount;     //!< DHTs that have been created
-   int              rank;         //!< process rank
-   int              size;         //!< process count
-   pdht_portals_t   ptl;          //!< Portals 4 ADTs
+  int              dhtcount;     //!< DHTs that have been created
+  int              rank;         //!< process rank
+  int              size;         //!< process count
+  pdht_portals_t   ptl;          //!< Portals 4 ADTs
 };
 typedef struct pdht_context_s pdht_context_t;
 
@@ -110,8 +123,9 @@ typedef enum pdht_pmode_e pdht_pmode_t;
 
 /* DHT operatation status */
 enum pdht_status_e {
-   PdhtStatusOK,
-   PdhtStatusError
+  PdhtStatusOK,
+  PdhtStatusError,
+  PdhtStatusNotFound
 };
 typedef enum pdht_status_e pdht_status_t;
 
@@ -140,39 +154,40 @@ typedef struct pdht_htportals_s pdht_htportals_t;
 /* main DHT data structure                    */
 /**********************************************/
 struct pdht_s {
-   void             *ht;  
-   unsigned          keysize;
-   unsigned          elemsize;
-   unsigned          entrysize;
-   pdht_hashfunc     hashfn;
-   unsigned          nextfree;
-   pdht_mode_t       mode;
-   pdht_pmode_t      pmode;
-   pdht_htportals_t  ptl;
-   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
-   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
-   pdht_handle_t   (*nbput)(struct pdht_s *dht, void *k, void *v);
-   pdht_handle_t   (*nbget)(struct pdht_s *dht, void *k, void **v);
+  void             *ht;  
+  unsigned          keysize;
+  unsigned          elemsize;
+  unsigned          entrysize;
+  pdht_hashfunc     hashfn;
+  unsigned          nextfree;
+  pdht_mode_t       mode;
+  pdht_pmode_t      pmode;
+  pdht_stats_t      stats;
+  pdht_htportals_t  ptl;
+  pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
+  pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
+  pdht_handle_t   (*nbput)(struct pdht_s *dht, void *k, void *v);
+  pdht_handle_t   (*nbget)(struct pdht_s *dht, void *k, void **v);
 };
 typedef struct pdht_s pdht_t;
 
 enum pdht_oper_e {
-   AssocOpAdd
+  AssocOpAdd
 };
 typedef enum pdht_oper_e pdht_oper_t;
 
 enum pdht_datatype_e {
-   IntType,
-   DoubleType,
-   CharType,
-   BoolType
+  IntType,
+  DoubleType,
+  CharType,
+  BoolType
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
 
 struct pdht_iter_s {
-   // XXX iteration state stuff needs added.
-   int   (*hasnext)(struct pdht_iter_s *it);
-   void *(*next)(struct pdht_iter_s *it);
+  // XXX iteration state stuff needs added.
+  int   (*hasnext)(struct pdht_iter_s *it);
+  void *(*next)(struct pdht_iter_s *it);
 };
 typedef struct pdht_iter_s pdht_iter_t;
 
