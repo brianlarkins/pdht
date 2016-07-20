@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
   pdht_t *ht;
   unsigned long key = 10;
   double pbuf[ASIZE], gbuf[ASIZE];
+  pdht_status_t ret;
   
   // create hash table
   ht = pdht_create(sizeof(unsigned long), ASIZE * sizeof(double), PdhtModeStrict);
@@ -44,14 +45,22 @@ int main(int argc, char **argv) {
        gbuf[i] = i * 2.2;
     }
 
-    printf("%d: putting object\n", c->rank);
-    pdht_put(ht, &key, pbuf);
+    //printf("%d: putting object\n", c->rank);
+    ret = pdht_put(ht, &key, pbuf);
+    if (ret != PdhtStatusOK) {
+       printf("initial put failed\n");
+    }
     pdht_barrier();
     pdht_barrier();
 
-    printf("%d: putting object\n", c->rank);
+    //printf("%d: putting object\n", c->rank);
     key += 1;
-    pdht_put(ht, &key, gbuf);
+    ret = pdht_put(ht, &key, gbuf);
+    if (ret != PdhtStatusCollision) {
+       printf("failed\n");
+    } else {
+       printf("passed\n");
+    } 
     pdht_barrier();
 
 
@@ -60,12 +69,12 @@ int main(int argc, char **argv) {
 
     pdht_barrier();
 
-    printf("%d: calling poll()\n", c->rank); 
+    //printf("%d: calling poll()\n", c->rank); 
     pdht_poll(ht);
 
     pdht_barrier();
 
-    printf("%d: calling poll()\n", c->rank); 
+    //printf("%d: calling poll()\n", c->rank); 
     pdht_poll(ht);
 
     pdht_barrier();
