@@ -184,15 +184,15 @@ void pdht_init(void) {
   eprintf("Initializing Network Interface\n");
 
   // request portals NI limits
-  ni_req_limits.max_entries = 1024;
+  ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = 1024;
-  ni_req_limits.max_cts = 1024;
+  ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
+  ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_pt_index = 64;
   ni_req_limits.max_iovecs = 1024;
-  ni_req_limits.max_list_size = 1024;
-  ni_req_limits.max_triggered_ops = 1024;
+  ni_req_limits.max_list_size = PDHT_DEFAULT_TABLE_SIZE;
+  ni_req_limits.max_triggered_ops = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_msg_size = LONG_MAX;
   ni_req_limits.max_atomic_size = 512;
   ni_req_limits.max_fetch_atomic_size = 512;
@@ -226,6 +226,25 @@ void pdht_init(void) {
       &(c->ptl.ni_limits),
       &(c->ptl.lni));
 #endif // matching or non-matching?
+
+#define DEBUG_NI_LIMITS
+#ifdef DEBUG_NI_LIMITS
+     eprintf("\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
+     eprintf("\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
+     eprintf("\tmax_mds: %d\n", c->ptl.ni_limits.max_mds);
+     eprintf("\tmax_eqs: %d\n", c->ptl.ni_limits.max_eqs);
+     eprintf("\tmax_cts: %d\n", c->ptl.ni_limits.max_cts);
+     eprintf("\tmax_pt_index: %d\n", c->ptl.ni_limits.max_pt_index);
+     eprintf("\tmax_iovecs: %d\n", c->ptl.ni_limits.max_iovecs);
+     eprintf("\tmax_list_size: %d\n", c->ptl.ni_limits.max_list_size);
+     eprintf("\tmax_triggered_ops: %d\n", c->ptl.ni_limits.max_triggered_ops);
+     eprintf("\tmax_msg_size: %d\n", c->ptl.ni_limits.max_msg_size);
+     eprintf("\tmax_atomic_size: %d\n", c->ptl.ni_limits.max_atomic_size);
+     eprintf("\tmax_fetch_atomic_size: %d\n", c->ptl.ni_limits.max_fetch_atomic_size);
+     eprintf("\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
+     eprintf("\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
+     eprintf("\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
+#endif
 
   if (ret != PTL_OK) {
     eprintf("Portals logical NI initialization error\n");

@@ -15,14 +15,17 @@ all: trigmult
 barrier: pdhtlibs barrier.c
 	$(CC) $(CFLAGS) -o barrier barrier.c $(PDHT_LIBS)
 
-simple: pdhtlibs simple.c
-	$(CC) $(CFLAGS) -o simple simple.c $(PDHT_LIBS)
+collision: pdhtlibs collision.c
+	$(CC) $(CFLAGS) -o collision collision.c $(PDHT_LIBS)
 
 notfound: pdhtlibs notfound.c
 	$(CC) $(CFLAGS) -o notfound notfound.c $(PDHT_LIBS)
 
-collision: pdhtlibs collision.c
-	$(CC) $(CFLAGS) -o collision collision.c $(PDHT_LIBS)
+oshbench: pdhtlibs oshbench.c
+	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)
+
+simple: pdhtlibs simple.c
+	$(CC) $(CFLAGS) -o simple simple.c $(PDHT_LIBS)
 
 trig: pdhtlibs trig.c
 	$(CC) $(CFLAGS) -o trig trig.c $(PDHT_LIBS)

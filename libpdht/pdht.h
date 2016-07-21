@@ -132,6 +132,7 @@ enum pdht_pmode_e {
   PdhtPendingTrig
 };
 typedef enum pdht_pmode_e pdht_pmode_t;
+//#define PDHT_DEFAULT_PMODE PdhtPendingTrig
 #define PDHT_DEFAULT_PMODE PdhtPendingPoll
 
 /* DHT operatation status */
@@ -245,6 +246,10 @@ pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);
 pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
 void                *pdht_getnext(pdht_iter_t *it);
+
+
+// polling
+void pdht_poll(pdht_t *ht);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);

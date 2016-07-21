@@ -152,7 +152,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   dht->hashfn(dht, key, &mbits, &rank);
   
   PtlCTGet(dht->ptl.lmdct, &ctevent);
-  pdht_dprintf("pre: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
+  //pdht_dprintf("pre: mdcount: %lu fail: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
 
   // assumes: that loffset = address of *value
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);

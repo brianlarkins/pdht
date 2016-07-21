@@ -2,7 +2,11 @@
 #include <sys/resource.h>
 #include <pdht.h>
 
-#define NHASH 10000
+#define ITERCOUNT 2
+
+#define PROGRESS_BAR
+
+#define NHASH 1000
 #define modulus 1073741827
 #define multipl 33554467
 
@@ -29,7 +33,7 @@ void resetvalue() {
 
 // obj == value
 void fnew(numb *key, numb *obj) {
-  numb hashlen = 2 * NHASH * size + 1;
+  numb hashlen = 2 * NHASH * c->size + 1;
 
   // val is a global "randomish" thing
   val = ((val * multipl) % modulus); // re-scramble
@@ -55,7 +59,7 @@ double get_wtime()
 
 void inithash()
 {
-  hashlen = 2*NHASH*size + 1;
+  hashlen = 2*NHASH*c->size + 1;
   localhashlen = 2*NHASH + 1;
   collisions = 0;
   total_collisions = 0;
@@ -83,7 +87,7 @@ void hashlookup(pdht_t *ht, long k, long v) {
 
   while (1) {
 
-    ret = pdht_get(ht, &k, &vv);
+    ret = pdht_get(ht, &k, &v);
     if (ret == PdhtStatusNotFound) {
      // insert the entry
      pdht_put(ht, &k, &v);
@@ -91,9 +95,9 @@ void hashlookup(pdht_t *ht, long k, long v) {
      
     } else {
       // check for repetition or collision
-      if (ret == PdhtStatusOK)
-	// repetition -- do nothing
-	;
+      if (ret == PdhtStatusOK) {
+	      // repetition -- do nothing
+	      ;
 #ifdef _DEBUG
 	fprintf(outfile, "%d writing %d to pe %d at position %d\n", rank, v, dest_pe, dest_pos);
 #endif
@@ -117,13 +121,12 @@ int main(int argc, char **argv) {
   pdht_t *ht;
   int M;
   numb key, value;
-  unsigned long key = 10;
   double t1, t2;
 
   //double pbuf[ASIZE], gbuf[ASIZE];
   
   // create hash table
-  ht = pdht_create(sizeof(unsigned long), NHASH * sizeof(double), PdhtModeStrict);
+  ht = pdht_create(sizeof(unsigned long), sizeof(unsigned long), PdhtModeStrict);
 
   inithash();
 
@@ -149,24 +152,23 @@ int main(int argc, char **argv) {
   M = NHASH / 100;
   if (M == 0) M = 1;
 
-  rank_id = rank + 1; // seriously
   for (int iter=0; iter < ITERCOUNT;iter++) {
-    resetvalue(size, rank_id);
+    resetvalue();
 
 #ifdef PROGRESS_BAR
-    if (rank == 0) {
+    if (c->rank == 0) {
       printf("Pass %d: ", iter);
     }
 #endif
 
     for (int i = 1; i <= NHASH; i++) {
       fnew(&key, &value);
-      //printf("k: %lu v: %lu\n", key, value);
-      hashlookup(key,value);
-
+      //pdht_dprintf("k: %lu v: %lu\n", key, value);
+      hashlookup(ht,key,value);
+      pdht_poll(ht);
 
 #ifdef PROGRESS_BAR
-      if (rank == 0 && i%M == 1) {
+      if (c->rank == 0 && i%M == 1) {
         printf(".");
         fflush(stdout);
       }
@@ -176,7 +178,7 @@ int main(int argc, char **argv) {
     }
 
 #ifdef PROGRESS_BAR
-    if (rank == 0) {
+    if (c->rank == 0) {
       printf(" DONE!\n");
     }
 #endif
@@ -191,10 +193,12 @@ int main(int argc, char **argv) {
   //      p_wrk, p_sync);
   pdht_print_stats(ht);
 
-  if (rank == 0) {
-    printf("Avg # collisions: %12.2f\n", total_collisions/(1.0*size));
+  if (c->rank == 0) {
+    printf("Avg # collisions: %12.2f\n", total_collisions/(1.0*c->size));
     printf("Total time is %8.3f sec\n", (t2-t1) );
   }
+
+   pdht_print_stats(ht);
 
 #ifdef _DEBUG
   fclose(outfile);

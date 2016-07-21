@@ -48,7 +48,7 @@ void pdht_trig_init(pdht_t *dht) {
 
   dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
   if (!dht->ht) {
-    pdht_dprintf("pdht_trig_init: calloc error: %s\n", strerror(errno));
+    pdht_dprintf("pdht_trig_init: calloc %lu bytes (entrysize: %lu) yields error: %s\n", PDHT_DEFAULT_TABLE_SIZE * dht->entrysize, dht->entrysize, strerror(errno));
     exit(1);
   }
 
@@ -91,7 +91,7 @@ void pdht_trig_init(pdht_t *dht) {
 
       hte->me.start  = &hte->me.match_bits; // each entry has a unique memory buffer
       //hte->me.length = dht->elemsize; // done with ME/match_bits + data stuff
-      hte->me.length = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + dht->elemsize;
+      hte->me.length = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + PDHT_MAXKEYSIZE + dht->elemsize;
       hte->me.ct_handle   = hte->tct;
 
       //if ((c->rank == 1) && (i==0)) {
@@ -106,8 +106,8 @@ void pdht_trig_init(pdht_t *dht) {
       }
 
       // fix up ME entry data for future triggered append
-      hte->me.start         = &hte->data;
-      hte->me.length        = dht->elemsize;
+      hte->me.start         = &hte->key;
+      hte->me.length        = PDHT_MAXKEYSIZE + dht->elemsize;
       hte->me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
       hte->me.ignore_bits   = 0;
 

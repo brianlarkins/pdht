@@ -24,8 +24,8 @@
   #define pdht_dprintf(...) ;
 #endif
 
-#define PDHT_DEFAULT_TABLE_SIZE 10000
-#define PDHT_PENDINGQ_SIZE         10
+#define PDHT_DEFAULT_TABLE_SIZE 170000
+#define PDHT_PENDINGQ_SIZE      100000
 
 #define PDHT_MAXKEYSIZE 8
 
