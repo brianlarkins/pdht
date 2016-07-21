@@ -76,10 +76,11 @@ void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank
   (*rank).rank = dest_pe;
 }
 
+
+
 void hashlookup(pdht_t *ht, long k, long v) {
   int ret;
-  numb vv;
-  
+
   while (1) {
 
     ret = pdht_get(ht, &k, &vv);
@@ -90,7 +91,7 @@ void hashlookup(pdht_t *ht, long k, long v) {
      
     } else {
       // check for repetition or collision
-      if (vv == v) {
+      if (ret == PdhtStatusOK)
 	// repetition -- do nothing
 	;
 #ifdef _DEBUG
@@ -186,8 +187,9 @@ int main(int argc, char **argv) {
 
   t2 = get_wtime();
 
-  shmem_int_sum_to_all(&total_collisions, &collisions, 1, 0, 0, size,
-      p_wrk, p_sync);
+  //shmem_int_sum_to_all(&total_collisions, &collisions, 1, 0, 0, size,
+  //      p_wrk, p_sync);
+  pdht_print_stats(ht);
 
   if (rank == 0) {
     printf("Avg # collisions: %12.2f\n", total_collisions/(1.0*size));
