@@ -6,7 +6,7 @@
 
 #define PROGRESS_BAR
 
-#define NHASH 1000
+#define NHASH 160000
 #define modulus 1073741827
 #define multipl 33554467
 
@@ -83,11 +83,12 @@ void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank
 
 
 void hashlookup(pdht_t *ht, long k, long v) {
+  long vv;
   int ret;
 
   while (1) {
 
-    ret = pdht_get(ht, &k, &v);
+    ret = pdht_get(ht, &k, &vv);
     if (ret == PdhtStatusNotFound) {
      // insert the entry
      pdht_put(ht, &k, &v);
@@ -97,10 +98,10 @@ void hashlookup(pdht_t *ht, long k, long v) {
       // check for repetition or collision
       if (ret == PdhtStatusOK) {
 	      // repetition -- do nothing
-	      ;
 #ifdef _DEBUG
 	fprintf(outfile, "%d writing %d to pe %d at position %d\n", rank, v, dest_pe, dest_pos);
-#endif
+#endif	
+	return;
 
       } else {
 	// collision
@@ -108,6 +109,7 @@ void hashlookup(pdht_t *ht, long k, long v) {
         fprintf(outfile, "%d writing %d to pe %d at position %d ***\n", rank, v, dest_pe, dest_pos);
         printf("%d:%d collision!\n", rank);
 #endif
+	printf("uh-oh\n"); fflush(stdout);
 	collisions++;
 	k = k > hashlen ? 1 : k + 1; // linear probe
       }
@@ -124,6 +126,8 @@ int main(int argc, char **argv) {
   double t1, t2;
 
   //double pbuf[ASIZE], gbuf[ASIZE];
+  //
+  setbuf(stdout, NULL);
   
   // create hash table
   ht = pdht_create(sizeof(unsigned long), sizeof(unsigned long), PdhtModeStrict);
@@ -156,21 +160,17 @@ int main(int argc, char **argv) {
     resetvalue();
 
 #ifdef PROGRESS_BAR
-    if (c->rank == 0) {
-      printf("Pass %d: ", iter);
-    }
+    eprintf("Pass %d: ", iter); fflush(stdout);
 #endif
 
     for (int i = 1; i <= NHASH; i++) {
       fnew(&key, &value);
-      //pdht_dprintf("k: %lu v: %lu\n", key, value);
       hashlookup(ht,key,value);
-      pdht_poll(ht);
 
 #ifdef PROGRESS_BAR
-      if (c->rank == 0 && i%M == 1) {
-        printf(".");
-        fflush(stdout);
+      if (i%M == 1) {
+        pdht_poll(ht);
+        eprintf(".");
       }
 #endif
      // printf("%d : %d\n", rank, i);
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 
 #ifdef PROGRESS_BAR
     if (c->rank == 0) {
-      printf(" DONE!\n");
+      printf(" DONE!\n"); fflush(stdout);
     }
 #endif
     pdht_barrier();
@@ -191,14 +191,12 @@ int main(int argc, char **argv) {
 
   //shmem_int_sum_to_all(&total_collisions, &collisions, 1, 0, 0, size,
   //      p_wrk, p_sync);
-  pdht_print_stats(ht);
-
   if (c->rank == 0) {
     printf("Avg # collisions: %12.2f\n", total_collisions/(1.0*c->size));
     printf("Total time is %8.3f sec\n", (t2-t1) );
   }
 
-   pdht_print_stats(ht);
+  pdht_print_stats(ht);
 
 #ifdef _DEBUG
   fclose(outfile);

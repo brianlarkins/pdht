@@ -48,6 +48,8 @@ void pdht_polling_init(pdht_t *dht) {
   // allocate array for hash table data
   dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
 
+  eprintf("polling init: hash table entry size: %lu (%d + %d)\n", dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
+
   dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
   if (!dht->ht) {
     pdht_dprintf("pdht_polling_init: calloc error: %s\n", strerror(errno));
@@ -78,6 +80,8 @@ void pdht_polling_init(pdht_t *dht) {
 
     if (i<PDHT_PENDINGQ_SIZE) {
       me.start  = &hte->key; // each entry has a unique memory buffer (starts with key)
+      
+      //pdht_dprintf("init append: %d %d userp: %p\n", i, pdht_find_bucket(dht, hte), hte);
       ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_polling_init: [%d] PtlMEAppend error: %s\n", i, pdht_ptl_error(ret));
@@ -184,6 +188,10 @@ void pdht_poll(pdht_t *dht) {
     if (ev.type == PTL_EVENT_PUT) {
       hte = (_pdht_ht_entry_t *)ev.user_ptr;
 
+#ifdef PDHT_DEBUG_TRACE
+      pdht_dprintf("poll: key: %lu is pending queue bound for %d, new pending is: %d\n", *(unsigned long *)hte->key, pdht_find_bucket(dht, hte), dht->nextfree);
+#endif  
+
       // if get ME is inactive, then this is a new put()
       if (PtlHandleIsEqual(hte->ame, PTL_INVALID_HANDLE)) {
  
@@ -195,7 +203,6 @@ void pdht_poll(pdht_t *dht) {
         me.ignore_bits   = 0;
 
         // append this pending put to the active PTE match list
-        printf("%d : %d\n", c->rank, callcount++); fflush(stdout);
         ret = PtlMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->ame);
         if (ret != PTL_OK) {
           pdht_dprintf("pdht_poll: ME append failed (active): %s\n", pdht_ptl_error(ret));
@@ -216,15 +223,16 @@ void pdht_poll(pdht_t *dht) {
 
 
         assert(dht->nextfree <= PDHT_DEFAULT_TABLE_SIZE);
-        dht->nextfree++; // update next free space in local HT table
+
+	//pdht_dprintf("append: %d %d userp: %p\n", dht->nextfree, pdht_find_bucket(dht, hte), hte);
 
         // add replacement entry to put/pending ME
         ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
         if (ret != PTL_OK) {
            pdht_dprintf("pdht_poll: PtlMEAppend error (pending): %s\n", pdht_ptl_error(ret));
         }
-        // clean out the LINK events from the event queue
-        // PtlEQWait(dht->ptl.eq, &ev);
+
+        dht->nextfree++; // update next free space in local HT table
 
       // otherwise this is an overwrite of an existing value
       } else {

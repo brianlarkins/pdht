@@ -161,7 +161,8 @@ struct pdht_htportals_s {
   ptl_handle_md_t lmd;           //!< memory descriptor for any outgoing put/gets
   ptl_handle_eq_t lmdeq;         //!< event queue for local MD
   ptl_handle_ct_t lmdct;         //!< counter for local MD
-  ptl_size_t      lcount;        //!< number of strict messages received
+  ptl_ct_event_t  curcounts;     //!< current fail/success counts for local MD state (tracks progress)
+  ptl_size_t      lfail;         //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
 

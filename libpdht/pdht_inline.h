@@ -123,3 +123,14 @@ static inline pdht_status_t pdht_nbgetf(pdht_t *dht, double k, void **v) {
    return pdht_nbget(dht, &k, sizeof(double), v);
 }
 #endif
+
+static inline u_int64_t pdht_find_bucket(pdht_t *dht, void *p) {
+  char *start = dht->ht;
+  char *end   = p;
+  u_int64_t ret = (end-start) / dht->entrysize;
+  if ((start + (ret * dht->entrysize)) != end) {
+    printf("%d: misaligned pointer: expected: %p found %p\n", c->rank, start + (ret * dht->entrysize), end); fflush(stdout);
+  }
+  return ret;
+}
+

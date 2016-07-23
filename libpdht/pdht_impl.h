@@ -17,6 +17,7 @@
 #include <pdht.h>
 
 #define PDHT_DEBUG
+//#define PDHT_DEBUG_TRACE
 
 #ifdef PDHT_DEBUG
   #define pdht_dprintf(...) pdht_dbg_printf(__VA_ARGS__)
@@ -24,7 +25,8 @@
   #define pdht_dprintf(...) ;
 #endif
 
-#define PDHT_DEFAULT_TABLE_SIZE 170000
+// default table size should be bigger than 2x pending queue size
+#define PDHT_DEFAULT_TABLE_SIZE 300000
 #define PDHT_PENDINGQ_SIZE      100000
 
 #define PDHT_MAXKEYSIZE 8

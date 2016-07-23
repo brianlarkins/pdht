@@ -10,7 +10,7 @@ PORTALS_LIBDIR     = $(PDHT_TOP)/opt/lib
 #PORTALS_LIBDIR     = /opt/hpctools/lib
 
 CC = clang
-GCFLAGS = --std=c99 -g
+GCFLAGS = --std=c99 -g -O3
 #GCFLAGS = -g -Wall
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 #GCFLAGS = -pg -O3
