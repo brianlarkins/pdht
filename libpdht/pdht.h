@@ -96,6 +96,7 @@ struct pdht_portals_s {
   ptl_handle_me_t  barrier_me;    //!< barrier ME handle
   ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
   ptl_size_t       barrier_count; //!< barrier count
+  u_int32_t        pt_entries;     //!< number of portals table entries per hash table
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -148,21 +149,22 @@ typedef enum pdht_status_e pdht_status_t;
 typedef int pdht_handle_t;
 
 struct pdht_s;
-typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
+typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, ptl_pt_index_t *ptindex, ptl_process_t *rank);
 
+#define PDHT_MAX_PTES 256
 
 /* portals-specific data structures */
 struct pdht_htportals_s {
-  ptl_handle_ni_t lni;           //!< portals logical NI
-  unsigned        getindex;      //!< portal table entry index
-  unsigned        putindex;      //!< portal table entry index
-  ptl_handle_eq_t eq;            //!< event queue for put PT entry
-  ptl_me_t        me;            //!< default match entry for ht
-  ptl_handle_md_t lmd;           //!< memory descriptor for any outgoing put/gets
-  ptl_handle_eq_t lmdeq;         //!< event queue for local MD
-  ptl_handle_ct_t lmdct;         //!< counter for local MD
-  ptl_ct_event_t  curcounts;     //!< current fail/success counts for local MD state (tracks progress)
-  ptl_size_t      lfail;         //!< number of strict messages received
+  ptl_handle_ni_t lni;                          //!< portals logical NI
+  ptl_pt_index_t  getindex[PDHT_MAX_PTES];      //!< portal table entry index
+  ptl_pt_index_t  putindex[PDHT_MAX_PTES];      //!< portal table entry index
+  ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
+  ptl_me_t        me;                           //!< default match entry for ht
+  ptl_handle_md_t lmd;                          //!< memory descriptor for any outgoing put/gets
+  ptl_handle_eq_t lmdeq[PDHT_MAX_PTES];         //!< event queue for local MD
+  ptl_handle_ct_t lmdct[PDHT_MAX_PTES];         //!< counter for local MD
+  ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
+  ptl_size_t      lfail;                        //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
 
