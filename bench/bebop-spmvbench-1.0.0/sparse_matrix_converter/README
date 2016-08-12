@@ -1,0 +1,70 @@
+Author: Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+Written: 26 June 2005
+Last revised: 23 Feb 2006
+
+Welcome to the BeBOP Sparse Matrix Converter Library!  This is a collection of
+C routines and macros that I wrote over the course of several years for my
+colleagues in the Berkeley Benchmarking and Optimization Group
+(bebop.cs.berkeley.edu).  It converts between three different sparse matrix
+file formats (Matlab, MatrixMarket and Harwell-Boeing), and converts between a
+number of different internal sparse matrix storage formats.  It also offers a
+convenient wrapper that hides implementation details of the various sparse
+matrix data structures.
+
+NOTE WELL:  DO NOT swap out the Harwell-Boeing routines in this package with 
+those found on the MatrixMarket website!  I've modified the routines in slight
+but important ways.
+
+
+1. Building the library
+
+First, adjust the Makefile as desired for your local conditions.  Then build
+and install libbebop_util.a (the BeBOP Utility Library) and its associated
+header files.  Then modify the Makefile in this directory:  Set CPPFLAGS to
+point to the directory in which the Utility Library header files are stored,
+and set LIBS to point to the directory in which libbebop_util.a is stored.  For
+example:
+
+CPPFLAGS = -I/usr/local/include/bebop_util
+LIBS = -L/usr/local/lib -lbebop_util
+
+assumes that the header files for the BeBOP Utility Library are in
+/usr/local/include/bebop_util and the libbebop_util.a library is in
+/usr/local/lib (modify these to suit your local installation).
+
+Now, build the sparse matrix converter library:  In the current directory, at
+the prompt, type:
+
+make
+
+to build libsparse_matrix_converter.a (the library) and sparse_matrix_converter
+(the executable utility).
+
+
+2. Installing the library
+
+Currently, it's the user's responsibility to put libsparse_matrix_converter.a
+and the header files in a place where other projects can find them.  You will
+have to modify the Makefiles of those projects to point to
+libsparse_matrix_converter.a and the directory containing the header files.
+Eventually we will set up a proper installation procedure using the GNU
+Autotools.
+
+
+3. Using the executable utility
+
+Run 
+
+./sparse_matrix_converter -h
+
+to get a usage message.
+
+
+4. Documentation
+
+You can build the documentation in HTML format using Doxygen.  Type the
+following at the prompt:
+
+doxygen Doxyfile
+
+You will need to have Doxygen installed.

@@ -1,0 +1,18 @@
+# CITRIS-specific makefile for standalone SpMV benchmark
+# author: hormozd
+
+# Basic commands
+CD           = cd
+RM           = /bin/rm -f
+
+# We're on this platform
+ARCH         = $(arch)
+
+# Compiler
+CC           = cc
+CFLAGS       = -O3 -m64 -march=k8 -Wall -std=c99
+LINKER       = cc
+LINKFLAGS    = 
+ARCHIVER     = ar
+ARFLAGS      = rc
+RANLIB       = ranlib

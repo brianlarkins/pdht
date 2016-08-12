@@ -1,0 +1,91 @@
+# Make.hpcc
+# Author: hormozd
+# Last modified: 2006 Jan 23
+#
+# To be included in Make process for HPCC benchmark.
+##########################################################################
+
+arch=UNKNOWN
+include ../makes/Make.$(arch)
+
+CPPFLAGS = -I. -I../bebop_util -I../sparse_matrix_converter -I../matrix_generator
+THELIB = lib_bsr_spmv.a
+
+BENCHMARK_OBJ = avltree.o block_smvm_code.o fill_with_random_block.o \
+	smvm_benchmark.o smvm_get_output_file.o smvm_timing_results.o \
+	smvm_timing_run.o smvm_verify_result.o smvm_benchmark_results.o
+
+TIMING_OBJ = timing.o
+TIMING_HEADER = timing.h
+CONFIG_H      = config.h
+
+LIBOBJ = $(BENCHMARK_OBJ) $(TIMING_OBJ)
+
+
+#########################################################################
+# OUTPUT RULES
+#########################################################################
+
+all: $(THELIB) 
+
+$(THELIB): $(LIBOBJ)
+	$(ARCHIVER) $(ARFLAGS) $(THELIB) $(LIBOBJ)
+	$(RANLIB) $(THELIB)
+	
+#########################################################################
+# BUILD RULES 
+#########################################################################
+
+####################
+### Timing files ###
+####################
+
+timing.o: timing.c timing.h
+
+#######################
+### Benchmark files ###
+#######################
+
+avltree.o: avltree.c avltree.h $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+benchmark_tester.o: benchmark_tester.c smvm_benchmark.h $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+block_smvm_code.o: block_smvm_code.c block_smvm_code.h $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+fill_with_random_block.o: fill_with_random_block.c fill_with_random_block.h \
+		$(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_benchmark.o: smvm_benchmark.c smvm_benchmark.h $(TIMING_HEADER) \
+		block_smvm_code.h $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_benchmark_results.o: smvm_benchmark_results.c smvm_benchmark_results.h \
+		$(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_get_output_file.o: smvm_get_output_file.c smvm_get_output_file.h \
+		$(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_timing_results.o: smvm_timing_results.c smvm_timing_results.h \
+		$(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_timing_run.o: smvm_timing_run.c smvm_timing_run.h smvm_get_output_file.h \
+		smvm_timing_results.h $(TIMING_HEADER) $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+smvm_verify_result.o: smvm_verify_result.c smvm_verify_result.h $(CONFIG_H)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+##########################################################################
+# UTILITY STEPS
+##########################################################################
+
+clean:
+	$(RM) benchmark_tester.o smvm_hpcc_interface_tester.o hpcc.o 
+	$(RM) get_options.o

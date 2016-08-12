@@ -1,0 +1,47 @@
+# Makefile
+# Author: mfh
+# Since: 14 June 2005
+# 
+# Makefile for matrix generator library, and tester executable.
+##########################################################################
+
+arch = UNKNOWN
+include ../makes/Make.$(arch)
+CPPFLAGS = -I../spmvbench -I../matrix_generator -I../sparse_matrix_converter -I../bebop_util -I.
+BENCHLIBS = -lm -l_bsr_spmv -l_matrix_generators -lsparse_matrix_converter -lbebop_util
+LDFLAGS = -L../bebop_util -L../sparse_matrix_converter -L../matrix_generator -L../spmvbench
+
+THEBENCH = hpcc_spmv_benchmark
+BENCHOBJ = benchmark_subset.o hpcc_spmv_benchmark.o main.o
+
+#########################################################################
+## OUTPUT RULES
+#########################################################################
+
+all: $(THEBENCH)
+
+$(THEBENCH): $(BENCHOBJ)
+	$(LINKER) $(LDFLAGS) $(CFLAGS) $(CPPFLAGS) -o $(THEBENCH) $(BENCHOBJ) $(BENCHLIBS)
+
+#########################################################################
+## BUILD RULES 
+#########################################################################
+
+### Benchmark object files ###
+
+benchmark_subset.o: benchmark_subset.c benchmark_subset.h benchmark_params.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+hpcc_spmv_benchmark.o: hpcc_spmv_benchmark.c hpcc_spmv_benchmark.h benchmark_params.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+main.o: main.c benchmark_params.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+##########################################################################
+## UTILITY STEPS
+##########################################################################
+
+clean:
+	$(RM) $(BENCHOBJ) 
+	$(RM) $(THEBENCH) 

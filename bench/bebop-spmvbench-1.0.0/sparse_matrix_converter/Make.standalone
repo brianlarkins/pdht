@@ -1,0 +1,98 @@
+# Makefile
+# Author: mfh
+# Since: 26 May 2005
+#
+# For a sparse matrix utility that converts between various file formats 
+# for sparse matrices, and also between various internal storage formats
+# for sparse matrices.  Harwell-Boeing, MatrixMarket and Matlab file
+# formats are supported.
+##########################################################################
+
+arch=UNKNOWN
+include ../makes/Make.$(arch)
+CPPFLAGS = -I../bebop_util -I. -std=c99
+
+#
+# Object files for the sparse matrix converter library.
+#
+LIBSMCOBJ = bcoo_matrix.o bcsr_matrix.o coo_matrix.o coord_elem.o \
+	    csc_matrix.o csr_matrix.o iohb.o jad_matrix.o mmio.o \
+	    read_mm.o sparse_matrix.o sparse_matrix_ops.o sparse_vector.o 
+
+LIBSMCOUT = libsparse_matrix_converter.a
+
+#########################################################################
+## OUTPUT RULES
+#########################################################################
+
+all: $(LIBSMCOUT)
+
+$(LIBSMCOUT): $(LIBSMCOBJ) 
+	$(ARCHIVER) $(ARFLAGS) $(LIBSMCOUT) $(LIBSMCOBJ) 
+	$(RANLIB) $(LIBSMCOUT)
+
+smc_prompt: $(LIBSMCOUT) prompt.tab.o prompt.lexer.o
+	$(LINKER) $(CPPFLAGS) $(CFLAGS) -o smc_prompt prompt.tab.o \
+		prompt.lexer.o $(LIBSMCOUT) $(LIBS) -lfl
+
+prompt.tab.o: prompt.tab.c sparse_matrix.h sparse_matrix_ops.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c prompt.tab.c
+
+prompt.lexer.o: prompt.lexer.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c prompt.lexer.c
+
+prompt.lexer.c: prompt.lex
+	flex prompt.lex
+	mv lex.yy.c prompt.lexer.c
+
+prompt.tab.c: prompt.y
+	bison -d prompt.y
+
+
+#########################################################################
+## BUILD RULES 
+#########################################################################
+
+bcoo_matrix.o: bcoo_matrix.c bcoo_matrix.h bcsr_matrix.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c bcoo_matrix.c
+
+bcsr_matrix.o: bcsr_matrix.c bcsr_matrix.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c bcsr_matrix.c
+
+coo_matrix.o: coo_matrix.c coo_matrix.h csc_matrix.h read_mm.h  
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c coo_matrix.c
+
+coord_elem.o: coord_elem.c coord_elem.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c coord_elem.c
+
+csc_matrix.o: csc_matrix.c csc_matrix.h coo_matrix.h iohb.h sparse_vector.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c csc_matrix.c
+
+csr_matrix.o: csr_matrix.c csr_matrix.h coo_matrix.h csc_matrix.h \
+	iohb.h read_mm.h sparse_vector.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c csr_matrix.c
+
+iohb.o: iohb.c iohb.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c iohb.c
+
+jad_matrix.o: jad_matrix.c jad_matrix.h csr_matrix.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c jad_matrix.c
+
+mmio.o: mmio.c mmio.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c mmio.c
+
+read_mm.o: read_mm.c read_mm.h coo_matrix.h coord_elem.h csc_matrix.h \
+	csr_matrix.h mmio.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c read_mm.c
+
+sparse_matrix.o: sparse_matrix.c sparse_matrix.h bcoo_matrix.h bcsr_matrix.h \
+	coo_matrix.h csc_matrix.h csr_matrix.h jad_matrix.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c sparse_matrix.c
+
+sparse_matrix_ops.o: sparse_matrix_ops.c sparse_matrix_ops.h bcoo_matrix.h \
+	bcsr_matrix.h coo_matrix.h csc_matrix.h csr_matrix.h jad_matrix.h \
+	read_mm.h sparse_matrix.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c sparse_matrix_ops.c
+
+sparse_vector.o: sparse_vector.c sparse_vector.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c sparse_vector.c

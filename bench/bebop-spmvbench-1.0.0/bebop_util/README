@@ -1,0 +1,36 @@
+Author: Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+Written: 26 June 2005
+Last revised: 23 Feb 2006
+
+Welcome to the BeBOP Utility Library!  This is a collection of C routines and
+macros that I wrote over the course of several years for my colleagues in the 
+Berkeley Benchmarking and Optimization Group (bebop.cs.berkeley.edu).  
+
+
+1. Building the library
+
+Tweak the Makefile as necessary to suit your local settings.  Then,
+at the prompt, type:
+
+make
+
+to build libbebop_util.a (the library).
+
+
+2. Installing the library
+
+Currently, it's the user's responsibility to put libbebop_util.a and the header
+files in a place where other projects can find them.  You will have to modify
+the Makefiles of those projects to point to libbebop_util.a and the directory
+containing the header files.  Eventually we will set up a proper installation
+procedure using the GNU Autotools.
+
+
+3. Documentation
+
+You can build the documentation in HTML format using Doxygen.  Type the
+following at the prompt:
+
+doxygen Doxyfile
+
+You will need to have Doxygen installed.

@@ -1,0 +1,58 @@
+mfh 9 Aug 2005
+
+The matrix generators were stupidly calling smvm_init_randomizer() with 
+each call, which means that the numbers were not truly pseudorandom (to 
+be pseudorandom, the randomizer should only be seeded once).  Fixed this.
+
+
+mfh 10 July 2005
+
+	Now if __create_random_matrix_banded_by_nnz_per_row fails to
+	fill in a row with the required number of nonzeros in the given
+	number of iterations, it calls
+	__create_random_matrix_banded_by_nnz_per_row__nearly_dense_rows,
+	which is a "deterministic" algorithm.  Before, it would just
+	abort.
+
+
+mfh 7 July 2005:
+
+In create_random_matrix_banded_by_nnz_per_row, when the target nnz per
+row is close to the length of the row, a large number of iterations are
+required in order to achieve the target nnz, since there are so few
+additional entries from which to choose.  In this case, we need to use
+an alternate scheme for picking entries in the row, namely, choosing
+random integers from a range without replacement.
+
+	mfh 7 July 2005:  
+	
+	The necessary functionality for choosing random integers from a
+	range without replacement has been implemented and successfully
+	tested in the BeBOP Utility Library.
+
+	Added a separate implementation of
+	create_random_matrix_banded_by_nnz_per_row, using the above
+	alternate scheme, that is activated whenever the row density is
+	bigger than one-third.
+
+
+mfh 6 July 2005:
+
+Increased the number of iterations per block row in 
+create_random_matrix_banded_by_nnz_per_row.
+
+
+mfh 1 July 2005:
+
+The removal of duplicates from sections of COO matrices has a bug that
+causes one element to be removed when it shouldn't be.  Namely, the
+duplicate-finding loop should start on the second element of the
+sequence of elements to scan for duplicates (if it starts on the first
+element, then of course the first element will be considered a duplicate
+of itself).
+
+
+mfh 2 July 2005: 
+
+Fixed bug in create_rand.c.  Verified that no other code contains the
+incorrect algorithm.

@@ -1,0 +1,78 @@
+# Makefile
+# Author: mfh
+# Since: 26 June 2005
+#
+# Utility functions for the BeBOP group.
+##########################################################################
+
+arch = UNKNOWN
+include ../makes/Make.$(arch)
+
+#
+# For the "utility library," to be shared between projects.
+# 
+CPPFLAGS = -I.
+LIBUTILOBJ = __complex.o avltree_intpair.o get_options.o merge_sort.o \
+	     mt19937ar.o random_number.o smvm_malloc.o smvm_util.o \
+	     sort_joint_arrays.o timer.o 
+LIBUTILOUT = libbebop_util.a
+
+#########################################################################
+## OUTPUT RULES
+#########################################################################
+
+all: $(LIBUTILOUT) tests/test_random_number tests/test_split_pathname
+
+$(LIBUTILOUT): $(LIBUTILOBJ)
+	$(ARCHIVER) $(ARFLAGS) $(LIBUTILOUT) $(LIBUTILOBJ)
+	$(RANLIB) $(LIBUTILOUT)
+
+tests/test_random_number: $(LIBUTILOUT) tests/test_random_number.o
+	$(LINKER) $(CPPFLAGS) $(CFLAGS) -o tests/test_random_number \
+		tests/test_random_number.o $(LIBUTILOUT) $(LIBS)
+
+tests/test_split_pathname: $(LIBUTILOUT) tests/test_split_pathname.o
+	$(LINKER) $(CPPFLAGS) $(CFLAGS) -o tests/test_split_pathname \
+		tests/test_split_pathname.o $(LIBUTILOUT) $(LIBS)
+
+tests/test_split_pathname.o: tests/test_split_pathname.c \
+	smvm_malloc.h smvm_util.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c tests/test_split_pathname.c \
+		-o tests/test_split_pathname.o
+
+
+#########################################################################
+## BUILD RULES 
+#########################################################################
+
+__complex.o: __complex.c __complex.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c __complex.c
+
+avltree_intpair.o: avltree_intpair.c avltree_intpair.h smvm_malloc.h \
+	smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c avltree_intpair.c
+
+get_options.o: get_options.c get_options.h smvm_malloc.h smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c get_options.c
+
+merge_sort.o: merge_sort.c merge_sort.h smvm_malloc.h smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c merge_sort.c
+
+mt19937ar.o: mt19937ar.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c mt19937ar.c
+
+random_number.o: random_number.c random_number.h smvm_malloc.h smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c random_number.c
+
+smvm_malloc.o: smvm_malloc.c smvm_malloc.h smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c smvm_malloc.c
+
+smvm_util.o: smvm_util.c smvm_util.h random_number.h smvm_malloc.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c smvm_util.c
+
+sort_joint_arrays.o: sort_joint_arrays.c sort_joint_arrays.h random_number.h \
+	smvm_malloc.h smvm_util.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c sort_joint_arrays.c
+
+timer.o: timer.c timer.h config.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c timer.c
