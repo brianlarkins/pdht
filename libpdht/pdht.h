@@ -51,8 +51,18 @@ struct pdht_stats_s {
   u_int64_t    notfound;
   pdht_timer_t ptimer; // put timer
   pdht_timer_t gtimer; // get timer
+  pdht_timer_t t1; // utility timer 1
+  pdht_timer_t t2; // utility timer 2
+  pdht_timer_t t3; // utility timer 3
+  pdht_timer_t t4; // utility timer 4
+  pdht_timer_t t5; // utility timer 5
+  pdht_timer_t t6; // utility timer 6
 };
 typedef struct pdht_stats_s pdht_stats_t;
+
+#define PDHT_START_TIMER(HT,TMR) HT->stats.TMR.last   = pdht_get_wtime();
+#define PDHT_STOP_TIMER(HT,TMR)  HT->stats.TMR.total += pdht_get_wtime() - HT->stats.TMR.last;
+#define PDHT_READ_TIMER(HT,TMR)  HT->stats.TMR.total
 
 
 /**********************************************/
@@ -248,9 +258,6 @@ pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
 void                *pdht_getnext(pdht_iter_t *it);
 
-
-// polling
-void pdht_poll(pdht_t *ht);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);

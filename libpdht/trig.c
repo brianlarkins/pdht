@@ -84,7 +84,7 @@ void pdht_trig_init(pdht_t *dht) {
       // allocate per-pending elem trigger event counter
       ret = PtlCTAlloc(dht->ptl.lni, &hte->tct);
       if (ret != PTL_OK) {
-        pdht_dprintf("pdht_trig_init: PtlCTAlloc failure\n");
+        pdht_dprintf("pdht_trig_init: PtlCTAlloc failure: %s (%d)\n", pdht_ptl_error(ret), i);
         exit(1);
       }
 

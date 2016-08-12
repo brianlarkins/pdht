@@ -13,7 +13,8 @@
 # limitations under the License.
 
 CC=oshcc
-NHASH=160000
+#NHASH=160000
+NHASH=80000
 CFLAGS=-O3 -D NHASH=$(NHASH) -DPROGRESS_BAR # -DUSE_AMO
 LDFLAGS=
 
