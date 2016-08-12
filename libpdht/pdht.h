@@ -171,8 +171,8 @@ struct pdht_htportals_s {
   ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
   ptl_me_t        me;                           //!< default match entry for ht
   ptl_handle_md_t lmd;                          //!< memory descriptor for any outgoing put/gets
-  ptl_handle_eq_t lmdeq[PDHT_MAX_PTES];         //!< event queue for local MD
-  ptl_handle_ct_t lmdct[PDHT_MAX_PTES];         //!< counter for local MD
+  ptl_handle_eq_t lmdeq;                        //!< event queue for local MD
+  ptl_handle_ct_t lmdct;                        //!< counter for local MD
   ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
   ptl_size_t      lfail;                        //!< number of strict messages received
 };
