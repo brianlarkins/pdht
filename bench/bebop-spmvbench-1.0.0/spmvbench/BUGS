@@ -1,0 +1,40 @@
+2005-11-03 Hormozd Gahvari <hormozd@cs.berkeley.edu>
+	timing.c, timing.h appear in both spmvbench and bebop_util
+	directores. also, including files should be done with directories,
+	e.g. #include <matrix_generator/create_rand.h>.
+
+2004-11-30 Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+
+	If you specify an out-of-range command-line option, that value that you
+	input is shown as the "default" value when the usage is printed.
+
+2004-11-29 Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+
+ 	Calling "./hpcc_interface_tester -f uga.out" causes an error when 
+	parsing "block_sizes.csv", but specifying a value for the "-m" 
+	command-line option prevents this error.
+
+	Code that will be enabled when build with HPCC is not up-to-date.
+
+	Memory expenditure is much greater than that specified by the HPCC
+	parameter, because that parameter only accounts for the memory used by
+	the sparse matrix and source and destination vectors.  It doesn't
+	account for the set data structure used to construct the random sparse
+	matrix, nor does it account for the various other data structures used
+	throughout the program.
+
+2004-11-23 Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+
+	Fixed bug in smvm_invoker where the mflop/s rate was inverted.
+	Don't worry, it wasn't showing up in results -- the code that 
+	we actually have been calling is correct.
+
+2004-11-21 Mark Hoemmen <mhoemmen@cs.berkeley.edu>
+
+	In raw CSV output of benchmark data, mflops field is often negative.  
+	It could be that it overflows int.  We should use doubles instead.
+
+	Note (2004-11-23): this requires changing the low-level benchmark as 
+	well, so that doubles are used instead of ints.
+
+	2004-11-23:  fixed (was only a problem with output).

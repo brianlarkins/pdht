@@ -1,0 +1,18 @@
+2004 Dec 23 mfh
+
+The SpMV benchmark was intended for use as a library, to be called by
+the HPC Challenge suite of benchmarks.  However, a standalone executable
+wrapper is made available for the convenience of users.  By default, the 
+Makefile builds only the library; the following builds the standalone
+executable as well:
+
+make arch=<ARCH> hpcc_interface_tester
+
+Replace <ARCH> with the name of your platform, by which we mean the
+name of the makefile that describes your platform's specialized build
+parameters:  e.g. if the makefile is named Make.citris, <ARCH> is
+citris.
+
+The above command will build an executable called
+"hpcc_interface_tester".  Running the file with the -h command-line
+option will describe all of its command-line options.

@@ -1,0 +1,134 @@
+mfh 24 June 2005:
+
+	BCSR and BCOO data structures badly need debugging.  A CSR ->
+	BCSR conversion routine (can get it from Rich Vuduc's Sparsity
+	code) is needed.
+
+	Use sort-in-place in the COO -> CSR conversion routine.
+
+mfh 9 June 2005:
+
+	Add matrix verifier.
+
+	mfh 9 June 2005: Done, but untested.
+
+
+mfh 4 June 2005:
+
+	Add Matlab output option for all the matrix types.  Here is how
+	sparse matrices are created in Matlab (quote from the users'
+	manual):
+
+	-- BEGIN QUOTE --
+	S = sparse(i,j,s,m,n)
+
+	i and j are vectors of row and column indices, respectively, for
+	the nonzero elements of the matrix. s is a vector of nonzero
+	values whose indices are specified by the corresponding (i,j)
+	pairs. m is the row dimension for the resulting matrix, and n is
+	the column dimension.
+
+	...
+
+	For example, consider a three-column text file T.dat whose first
+	column is a list of row indices, second column is a list of
+	column indices, and third column is a list of nonzero values.
+	These statements load T.dat into MATLAB and convert it into a
+	sparse matrix S: 
+	
+	load T.dat
+	S = spconvert(T)
+	-- END QUOTE --
+
+	(Note that if the file ends in .mat then Matlab assumes that it
+	contains binary data, instead of the ASCII format that we are
+	outputting.)
+
+	There is no optimization for symmetric storage, so if the matrix
+	is stored in a symmetric format, we first have to expand the
+	matrix.  Furthermore, m and n are not explicitly stored, so if
+	the last row or column of the matrix contains all zeros, we have
+	to output an explicit zero at (m,n) in order that the matrix
+	dimensions are correctly stored.
+
+	mfh 5 June 2005:  
+	
+	Matlab output is tricky, because Matlab refuses to save complex
+	values in ASCII format.  We assume that complex sparse matrices
+	are stored in four columns, with the third column containing the
+	real parts of the nonzeros, and the fourth column containing the
+	imaginary parts.  Matlab is able to read such files correctly as
+	complex matrices, so this assumption is justified.
+
+	mfh 6 June 2005:
+
+	Matlab output seems OK, except that columns are not necessarily
+	in sorted order in the output, which makes it hard to compare
+	results.
+
+
+mfh 31 May 2005:
+	
+	Make sure that COO -> CSC conversion supports nonzero index
+	bases:  done.
+
+	Not all compilers support the C99 standard.  We use "double
+	_Complex", which is part of C99.  We should offer an alternate
+	implementation of complex numbers if C99 is not implemented.
+
+		mfh 2 June 2005: Added an alternate implementation of
+		complex numbers, and wrapper #defines for when we are
+		using the "double _Complex" implementation.  It's pretty
+		hackishly done, but it works, at least with gcc.  (Note:
+		gcc 3.4.3 doesn't use the C99 standard by default; you
+		have to tell it to use C99, e.g. with "-std=gnu99".)
+
+mfh 28 May 2005:
+
+Add support for CSR-format sparse matrices.
+
+	mfh 31 May 2005:  Added basic support today.  It's definitely
+	not optimized, and not yet tested.  All six possible conversion
+	functions (amongst {COO, CSC, CSR}) have been implemented.
+
+Add support for other value types, such as complex and pattern.
+
+	mfh 28 May 2005:  Added support in coo_matrix_t for complex and
+	pattern value types.  We can read in MatrixMarket matrices with
+	those value types, but we can't yet output them in
+	Harwell-Boeing format.
+
+	The Harwell-Boeing input routines use an array of
+	double-precision values, and if the matrix is complex, they
+	interlace the real and imaginary parts.  We could either rewrite
+	their routines to use "double _Complex", or just recopy the
+	values into a new "double _Complex" array.  I chose the
+	recopying approach.
+
+	mfh 0107 29 May 2005: Finished rewriting all the CSC routines
+	and the COO <-> CSC conversion routines, but the converter
+	segfaults on complex symmetric MatrixMarket to HB.
+
+	mfh 1402 29 May 2005: I think I've fixed the converter -- tests
+	on a complex symmetric matrix seem to work out without
+	segfaulting.
+
+mfh 27 May 2005:
+
+Working on adding support for "expanding" symmetric-storage matrices
+into "unsymmetric"-storage matrices.
+
+	mfh 28 May 2005: Finished (not debugged yet, though I took the
+	algorithms from Rich Vuduc's sparsity code, so it should work).
+	COO and CSC matrices are supported.
+
+
+mfh 26 May 2005:
+
+Currently only real unsymmetric storage is supported.  Adding support
+for matrices stored symmetrically would be helpful.
+
+	mfh 27 May 2005:  Support for symmetric storage is finished,
+	more or less.  Debugging is necessary.  
+
+

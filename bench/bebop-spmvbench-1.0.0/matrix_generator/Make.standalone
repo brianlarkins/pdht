@@ -1,0 +1,43 @@
+# Makefile
+# Author: mfh
+# Since: 14 June 2005
+# 
+# Makefile for matrix generator library, and tester executable.
+##########################################################################
+
+arch = UNKNOWN
+include ../makes/Make.$(arch)
+CPPFLAGS = -I../sparse_matrix_converter -I../bebop_util -I. -std=c99
+
+THELIB = lib_matrix_generators.a
+LIBOBJ = create_rand.o stencil.o
+
+#########################################################################
+## OUTPUT RULES
+#########################################################################
+
+all: $(THELIB)
+
+$(THELIB): $(LIBOBJ)
+	$(ARCHIVER) $(ARFLAGS) $(THELIB) $(LIBOBJ) 
+	$(RANLIB) $(THELIB)
+
+#########################################################################
+## BUILD RULES 
+#########################################################################
+
+### Library object files ###
+
+create_rand.o: create_rand.c create_rand.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+stencil.o: stencil.c stencil.h 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+##########################################################################
+## UTILITY STEPS
+##########################################################################
+
+clean:
+	$(RM) $(LIBOBJ) 
+	$(RM) $(THELIB) 

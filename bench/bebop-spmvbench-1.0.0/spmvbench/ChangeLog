@@ -1,0 +1,286 @@
+2005-08-26    <mhoemmen@arete.cc>
+
+	* (all): Moved files into CVS repository.  From this point on,
+	the repository will be the source of all information about
+	changes to files.
+
+2004-11-30    <mhoemmen@arete.cc>
+
+	* get_options.c: Added new member to arginfo struct:
+	"default_val", for storing the default value of a given
+	command-line argument.  The default value is not changed when
+	the command line is parsed.  This fixes the bug where dumping
+	usage after an out-of-range option results in the user's option
+	value being printed instead of the default.
+
+	* smvm_hpcc_interface.c (partition_data_set,
+	smvm_output_final_benchmark_results):  Prof. Demmel suggests 
+	that we classify benchmark results for different memory sizes 
+	by looking for the biggest downward jump in performance between 
+	smaller and larger memory sizes.
+
+2004-11-29    <mhoemmen@arete.cc>
+	* smvm_hpcc_interface_tester.c (main): Changed default fill to
+	0.0022287, which is the median fill of matrices 2-9 from Rich
+	Vuduc's Ph.D. thesis.
+
+	* smvm_benchmark_results.h,smvm_benchmark_results.c: Added
+	SMVM_benchmark_results_array struct and "member functions".
+
+	* smvm_hpcc_interface.c (smvm_hpcc_interface): Added outer loop
+	around calls to the invoker, for trials with different matrix
+	sizes.  I still need to alter the data structures to handle the
+	additional data.
+
+	* smvm_hpcc_interface.c (smvm_hpcc_interface): Changed
+	num_trials from 10 to 3, since we plan to run the benchmark
+	for many different matrix sizes.
+
+	* smvm_benchmark_results.c (smvm_output_benchmark_results):
+	Adding output of aggregate FEM score.
+
+2004-11-28    <mhoemmen@arete.cc>
+	* smvm_malloc.h (smvm_realloc): Macro was defined incorrectly to
+	take only one argument, instead of two!  Fixed it.
+
+	* smvm_invoker (smvm_process_and_store_sparse_results):
+	Beginning to integrate statistics on best block sizes for
+	matrices 2-9 from Rich Vuduc's thesis, into the composition of
+	an "aggregate FEM Mflop/second rate".
+
+	* smvm_benchmark_results.h (SMVM_benchmark_results): Added field
+	aggregate_fem_mflops_rate for aggregate results for FEM type
+	matrices (2-9 in Rich Vuduc's thesis).
+
+	* block_size_parser.c,block_size_parser.h: Added files.  These
+	parser a separate text file, which is a list of optimal block
+	sizes and their frequencies.
+
+2004-11-23    <mhoemmen@arete.cc>
+	* smvm_invoker.c (smvm_print_verbose_results): Was printing out
+	mflops as an int rather than a double (no wonder it was
+	negative!).  Fixed this.
+
+	* smvm_invoker.c: Fixed places where mflop/s rates were being
+	calculated as t_median/mflops instead of mflops/t_median.  This
+	doesn't affect computed results; the changed code was unused.
+
+2004-11-21    <mhoemmen@arete.cc>
+	* smvm_invoker.h,smvm_invoker.c,smvm_hpcc_interface_tester.c: 
+	Added function for outputting verbose benchmark output to a file.  
+	Changed hpcc_interface_tester so that it uses the output file
+	command-line option for verbose output, and stdout for terse
+	output.
+
+2004-10-04    <mhoemmen@arete.cc>
+
+	* Makefile: Removed requirement that mpi library be build into
+	the standalone HPCC interface tester executable.
+
+	* Makefile: Replaced implicit .c -> .o build rules with explicit
+	rules.  Necessary because AIX make apparently doesn't use
+	CPPFLAGS automatically with the .c -> .o implicit build rule.
+
+	* smvm_invoker.c (smvm_process_and_output_dense_results): Fixed
+	calculation of Mflop/s rates:  the reciprocal of the Mflop/s
+	rate was being reported as the Mflop/s rate.
+
+	* smvm_hpcc_interface.c (smvm_hpcc_interface): Had forgotten to
+	open and close output file; now it does so, using append mode to
+	open the file.
+
+	* smvm_util.h (WITH_DEBUG, WITH_WARN): Added macros for debug output.
+
+2004-10-02    <mhoemmen@arete.cc>
+
+	* Makefile:  Added "lowlevel_tester" target; it builds an executable
+	for low-level testing of the SpMV benchmark.
+
+	* Various: Added hpcc.h and hpcc.c:  "struct my_HPCC_Params" is a
+	proxy for HPCC_Params that allows switching between a standalone SpMV
+	benchmark and integration with the HPCC suite of benchmarks.  hpcc.c
+	is the only place where the HPCC_Params object is touched.  Added
+	flag to Makefile for switching between standalone and integrated modes:
+	when SPMV_STANDALONE is defined, standalone mode is on.  Changed 
+	SMVM_benchmark_results to support a dynamic allocation / deallocation 
+	model.  Updated the relevant affected code in SMVM_hpcc_interface.c.
+
+2004-09-28    <mhoemmen@arete.cc>
+
+	* Everything: Refactoring the code in preparation for adding it 
+	to the HPCC benchmark (again).
+
+
+2004-04-01    <mhoemmen@arete.cc>
+
+	* Makefile: Now we have to move back away from the autoconf
+	paradigm, to the Make.<arch> approach used by HPCC.  I've also
+	made a number of changes to the smvm_invoker interface, including
+	a function (smvm_invoke_with_results()) that (instead of
+	outputting results to stdout) returns results through a struct.
+	This supports the HPCC way of returning benchmark results.
+
+2004-03-24    <mhoemmen@arete.cc>
+
+	* smvm_invoker.c (smvm_pick_sparse_data_size): Was TOTALLY WRONG,
+	before was using NNZ = fill*n, when it should be NNZ = fill*n*n.
+	The calculations which depend on the results of this function are
+	correct; only the function internals are wrong.
+
+	* timing.h (TIMING_LOOP): Now outputs only on DEBUG, instead of
+	WARN, and outputs to stderr instead of stdout.
+
+	* smvm_timing_run.*: (and other files) mflops was measured as an
+	int.  That's a bad idea, because for small matrices, mflops
+	(millions of floating-point operations) could be rounded down to
+	zero.  So we are changing it to a double and rounding down as
+	necessary wherever it must be output as an integer.
+
+	* smvm_invoker.*: Now smvm_sparse_single_invocation() and
+	smvm_dense_single_invocation are being changed to accept a struct
+	SMVM_timing_results* argument.  Results will be written there,
+	instead of to the output file.  It's clear that the code needs
+	restructuring, but we don't have time to do that now.  In
+	particular, later we want the pure benchmark code not to have
+	anything to do with output files -- it should just take an
+	SMVM_timing_results* in which it dumps the results.
+
+	* smvm_invoker.c (smvm_invoke): smvm_invoke had a bug, apparently,
+	that would only run the sparse or the dense benchmark, but not
+	both.  In any case the code was hard to read, so I changed it.  Am
+	now adding SMVM_timing_results data collection to smvm_invoke().
+
+	* smvm_benchmark.h: #included smvm_timing_results.h and added new
+	benchmark function into which an SMVM_timing_results* is passed.
+
+	* smvm_timing_results.*: Added these files, in which (struct
+	SMVM_timing_results), along with some helper functions, is 
+	defined.
+
+	* smvm_benchmark.c: Removing PAPI support, since it is not used
+	for the HPCC benchmark.  smvm_benchmark() will need to be changed
+	so that a struct SMVM_timing_results* (successive entries of the
+	SMVM_timing_results array) is passed along, in which timing
+	results are stored.  We move the definition of SMVM_timing_results
+	and associated helper functions into a separate file, so that it
+	can be cleanly #included by smvm_invoker.c.  (Since smvm_invoker
+	functions call smvm_benchmark(), smvm_invoker needs access to the
+	SMVM_timing_results struct.)
+	
+	* block_smvm_code.h: Removed #ifdef BLOCK_SMVM_MAIN thing that
+	defines the array of SpMV function pointers only if
+	BLOCK_SMVM_MAIN is #defined.  It was defined in block_smvm_code.c.
+
+	* block_smvm_code.*: added `const' access modifiers to all
+	applicable parameters.
+
+	* smvm_benchmark.*: SMVM_timing_results struct being used to store
+	the results of each run, so that the best and worst timings can be
+	captured and displayed, rather than displaying the results of all
+	the timings.  
+
+2004-03-17    <mhoemmen@arete.cc>
+
+	* Integration: To take place by moving all invoker files into
+	benchmark (this) directory, and changing the header files
+	accordingly.  The benchmark's old "main.c" will be renamed to
+	"benchmark_tester.c", and the invoker's main.c will go into this
+	directory.  Renaming "my_util.*" to "smvm_util.*".  Renaming some
+	other files to have this prefix -- including "invoker.*".
+	Updating "Makefile.in".  Moving timer files into this directory.
+
+2004-02-01    <mhoemmen@arete.cc>
+
+	* Integration: Am about to start integrating benchmark files with
+	the invoker to create a single executable.  This is a massive
+	process.  Have also taken "smvm_malloc" and similar functions out
+	of my_util.h and put them in their own files.
+
+2004-01-30    <mhoemmen@arete.cc>
+	
+	* Encapsulation: Over the past few days, have pretty much finished
+	encapsulating the benchmark proper (not the invoker with its
+	heuristic for picking problem set size) for integration into HPCC.
+	Now we need to make major modifications to the invoker, so that it
+	too can be integrated.  In particular, it needs to be converted
+	back to C (from C++) and it should take cache parameters as input,
+	rather than reading them from the file (HPCC should pass it the
+	cache parameters).
+
+2004-01-14    <mhoemmen@arete.cc>
+	
+	* Translation: Moving back to C from C++.  Reimplemented the
+	set-based random sparse matrix generator using a hand-rolled set
+	(avltree.*). FIXME: The random number generator is still buggy --
+	I replaced the old ones in my_util.* with new ones (in
+	random_number.*), but the random_integer function returns a bad
+	value on its first call, for inexplicable reasons.  More debugging
+	is needed!
+
+2004-01-09    <mhoemmen@arete.cc>
+
+	* Autoconf: (Makefile -> Makefile.in) Preparing to use autoconf.
+
+2004-01-06    <mhoemmen@arete.cc>
+
+        * Modified: matrix_io.c, sparse_fcvt.c, bcsr_io.c Actually main
+	  doesn't need sparse_fcvt.h functions!!!  Removed dependencies on
+	  these from the Makefile. Some standard #includes were missing.
+	  This only shows up as errors if you run the file through a C++
+	  compiler -- it shows up as warnings if the file is processed by
+	  a C compiler.  Deleted source code of
+	  read_partial_binary_csr_matrix because it was giving troubles --
+	  there are functions in there that don't make sense --
+	  close(FILE*) instead of fclose(FILE*)???
+
+2004-01-06    <mhoemmen@arete.cc>
+
+        * main.cc: Changed main.c to main.cc, because the file containing
+	main() of a program with mixed C and C++ should always be compiled
+	by a C++ compiler.  See:
+
+        http://www.parashift.com/c++-faq-lite/mixing-c-and-cpp.html
+
+	* main.c: Modified to use the new algorithm for creating a random
+	BSR matrix.  Memory allocation must be done here, rather than in
+	the creation function, and the number of nonzeros is fixed (rather
+	than probabilistic).
+
+
+2003-11-23    <mhoemmen@arete.cc>
+
+        * main.c: Fixed mflops -- was an integer instead of floating-point.
+
+2003-11-16    <mhoemmen@arete.cc>
+
+        * main.c: Lots of revisions for calculating mflops, and numbers of
+	loads and stores. num_block_rows in main() was using ceiling(m/r)
+	-- I changed it to floor(m/r) which it should be. Changed #defines
+	for the timing mechanism.  Put the timing loop definitions back
+	into timing.h (or rather, took them out of main.c, which now uses
+	the definitions in timing.h).
+
+2003-11-14    <mhoemmen@arete.cc>
+
+        * main.c: Pretty much finalized this part.  Had thought would need
+	to fix timing so the inner loop uses medians, but this doesn't
+	make sense for the COARSE_CLOCK thing (if the clock resolution is
+	low compared with the number of cycles needed for the OP, then
+	median doesn't help you get any exra extra precision -- only mean
+	does.
+
+2003-11-13    <mhoemmen@arete.cc>
+
+        * main.c: Function pointer was not getting reset for different r
+	and c.  Fixed that.
+
+2003-11-11    <mhoemmen@arete.cc>
+
+        * main.c: Mostly cosmetic changes to number formats in timer data
+	file output.  Finally got TIMING_LOOP preprocessor directive macro
+	thing to work.
+
+2003-11-09    <mhoemmen@arete.cc>
+
+        * create_rand:  Fixed bug.
+

@@ -1,0 +1,32 @@
+2004 Dec 23 mfh
+
+The file "block_sizes.csv" lists some "natural" register block
+dimensions that occur in a given set of test matrices, and the frequency
+of each occurrence of that pair of dimensions in the set.  For example, 
+
+8,8,2
+
+indicates that the register block dimensions (8,8) (i.e. r=8, c=8) occur
+two times as a natural pair of dimensions in the set of test matrices.
+This file is parsed by the functions in block_size_parser.c.  By adding
+up the frequencies, we get a total number of matrices N in the test
+matrix collection.  Dividing each frequency f_i by N gives a weight w_i.
+If we take a convex combination of the SpMV benchmark results for the
+block dimension pairs in the block_sizes.csv file, using the weights
+w_i, we get a weighted benchmark result which reflects the distribution
+of natural block sizes in the set of test matrices.
+
+After completing all the runs of the SpMV benchmark, we first extract
+the set of block dimension pairs which are encountered in the results.
+We then ensure that the top 8 block dimensions (in terms of frequencies
+f_i) from block_sizes.csv are represented in the benchmark results.  If
+not, we report an error.  Otherwise, we use the weights for these top 8
+block dimensions (of course, N is counted using only these block
+dimensions) to compute an "aggregate_fem_mflops_rate" (thus called
+because the register block sizes in block_sizes.csv are for matrices
+from finite element problems).  This is reported in the benchmark
+results.
+
+The code for this is in smvm_invoker.c, in
+smvm_process_and_store_sparse_results.
+
