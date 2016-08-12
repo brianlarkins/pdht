@@ -9,7 +9,7 @@ PDHT_TOP=..
 include $(PDHT_TOP)/pdht.mk
 
 .PHONY: all
-all: trigmult
+all: csort
 
 
 barrier: pdhtlibs barrier.c
@@ -18,8 +18,17 @@ barrier: pdhtlibs barrier.c
 collision: pdhtlibs collision.c
 	$(CC) $(CFLAGS) -o collision collision.c $(PDHT_LIBS)
 
+csort: pdhtlibs csort.c
+	$(CC) $(CFLAGS) -o csort csort.c $(PDHT_LIBS)
+
+latency: pdhtlibs latency.c
+	$(CC) $(CFLAGS) -o latency latency.c $(PDHT_LIBS)
+
 notfound: pdhtlibs notfound.c
 	$(CC) $(CFLAGS) -o notfound notfound.c $(PDHT_LIBS)
+
+optimes: pdhtlibs optimes.c
+	$(CC) $(CFLAGS) -o optimes optimes.c $(PDHT_LIBS)
 
 oshbench: pdhtlibs oshbench.c
 	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)

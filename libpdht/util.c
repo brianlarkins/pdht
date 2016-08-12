@@ -235,7 +235,10 @@ void pdht_print_stats(pdht_t *dht) {
        printf("pdht statistics for rank %d\n", p);
        printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
        printf("\tcollisions: %12lu \tnotfound: %12lu\n", dht->stats.collisions, dht->stats.notfound);
-       printf("\tputtime:    %10.4f \tgets:     %10.4f\n", PDHT_READ_TIMER(dht,ptimer), PDHT_READ_TIMER(dht,gtimer));
+       printf("\tputtime:    %10.4f sec\tgettime:  %10.4f sec\n", PDHT_READ_TIMER(dht,ptimer), PDHT_READ_TIMER(dht,gtimer));
+       printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1), PDHT_READ_TIMER(dht,t2));
+       printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3), PDHT_READ_TIMER(dht,t4));
+       printf("\tt5:         %10.4f sec\tt6:       %10.4f sec\n", PDHT_READ_TIMER(dht,t5), PDHT_READ_TIMER(dht,t6));
        fflush(stdout);
      }
      pdht_barrier();

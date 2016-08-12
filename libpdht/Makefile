@@ -12,6 +12,7 @@ CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
 RANLIB = /usr/bin/ranlib
 
+HDRS =  pdht.h pdht_impl.h pdht_inline.h
 
 OBJS =  assoc.o      \
         commsynch.o  \
@@ -32,8 +33,10 @@ libpdht.a: headers $(OBJS)
 	$(AR) rcs ../lib/libpdht.a $(OBJS)
 	$(RANLIB) ../lib/libpdht.a
 
+$(OBJS): $(HDRS)
+
 .PHONY: headers
-headers:
+headers: 
 	cp pdht_inline.h pdht.h ../include/.
 
 .PHONY: clean

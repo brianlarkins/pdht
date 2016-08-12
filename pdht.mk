@@ -21,12 +21,13 @@ CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
 MATH_LIB            = -lm
 PMI_LIB             = -lpmi
 PORTALS_LIB         = -lportals
+PTHREAD_LIB         = -lpthread
 PDHT_INSTALL_LIBDIR = $(PDHT_TOP)/lib
 PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
 
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 
-PDHT_LIBS = -L$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PMI_LIB) $(PORTALS_LIB)
+PDHT_LIBS = -L$(PORTALS_LIBDIR) -Wl,-rpath=$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB)
 
 .PHONY: all
 

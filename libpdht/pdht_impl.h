@@ -1,6 +1,6 @@
 /***********************************************************/
 /*                                                         */
-/*  pdht_imple.h - PDHT private implementation protos/ADTs */
+/*  pdht_impl.h - PDHT private implementation protos/ADTs */
 /*                                                         */
 /*  author: d. brian larkins                               */
 /*  created: 3/20/16                                       */
@@ -40,10 +40,6 @@
 
 #define __PDHT_BARRIER_INDEX 0
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
-
-#define PDHT_START_TIMER(HT,TMR) HT->stats.TMR.last   = pdht_get_wtime();
-#define PDHT_STOP_TIMER(HT,TMR)  HT->stats.TMR.total += pdht_get_wtime() - HT->stats.TMR.last;
-#define PDHT_READ_TIMER(HT,TMR)  HT->stats.TMR.total
 
 /**
  * @file
@@ -102,7 +98,7 @@ void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *ra
 // poll.c - PDHT polling tasks
 void pdht_polling_init(pdht_t *dht);
 void pdht_polling_fini(pdht_t *dht);
-void pdht_poll(pdht_t *dht);
+void *pdht_poll(void *arg);
 
 // trig.c - PDHT triggered tasks
 void pdht_trig_init(pdht_t *dht);

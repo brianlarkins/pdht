@@ -169,7 +169,6 @@ void pdht_init(void) {
     pdht_dprintf("portals initialization error\n");
     exit(-1);
   }
-
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
       PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
       PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
@@ -187,8 +186,10 @@ void pdht_init(void) {
   ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
-  ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
+  ni_req_limits.max_eqs = 1024;
+  ni_req_limits.max_cts = PDHT_PENDINGQ_SIZE+2;
+  //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
+  //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_pt_index = 64;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = PDHT_DEFAULT_TABLE_SIZE;
@@ -227,7 +228,7 @@ void pdht_init(void) {
       &(c->ptl.lni));
 #endif // matching or non-matching?
 
-#define DEBUG_NI_LIMITS
+//#define DEBUG_NI_LIMITS
 #ifdef DEBUG_NI_LIMITS
      eprintf("\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
      eprintf("\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
