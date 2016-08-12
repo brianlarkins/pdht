@@ -1,6 +1,6 @@
 /********************************************************/
 /*                                                      */
-/*  nbputget.c - PDHT asynch non-blocking operations    */
+/*  poll.c - PDHT polling thread operations             */
 /*                                                      */
 /*  author: d. brian larkins                            */
 /*  created: 3/20/16                                    */
