@@ -112,7 +112,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
         pdht_dprintf("pdht_put: flow control on remote rank: %d\n", rank);
         goto error;
       } else {
-        pdht_dprintf("pdht_get: found fail event: %s\n", pdht_event_to_string(fault.type));   
+        pdht_dprintf("pdht_put: found fail event: %s\n", pdht_event_to_string(fault.type));   
         pdht_dump_event(&fault);
       }
     } else {
