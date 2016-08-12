@@ -152,7 +152,7 @@ void pdht_polling_fini(pdht_t *dht) {
   }
 
   // free our table entry
-  PtlPTFree(dht->ptl.lni, dht->ptl.getindex);
+  PtlPTFree(dht->ptl.lni, dht->ptl.putindex);
 
   // release all storage for ht objects
   free(dht->ht);

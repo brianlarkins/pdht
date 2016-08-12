@@ -21,7 +21,7 @@
  *  @param key key of entry to hash
  *  @returns match bits for portals request
  */
-void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
+void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_pt_index_t *ptindex, ptl_process_t *rank) {
    // THIS IS ALL TOTAL BULLSHIT
    *mbits = *(ptl_match_bits_t *)key;
    //printf("mbits: %lu %lu\n", *mbits, *(unsigned long *)key);
