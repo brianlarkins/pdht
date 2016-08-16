@@ -11,7 +11,10 @@
 %
 % For tracking purposes => this is v1.3 - March 2012
 
-\documentclass[prodmode]{acmsmall} % Aptara syntax
+\documentclass[prodmode]{acmsmall} % Aptara syntax 
+
+\usepackage{xspace}
+\newcommand{\pdht}{{PDHT}\xspace}
 
 % Package to generate and customize Algorithm as per ACM style
 \usepackage[ruled]{algorithm2e}
@@ -21,6 +24,7 @@
 \SetAlCapNameFnt{\small}
 \SetAlCapHSkip{0pt}
 \IncMargin{-\parindent}
+
 
 % Metadata Information
 %\acmVolume{9}
@@ -56,15 +60,17 @@
 \affil{Rhodes College}
 James Dinan
 \affil{Intel}}
-% NOTE! Affiliations placed here should be for the institution where the
-%       BULK of the research was done. If the author has gone to a new
-%       institution, before publication, the (above) affiliation should NOT be changed.
-%       The authors 'current' address may be given in the "Author's addresses:" block (below).
-%       So for example, Mr. Abdelzaher, the bulk of the research was done at UIUC, and he is
-%       currently affiliated with NASA.
+
 
 \begin{abstract}
-This is an abstract. It is short and to the point.
+This is an abstract abstract. This is totally a placeholder that is
+just designed to take up approximately the correct amount of space on
+the page. This will totally need to be re-written before we really get
+anywhere with it. I just checked and it's only at about 50 words right
+now. I need to come up with about another fifty words or so until I
+can get back to writing the introduction. 86. That's not quite
+100. We can put another fourteen words to paper, at which point it
+will be deemed ``sufficiently long''.  This should just about do it.
 \end{abstract}
 
 
@@ -75,33 +81,28 @@ This is an abstract. It is short and to the point.
 %
 \begin{CCSXML}
 <ccs2012>
- <concept>
-  <concept_id>10010520.10010553.10010562</concept_id>
-  <concept_desc>Computer systems organization~Embedded systems</concept_desc>
-  <concept_significance>500</concept_significance>
- </concept>
- <concept>
-  <concept_id>10010520.10010575.10010755</concept_id>
-  <concept_desc>Computer systems organization~Redundancy</concept_desc>
-  <concept_significance>300</concept_significance>
- </concept>
- <concept>
-  <concept_id>10010520.10010553.10010554</concept_id>
-  <concept_desc>Computer systems organization~Robotics</concept_desc>
-  <concept_significance>100</concept_significance>
- </concept>
- <concept>
-  <concept_id>10003033.10003083.10003095</concept_id>
-  <concept_desc>Networks~Network reliability</concept_desc>
-  <concept_significance>100</concept_significance>
- </concept>
-</ccs2012>  
+<concept>
+<concept_id>10003033.10003058.10003064.10011657</concept_id>
+<concept_desc>Networks~Network adapters</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10010520.10010521.10010528</concept_id>
+<concept_desc>Computer systems organization~Parallel architectures</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011008.10011024.10011028</concept_id>
+<concept_desc>Software and its engineering~Data types and structures</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
 \end{CCSXML}
 
-\ccsdesc[500]{Computer systems organization~Embedded systems}
-\ccsdesc[300]{Computer systems organization~Redundancy}
-\ccsdesc{Computer systems organization~Robotics}
-\ccsdesc[100]{Networks~Network reliability}
+\ccsdesc[500]{Networks~Network adapters}
+\ccsdesc[500]{Computer systems organization~Parallel architectures}
+\ccsdesc[500]{Software and its engineering~Data types and structures}
+
 
 %
 % End generated code
@@ -121,11 +122,11 @@ James Dinan, Intel Corporation, Boston, MA.
 
 \maketitle
 
-\section{Introduction}
-
-\section{Performance Evaluation}
-
-\section{Conclusions}
+\input{introduction}
+\input{background}
+\input{implementation}
+\input{results}
+\input{conclusion}
 
 \cite{cmpi10}
 
