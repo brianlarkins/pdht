@@ -1,0 +1,6 @@
+CC=mpiCC
+CFLAGS= -O3
+CHTINCL=-I$(realpath $(TOPDIR)/../source)
+CHTDIR=$(realpath $(TOPDIR)/../source)
+BLASFLAGS= -lblas
+MPI_NODES=3
