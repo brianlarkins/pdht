@@ -147,7 +147,7 @@ the active PTE, with the match bits set to correspond to the hashed
 key. This state can be seen in Figure \ref{fig:put}b. 
 
 % - polling approach
-The most straightforward approach to moving the ME from the pending
+The most straightforward approach to moving the ME from the pending 
 match list to the active list is by relying on a progress
 thread. Portals provides blocking wait and polling routines to check
 for new event notifications or counter changes. When a process

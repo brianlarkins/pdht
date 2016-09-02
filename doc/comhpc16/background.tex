@@ -69,11 +69,10 @@ Other people have done things like this before.
 % use figure* to span both cols
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.35]{figs/portals_put}
+  \includegraphics[scale=.30]{figs/portals_put}
   \caption{Portals data structures and example put operation.}
   \label{fig:portals_put}
 \end{figure}
-
 
 The Portals framework uses several low-level data abstractions that
 are used to implement the \pdht system. \pdht is based on a one-sided
@@ -92,7 +91,7 @@ Figure \ref{fig:portals_put}.
 Portals defines two primary roles for communication operations. The
 {\em initiator} is the process that is issuing the communication
 request and the {\em target} is the process receiving the
-requests. The initator defines a {\em memory descriptor} (MD), a
+requests. The initator defines a {\em memory descriptor}, a
 region to be used for Portals operations and is able to check the
 success or failure of various events. Specific completion information
 and notifications may be only visible to the initiator and not the
@@ -100,12 +99,12 @@ target, or vice versa.
 
 Portals specifies a {\em network interface} (NI) as a per-process
 abstraction of a physical network interface on the target process.The
-NI is defined at creation to be either a {\em matching} or a {\em
-  non-matching} interface, depending on the intended use for the
-interface (message-passing or one-sided). \pdht relies on the Portals
-matching interface.
+interface is defined at creation to be either a {\em matching}
+or a {\em non-matching} interface, depending on the intended use for
+the interface (message-passing or one-sided). \pdht relies on the
+Portals matching interface.
 
-Each NI is associated with a portal table (PT). The index into the
+Each interface is associated with a portal table. An index into the
 portal table is specified on every Portals communication operation and
 is used to separate and classify different channels between endpoints.
 Every portal table entry (PTE) maintains a list of memory regions that
@@ -117,8 +116,8 @@ entries (ME). Each ME specifies a set of matching criteria and a
 memory region associated with the entry. If all of the match criteria
 are satisfied, the communication operation commences working on
 corresponding memory region. In particular, each ME contains a 64-bit
-{\em match bits} field that must match exactly for an incoming
-communication to proceed with the given ME. For example, a process
+{\em match bits} field that must correspond to the match bits
+specified on an incoming communication request. For example, a process
 would post an {\tt MPI\_Recv()} with a specific match bits
 field. Later, Portals would receive a communication request for an
 {\tt MPI\_Send()} with the same match bits, which would be correspond
@@ -133,7 +132,7 @@ Events are detailed descriptions of communcation activities. They may
 contain pointers to the transmitted data, send/receive parameters,
 etc. An event queue may be associated with either the initiator
 process or the target process.  On the initiator, an event queue may
-be associated with the memory descriptor (MD), whereas on the target,
+be associated with the memory descriptor, whereas on the target,
 an event queue may be associated with each PTE. 
 
 Counters are useful for lightweight event counting, where copying a
