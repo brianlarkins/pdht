@@ -47,6 +47,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   
   dht->keysize = keysize;
   dht->elemsize = elemsize;
+  dht->nptes = PDHT_DEFAULT_NUM_PTES;
+  assert(dht->nptes < PDHT_MAX_PTES);
   dht->mode = mode;
   dht->pmode = PDHT_DEFAULT_PMODE;
 
@@ -90,11 +92,13 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
 
-  // create PTE for matching gets, will be populated by pending put poller
-  ret = PtlPTAlloc(dht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX, &dht->ptl.getindex);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_create: PtlPTAlloc failure\n");
-    exit(1);
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++) {
+    // create PTE for matching gets, will be populated by pending put poller
+    ret = PtlPTAlloc(dht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_create: PtlPTAlloc failure [%d]\n", ptindex);
+      exit(1);
+    }
   }
 
   return dht;
@@ -114,14 +118,16 @@ void pdht_free(pdht_t *dht) {
   c->dhtcount--;
 
   // disable incoming gets
-  PtlPTDisable(dht->ptl.lni, dht->ptl.getindex);
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+    PtlPTDisable(dht->ptl.lni, dht->ptl.getindex[ptindex]);
 
   // cleans up from pending put MEs 
   // -- also removes all MEs from both put/get PTEs
   pdht_polling_fini(dht);
 
-  // free our table entry
-  PtlPTFree(dht->ptl.lni, dht->ptl.getindex);
+  // free our table entries
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+    PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
 
   // free our memory descriptor
   PtlMDRelease(dht->ptl.lmd);
@@ -190,7 +196,8 @@ void pdht_init(void) {
   ni_req_limits.max_cts = PDHT_PENDINGQ_SIZE+2;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
-  ni_req_limits.max_pt_index = 64;
+  //ni_req_limits.max_pt_index = 64;
+  ni_req_limits.max_pt_index = 2*PDHT_MAX_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_triggered_ops = PDHT_DEFAULT_TABLE_SIZE;
@@ -228,7 +235,7 @@ void pdht_init(void) {
       &(c->ptl.lni));
 #endif // matching or non-matching?
 
-//#define DEBUG_NI_LIMITS
+#define DEBUG_NI_LIMITS
 #ifdef DEBUG_NI_LIMITS
      eprintf("\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
      eprintf("\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);

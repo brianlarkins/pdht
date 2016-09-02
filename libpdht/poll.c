@@ -8,6 +8,7 @@
 /********************************************************/
 
 #include <pthread.h>
+#include <time.h>
 
 #include <pdht_impl.h>
 
@@ -31,21 +32,6 @@ void pdht_polling_init(pdht_t *dht) {
   ptl_event_t ev;
 
 
-  // allocate event queue for pending puts
-  ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.eq);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_polling_init: PtlEQAlloc failure\n");
-    exit(1);
-  }
-
-  // allocate PTE for pending put
-  ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
-      dht->ptl.eq, __PDHT_PENDING_INDEX, &dht->ptl.putindex);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_polling_init: PtlPTAlloc failure\n");
-    exit(1);
-  }
-
   // allocate array for hash table data
   dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
 
@@ -60,6 +46,15 @@ void pdht_polling_init(pdht_t *dht) {
   // use a byte pointer as iterator over variable-sized element array
   iter = (char *)dht->ht;
 
+
+  // initialize entire hash table array
+  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
+    hte = (_pdht_ht_entry_t *)iter;
+    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
+    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
+    iter += dht->entrysize; // pointer math, danger.
+  }
+
   // default match-list entry values
   me.length      = PDHT_MAXKEYSIZE + dht->elemsize; // storing key _and_ value for each entry
   me.ct_handle   = PTL_CT_NONE;
@@ -71,30 +66,49 @@ void pdht_polling_init(pdht_t *dht) {
   me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
   me.ignore_bits = 0xffffffffffffffff; // ignore it all
 
-  dht->nextfree = PDHT_PENDINGQ_SIZE; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
 
-  // append one-time match entres to the put PTE to catch incoming puts
-  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
-    hte = (_pdht_ht_entry_t *)iter;
-    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
-    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
+  // deal with multiple PTEs per hash table to handle match list length
+  for (int ptindex = 0; ptindex < dht->nptes; ptindex++) {
 
-    if (i<PDHT_PENDINGQ_SIZE) {
+    // allocate event queue for pending puts
+    ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.eq[ptindex]);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_polling_init: PtlEQAlloc failure\n");
+      exit(1);
+    }
+
+    // allocate PTE for pending put
+    ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
+        dht->ptl.eq[ptindex], __PDHT_PENDING_INDEX+ptindex, &dht->ptl.putindex[ptindex]);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_polling_init: PtlPTAlloc failure [%d] : %s\n", ptindex, pdht_ptl_error(ret));
+      exit(1);
+    }
+    pdht_dprintf("%d: %d %d\n", ptindex, __PDHT_PENDING_INDEX+ptindex, dht->ptl.putindex[ptindex]);
+
+    // iterator = ht[PTE * QSIZE] (i.e. PENDINGQ_SIZE per PTE)
+    iter = (char *)dht->ht + ((PDHT_PENDINGQ_SIZE * ptindex) * dht->entrysize); 
+
+    // append one-time match entres to the put PTE to catch incoming puts
+    for (int i=0; i < PDHT_PENDINGQ_SIZE; i++) {
+      hte = (_pdht_ht_entry_t *)iter;
       me.start  = &hte->key; // each entry has a unique memory buffer (starts with key)
 
       //pdht_dprintf("init append: %d %d userp: %p\n", i, pdht_find_bucket(dht, hte), hte);
-      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX+ptindex, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
-        pdht_dprintf("pdht_polling_init: [%d] PtlMEAppend error: %s\n", i, pdht_ptl_error(ret));
+        pdht_dprintf("pdht_polling_init: [%d] PTE: %d PtlMEAppend error: %s\n", i, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
         exit(1);
       } 
       // clean out the LINK events from the event queue
       // PtlEQWait(dht->ptl.eq, &ev);
-    }
 
-    iter += dht->entrysize; // pointer math, danger.
+      iter += dht->entrysize; // pointer math, danger.
+    }
   }
-  
+
+  dht->nextfree = dht->nptes * PDHT_PENDINGQ_SIZE; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
+
   pthread_create(&_pdht_poll_tid, NULL, pdht_poll, dht);
 }
 
@@ -111,14 +125,17 @@ void pdht_polling_fini(pdht_t *dht) {
   int ret;
 
   // disable any new messages arriving on the portals table put entry
-  PtlPTDisable(dht->ptl.lni, dht->ptl.putindex);
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++)
+    PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
   // kill polling thread
   pthread_cancel(_pdht_poll_tid);
 
-  // kill off event queue
-  if (!PtlHandleIsEqual(dht->ptl.eq, PTL_EQ_NONE)) {
-    PtlEQFree(dht->ptl.eq);
+  // kill off event queues
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++) {
+    if (!PtlHandleIsEqual(dht->ptl.eq[ptindex], PTL_EQ_NONE)) {
+      PtlEQFree(dht->ptl.eq[ptindex]);
+    }
   }
 
   // remove all match entries from the table
@@ -151,8 +168,9 @@ void pdht_polling_fini(pdht_t *dht) {
     iter += dht->entrysize; // pointer math, danger.
   }
 
-  // free our table entry
-  PtlPTFree(dht->ptl.lni, dht->ptl.putindex);
+  // free our table entries
+  for (int ptindex=0; ptindex < dht->nptes; ptindex++)
+    PtlPTFree(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
   // release all storage for ht objects
   free(dht->ht);
@@ -171,6 +189,7 @@ void *pdht_poll(void *arg) {
   ptl_me_t me;
   char *index;
   int ret;
+  unsigned int ptindex;
 
 
   // NOTE: we have one thread per DHT, we could re-write to handle _all_ 
@@ -185,13 +204,14 @@ void *pdht_poll(void *arg) {
   me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
 
-   eprintf("Polling thread is active\n");
+  eprintf("Polling thread is active\n");
 
 
   // need to run through the event queue for the putindex
   while (1) {
+    //if ((ret = PtlEQWait(dht->ptl.eq,&ev)) == PTL_OK)  {
 
-    if ((ret = PtlEQWait(dht->ptl.eq,&ev)) == PTL_OK)  {
+    if ((ret = PtlEQPoll(dht->ptl.eq,dht->nptes, PTL_TIME_FOREVER, &ev, &ptindex)) == PTL_OK)  {
       PDHT_START_TIMER(dht,t5);
 
       // found something to do, is it something we care about?
@@ -213,7 +233,7 @@ void *pdht_poll(void *arg) {
           me.ignore_bits   = 0;
 
           // append this pending put to the active PTE match list
-          ret = PtlMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->ame);
+          ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->ame);
           if (ret != PTL_OK) {
             pdht_dprintf("pdht_poll: ME append failed (active): %s\n", pdht_ptl_error(ret));
             exit(1);
@@ -238,7 +258,7 @@ void *pdht_poll(void *arg) {
         //pdht_dprintf("append: %d %d userp: %p\n", dht->nextfree, pdht_find_bucket(dht, hte), hte);
 
         // add replacement entry to put/pending ME
-        ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+        ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->pme);
         if (ret != PTL_OK) {
           pdht_dprintf("pdht_poll: PtlMEAppend error (pending): %s\n", pdht_ptl_error(ret));
         }
@@ -255,4 +275,4 @@ void *pdht_poll(void *arg) {
     PDHT_STOP_TIMER(dht,t5);
   }
   return NULL;
-}
+  }

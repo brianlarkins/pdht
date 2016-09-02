@@ -104,6 +104,8 @@ int main(int argc, char* const  argv[])
 
     cht::start();
 
+    std::cout << "size_of_matrix_in_GB = " << size_of_matrix_in_GB << std::endl;
+
     cht::ChunkID cid_baseIdx1 = cht::registerChunk<CInt>(new CInt(0));
     cht::ChunkID cid_baseIdx2 = cht::registerChunk<CInt>(new CInt(0));
     cht::ChunkID cid_n = cht::registerChunk<CInt>(new CInt(N));

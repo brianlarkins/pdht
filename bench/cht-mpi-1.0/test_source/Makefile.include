@@ -1,4 +1,5 @@
 CC=mpiCC
+CC=mpic++
 CFLAGS= -O3
 CHTINCL=-I$(realpath $(TOPDIR)/../source)
 CHTDIR=$(realpath $(TOPDIR)/../source)

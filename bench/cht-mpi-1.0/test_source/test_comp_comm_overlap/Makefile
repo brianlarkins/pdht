@@ -11,9 +11,9 @@ endif
 test_overlap: test_overlap_manager cht_worker
 	
 test_overlap_manager: test_overlap.cc test_overlap_task_implementations.cc ChunkObjDummyData.h ChunkObjDummyData.cc ChunkObjInputParams.h ChunkObjInputParams.cc $(CHTDIR)/libcht.a
-	$(CC) $(CFLAGS) $(CHTINCL) -o $@ $^
+	$(CC) $(CFLAGS) $(CHTINCL) -o $@ $^ 
 cht_worker: test_overlap_task_implementations.cc ChunkObjDummyData.h ChunkObjDummyData.cc ChunkObjInputParams.h ChunkObjInputParams.cc $(CHTDIR)/libcht.a
-	$(CC)  $(CFLAGS) $(CHTINCL) -o $@ $^
+	$(CC)  $(CFLAGS) $(CHTINCL) -o $@ $^ 
 	
 check: test_overlap
 	mpirun -np $(NPROCS) ./test_overlap_manager > test_overlap_output.txt && grep -q 'test_comp_comm_overlap OK' test_overlap_output.txt || exit 1; 

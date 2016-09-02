@@ -1,4 +1,5 @@
 CC=mpiCC
+CC=mpic++
 
 CFLAGS= -O3
 
@@ -16,7 +17,7 @@ libmpiwrapper.a: $(OBJS)
 	ar rcs libmpiwrapper.a $(OBJS)
 
 test_mpiwrapper: test_mpiwrapper.cc libmpiwrapper.a
-	$(CC) $(CFLAGS) -o $@ $^ 
+	$(CC) $(CFLAGS) -o $@ $^  
 
 %.o: %.cc
 	@$(MAKEDEPEND)

@@ -17,7 +17,7 @@ test_matrix: test_matrix_manager cht_worker
 	
 
 test_matrix_manager: test_matrix.o $(WRK_OBJS) $(CHTDIR)/libcht.a
-	$(CC) $(CFLAGS) $(CHTINCL) -o $@ $^
+	$(CC) $(CFLAGS) $(CHTINCL) -o $@ $^ 
 cht_worker: $(WRK_OBJS) $(CHTDIR)/libcht.a
 	$(CC) $(CFLAGS) $(CHTINCL) -o $@ $^
 
@@ -25,6 +25,7 @@ cht_worker: $(WRK_OBJS) $(CHTDIR)/libcht.a
 	$(CC) $(CFLAGS) $(CHTINCL) -c $< -o $@
 
 check: test_matrix
+	#srun -N $(NPROCS) ./test_matrix_manager 800 3 > test_matrix_output.txt && grep -q 'test_matrix finished OK' test_matrix_output.txt || exit 1; 
 	mpirun -np $(NPROCS) ./test_matrix_manager 800 3 > test_matrix_output.txt && grep -q 'test_matrix finished OK' test_matrix_output.txt || exit 1; 
 	rm test_matrix_output.txt output.txt;
 	@stars="***************************************************" ; \

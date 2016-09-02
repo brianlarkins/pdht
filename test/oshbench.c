@@ -6,7 +6,8 @@
 
 #define PROGRESS_BAR
 
-#define NHASH 80000
+#define NHASH 10000
+//#define NHASH 80000
 //#define NHASH 160000
 #define modulus 1073741827
 #define multipl 33554467
@@ -67,10 +68,11 @@ void inithash()
 }
 
 
-void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
+void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   int dest_pe;
   numb k;
   *mbits = *(ptl_match_bits_t *)key; // treat long key same as match bits
+  *ptindex = *(uint64_t *)key % dht->nptes;
 
   k = *(numb *)key; // deal with as a long
 

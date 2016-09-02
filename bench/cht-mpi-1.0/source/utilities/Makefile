@@ -1,4 +1,5 @@
 CC=mpiCC
+CC=mpic++
 
 CFLAGS= -O3
 

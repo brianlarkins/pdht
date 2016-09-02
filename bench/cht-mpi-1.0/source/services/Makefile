@@ -1,5 +1,6 @@
 BUILD_AS_SINGLE_PROGRAM=0
 CC=mpiCC
+CC=mpic++
 
 CFLAGS= -O3
 

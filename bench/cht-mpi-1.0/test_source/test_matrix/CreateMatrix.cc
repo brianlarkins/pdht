@@ -60,9 +60,9 @@
 
 CHT_TASK_TYPE_IMPLEMENTATION((CreateMatrix));
 cht::ID CreateMatrix::execute(CInt const & matSize,
-			      CInt const & baseIdx1,
-			      CInt const & baseIdx2,
-			      CInt const & matType) {
+    CInt const & baseIdx1,
+    CInt const & baseIdx2,
+    CInt const & matType) {
   int n = matSize;
   if(n <= CMatrix::BLOCK_SIZE) {
     // Lowest level
@@ -71,9 +71,9 @@ cht::ID CreateMatrix::execute(CInt const & matSize,
     A->elements.resize(n*n);
     for(int i = 0; i < n; i++)
       for(int j = 0; j < n; j++) {
-	int idx1 = baseIdx1 + i;
-	int idx2 = baseIdx2 + j;
-	A->elements[i*matSize+j] = matElementFunc(matType, idx1, idx2);
+        int idx1 = baseIdx1 + i;
+        int idx2 = baseIdx2 + j;
+        A->elements[i*matSize+j] = matElementFunc(matType, idx1, idx2);
       }
     return registerChunk(A, cht::persistent);
   }
@@ -87,8 +87,8 @@ cht::ID CreateMatrix::execute(CInt const & matSize,
     for(int i1 = 0; i1 < 2; i1++) {
       cht::ChunkID cid_baseIdx_i1 = registerChunk( new CInt(baseIdx1+i1*nHalf) );
       for(int i2 = 0; i2 < 2; i2++) {
-	cht::ChunkID cid_baseIdx_i2 = registerChunk( new CInt(baseIdx2+i2*nHalf) );
-	childTaskIDs[i1*2+i2] = registerTask<CreateMatrix>(cid_nHalf, cid_baseIdx_i1, cid_baseIdx_i2, getInputChunkID(matType));
+        cht::ChunkID cid_baseIdx_i2 = registerChunk( new CInt(baseIdx2+i2*nHalf) );
+        childTaskIDs[i1*2+i2] = registerTask<CreateMatrix>(cid_nHalf, cid_baseIdx_i1, cid_baseIdx_i2, getInputChunkID(matType));
       }
     }
     return registerTask<CreateMatrixFromIds>(getInputChunkID(matSize), childTaskIDs[0], childTaskIDs[1], childTaskIDs[2], childTaskIDs[3], cht::persistent);

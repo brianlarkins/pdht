@@ -159,7 +159,7 @@ typedef enum pdht_status_e pdht_status_t;
 typedef int pdht_handle_t;
 
 struct pdht_s;
-typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, ptl_pt_index_t *ptindex, ptl_process_t *rank);
+typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
 #define PDHT_MAX_PTES 256
 
@@ -187,6 +187,7 @@ struct pdht_s {
   unsigned          keysize;
   unsigned          elemsize;
   unsigned          entrysize;
+  unsigned          nptes;
   pdht_hashfunc     hashfn;
   unsigned          nextfree;
   pdht_mode_t       mode;

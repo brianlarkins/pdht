@@ -27,14 +27,14 @@
 
 // default table size should be bigger than 2x pending queue size
 #define PDHT_DEFAULT_TABLE_SIZE 300000
-#define PDHT_PENDINGQ_SIZE      100000
+#define PDHT_PENDINGQ_SIZE       10000
 
 #define PDHT_DEFAULT_NUM_PTES   10
 
 #define PDHT_MAXKEYSIZE 8
 
 #define __PDHT_ACTIVE_INDEX 1
-#define __PDHT_PENDING_INDEX _PDHT_ACTIVE_INDEX + PDHT_MAX_PTES
+#define __PDHT_PENDING_INDEX __PDHT_ACTIVE_INDEX + PDHT_MAX_PTES
 #define __PDHT_PENDING_MATCH 0xcafef00d
 
 
@@ -93,7 +93,7 @@ void pdht_dump_event(ptl_event_t *ev);
 
 
 // hash.c - PDHT hash function operations
-void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, ptl_process_t *rank);
+void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
 // poll.c - PDHT polling tasks
 void pdht_polling_init(pdht_t *dht);

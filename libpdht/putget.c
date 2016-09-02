@@ -27,6 +27,7 @@
 pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   ptl_match_bits_t mbits; 
   ptl_process_t rank;
+  uint32_t ptindex;
   ptl_size_t loffset;
   ptl_size_t lsize;
   ptl_ct_event_t ctevent;
@@ -43,7 +44,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   dht->stats.puts++;
 
   // 1. hash key -> rank + match bits + element
-  dht->hashfn(dht, key, &mbits, &rank);
+  dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
 
   // 1.5 figure out what we need to send to far end
@@ -86,7 +87,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
 
 
   // 2. put hash entry on target
-  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex, 
+  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex[ptindex], 
       mbits, 0, value, 0);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_put: PtlPut() failed\n");
@@ -180,6 +181,7 @@ error:
 pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   ptl_match_bits_t mbits; 
   unsigned long roffset = 0;
+  uint32_t ptindex;
   ptl_ct_event_t ctevent;
   ptl_process_t rank;
   char buf[PDHT_MAXKEYSIZE + dht->elemsize];
@@ -192,7 +194,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   PDHT_START_TIMER(dht, t2);
   dht->stats.gets++;
 
-  dht->hashfn(dht, key, &mbits, &rank);
+  dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
   PtlCTGet(dht->ptl.lmdct, &dht->ptl.curcounts);
   //pdht_dprintf("pdht_get: pre: success: %lu fail: %lu\n", dht->ptl.curcounts.success, dht->ptl.curcounts.failure);
@@ -202,7 +204,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 #endif  
 
 
-  ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex, mbits, roffset, NULL);
+  ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_get: PtlGet() failed\n");
     goto error;
