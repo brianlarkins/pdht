@@ -17,14 +17,18 @@ int main(int argc, char **argv);
 #define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
 #define READ_TIMER(TMR) TMR.total
 
-void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
+void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
+  //*ptindex = *(unsigned long *)key % dht->nptes;
+  *ptindex = 1;
 }
 
-void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
+void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
+  //*ptindex = *(unsigned long *)key % dht->nptes;
+  *ptindex = 1;
 }
 
 

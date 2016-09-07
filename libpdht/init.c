@@ -192,8 +192,8 @@ void pdht_init(void) {
   ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = 1024;
-  ni_req_limits.max_cts = PDHT_PENDINGQ_SIZE+2;
+  ni_req_limits.max_eqs = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+2;
+  ni_req_limits.max_cts = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+2;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_pt_index = 64;
@@ -207,7 +207,9 @@ void pdht_init(void) {
   ni_req_limits.max_waw_ordered_size = 512;
   ni_req_limits.max_war_ordered_size = 512;
   ni_req_limits.max_volatile_size = 512;
-#ifdef PTL_TOTAL_DATA_ORDERING
+#undef PDHT_WANT_DATA_ORDERING
+//#ifdef PTL_TOTAL_DATA_ORDERING
+#ifdef PDHT_WANT_DATA_ORDERING
   eprintf(" (configured for total data ordering on short get/puts)\n");
   ni_req_limits.features = PTL_TOTAL_DATA_ORDERING;
 #else

@@ -231,6 +231,7 @@ void pdht_dump_event(ptl_event_t *ev) {
 void pdht_print_stats(pdht_t *dht) {
 
   for (int p=0; p<c->size; p++)  {
+     u_int64_t total = 0;
      if (p == c->rank) {
        printf("pdht statistics for rank %d\n", p);
        printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
@@ -239,6 +240,11 @@ void pdht_print_stats(pdht_t *dht) {
        printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1), PDHT_READ_TIMER(dht,t2));
        printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3), PDHT_READ_TIMER(dht,t4));
        printf("\tt5:         %10.4f sec\tt6:       %10.4f sec\n", PDHT_READ_TIMER(dht,t5), PDHT_READ_TIMER(dht,t6));
+       for (int j=0; j<dht->nptes;j++) {
+         printf("\tptcount[%d] : %12lu\n", j, dht->stats.ptcounts[j]);
+         total += dht->stats.ptcounts[j];
+       }
+       printf("\ttotal ptcounts : %12lu\n", total);
        fflush(stdout);
      }
      pdht_barrier();

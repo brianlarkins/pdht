@@ -84,7 +84,7 @@ void pdht_polling_init(pdht_t *dht) {
       pdht_dprintf("pdht_polling_init: PtlPTAlloc failure [%d] : %s\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
-    pdht_dprintf("%d: %d %d\n", ptindex, __PDHT_PENDING_INDEX+ptindex, dht->ptl.putindex[ptindex]);
+    //pdht_dprintf("%d: %d %d\n", ptindex, __PDHT_PENDING_INDEX+ptindex, dht->ptl.putindex[ptindex]);
 
     // iterator = ht[PTE * QSIZE] (i.e. PENDINGQ_SIZE per PTE)
     iter = (char *)dht->ht + ((PDHT_PENDINGQ_SIZE * ptindex) * dht->entrysize); 

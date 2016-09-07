@@ -27,8 +27,8 @@
 
 #include <slurm/pmi.h>
 #include <portals4.h>
-#include <pdht.h>
 
+#define PDHT_MAX_PTES 256
 
 /**********************************************/
 /* statistics/performance data                */
@@ -43,12 +43,12 @@ struct pdht_timer_s {
 };
 typedef struct pdht_timer_s pdht_timer_t;
 
-
 struct pdht_stats_s {
   u_int64_t    puts;
   u_int64_t    gets;
   u_int64_t    collisions;
   u_int64_t    notfound;
+  u_int64_t    ptcounts[PDHT_MAX_PTES];
   pdht_timer_t ptimer; // put timer
   pdht_timer_t gtimer; // get timer
   pdht_timer_t t1; // utility timer 1
@@ -161,7 +161,6 @@ typedef int pdht_handle_t;
 struct pdht_s;
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
-#define PDHT_MAX_PTES 256
 
 /* portals-specific data structures */
 struct pdht_htportals_s {

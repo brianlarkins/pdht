@@ -196,6 +196,8 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
+  dht->stats.ptcounts[ptindex]++;
+
   PtlCTGet(dht->ptl.lmdct, &dht->ptl.curcounts);
   //pdht_dprintf("pdht_get: pre: success: %lu fail: %lu\n", dht->ptl.curcounts.success, dht->ptl.curcounts.failure);
 
@@ -209,7 +211,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     pdht_dprintf("pdht_get: PtlGet() failed\n");
     goto error;
   }
-  PDHT_STOP_TIMER(dht, t1);
 
   // check for completion or failure
   ret = PtlCTWait(dht->ptl.lmdct, dht->ptl.curcounts.success+1, &ctevent);
@@ -218,7 +219,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     goto error;
   }
 
-  PDHT_STOP_TIMER(dht, t2);
   //pdht_dprintf("pdht_get: event counter: success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
 
 
@@ -234,6 +234,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
         PtlCTInc(dht->ptl.lmdct, ctevent);
         dht->stats.notfound++;
         rval = PdhtStatusNotFound;
+        PDHT_STOP_TIMER(dht, t2);
         goto done;
       } else {
         pdht_dprintf("pdht_get: found fail event: %s\n", pdht_event_to_string(ev.type));   
@@ -245,6 +246,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     }
   }
 
+  PDHT_STOP_TIMER(dht, t1);
   //pdht_dprintf("collision checking: %lu == %lu (size: %d)\n", *(u_int64_t *)buf, *(u_int64_t *)key, dht->keysize);
 
   // fetched entry has key + value concatenated, validate key

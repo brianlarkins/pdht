@@ -3,7 +3,7 @@
 
 #include <pdht.h>
 
-#define NITER 1000
+#define NITER 10000
 
 // polling
 // 20000 = unit latency of 14.183 ms (283s run)
@@ -46,9 +46,10 @@ int eprintf(const char *format, ...);
 int main(int argc, char **argv);
 
 
-void fakehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, ptl_process_t *rank) {
+void fakehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
+  *ptindex = *(unsigned long *)key % dht->nptes;
 }
 
 

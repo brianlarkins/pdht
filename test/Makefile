@@ -24,6 +24,9 @@ csort: pdhtlibs csort.c
 latency: pdhtlibs latency.c
 	$(CC) $(CFLAGS) -o latency latency.c $(PDHT_LIBS)
 
+matchlength: pdhtlibs matchlength.c
+	$(CC) $(CFLAGS) -o matchlength matchlength.c $(PDHT_LIBS)
+
 notfound: pdhtlibs notfound.c
 	$(CC) $(CFLAGS) -o notfound notfound.c $(PDHT_LIBS)
 

@@ -6,8 +6,8 @@
 
 #define PROGRESS_BAR
 
-#define NHASH 10000
-//#define NHASH 80000
+//#define NHASH 10000
+#define NHASH 20000
 //#define NHASH 160000
 #define modulus 1073741827
 #define multipl 33554467
@@ -17,6 +17,8 @@
 typedef unsigned long int numb;
 
 extern pdht_context_t *c;
+
+int ptcount[100];
 
 numb val;
 int hashlen, collisions, localhashlen, total_collisions;
@@ -74,6 +76,8 @@ void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, 
   *mbits = *(ptl_match_bits_t *)key; // treat long key same as match bits
   *ptindex = *(uint64_t *)key % dht->nptes;
 
+  //ptcount[*ptindex]++;
+
   k = *(numb *)key; // deal with as a long
 
   dest_pe = k / localhashlen;
@@ -91,7 +95,8 @@ void hashlookup(pdht_t *ht, long k, long v) {
 
   while (1) {
 
-    ret = pdht_get(ht, &k, &vv);
+    //ret = pdht_get(ht, &k, &vv);
+    ret = PdhtStatusNotFound;
     if (ret == PdhtStatusNotFound) {
       // insert the entry
       pdht_put(ht, &k, &v);
@@ -161,9 +166,11 @@ int main(int argc, char **argv) {
 
   for (int iter=0; iter < ITERCOUNT;iter++) {
     resetvalue();
+    fflush(stdout);
 
 #ifdef PROGRESS_BAR
     eprintf("Pass %d: ", iter); 
+    fflush(stdout);
 #endif
 
     for (int i = 1; i <= NHASH; i++) {
