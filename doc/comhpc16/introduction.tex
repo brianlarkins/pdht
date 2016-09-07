@@ -9,16 +9,16 @@ Address Space (PGAS) parallel programming models as well as sparse and compact
 data representations.
 
 PGAS data models are supported by a number of industry standard parallel
-programming frameworks, including Unified Parallel C~\cite{upc-spec},
-OpenSHMEM~\cite{osh-spec}, Fortran 2008 Coarrays~\cite{fortran}, and the MPI
-Remote Memory Access (RMA) interface~\cite{mpi-spec}.  Such models can be used
+programming frameworks, including Unified Parallel C~\cite{upc-13-spec},
+OpenSHMEM~\cite{openshmem-1.3}, Fortran 2008 Coarrays~\cite{reid:08}, and the MPI
+Remote Memory Access (RMA) interface~\cite{mpi-forum:15}.  Such models can be used
 to aggregate the memory capacity of multiple nodes in an HPC system to provide
 an efficient, distributed data store.  However, the data stored in the PGAS is
 traditionally referenced using direct pointers or offsets with respect to the
 memory where the data is stored.
 
 This model has been effective for storing dense, regular data (e.g., dense
-arrays~\cite{global-arrays}); however, it presents significant challenges to
+arrays~\cite{ga}); however, it presents significant challenges to
 storing loosely-structured or sparse data.  For such data, calculating the
 desired location in remote memory may not be possible.  Instead, one or more
 lookups must be performed to identify the storage locations, leading to
@@ -59,11 +59,11 @@ communication in order to establish a partitioned, global logical address space
 (PGLAS) that goes beyond traditional PGAS approaches by allowing applications
 to address shared, distributed data using an application-meaningful logical
 naming scheme rather than a direct memory address.  Our work utilizes the
-Portals~\cite{portals} network programming interface.  Portals provides a set
+Portals~\cite{portals4} network programming interface.  Portals provides a set
 of communication primitives that are intended to efficiently support a variety
 of HPC communication middleware systems, including MPI and PGAS models, while
 also lending themselves to efficient hardware
-implementation~\cite{cray-xt,bull-bxi}.
+implementation~\cite{brightwell:micro:06,bxi}.
 
 %Portals supports specific programming abstractions
 %useful to implement efficient systems for both message-passing and
