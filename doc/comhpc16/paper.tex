@@ -55,22 +55,32 @@
 %\markboth{G. Zhou et al.}{A Multifrequency MAC Specially Designed for WSN Applications}
 
 % Title portion
-\title{A Paper About a Hash Table}
+\title{PGLAS: Extending Message Passing Runtimes to Support Partitioned, Global Logical Address Spaces}
 \author{D. Brian Larkins
 \affil{Rhodes College}
 James Dinan
-\affil{Intel}}
+\affil{Intel Corp.}}
 
 
 \begin{abstract}
-This is an abstract abstract. This is totally a placeholder that is
-just designed to take up approximately the correct amount of space on
-the page. This will totally need to be re-written before we really get
-anywhere with it. I just checked and it's only at about 50 words right
-now. I need to come up with about another fifty words or so until I
-can get back to writing the introduction. 86. That's not quite
-100. We can put another fourteen words to paper, at which point it
-will be deemed ``sufficiently long''.  This should just about do it.
+
+Partitioned Global Address Space (PGAS) parallel programming models can provide
+an efficient mechanism for managing shared data stored across nodes in a
+distributed memory system.  However, these models are traditionally directly
+addressed and for applications with loosely-structured or sparse data,
+determining the location of a given data element within a PGAS can incur
+significant overheads.  When location resolution structures are remote,
+applications incur overhead from the network latency of remote lookups.
+Further, for large data, caching such structures locally incurs space and
+coherence overheads that can limit scaling.
+
+We observe that the matching structures used by implementations of the Message
+Passing Interface (MPI) establish a separation between incoming data writes and
+the location where data will be stored.  In this work, we investigate extending
+such structures to establish a layer of indirection between incoming data reads
+and the location where data will be stored, effectively extending PGAS models
+with logical addressing.
+
 \end{abstract}
 
 
@@ -108,15 +118,15 @@ will be deemed ``sufficiently long''.  This should just about do it.
 % End generated code
 %
 
-\keywords{parallel data structures, hash tables, hardware acceleration, Portals}
+\keywords{partitioned global address space, parallel data structures, hash tables, hardware acceleration, Portals}
 
-\acmformat{D. Brian Larkins, James Dinan, 2016. A paper about a hash table.}
+\acmformat{D. Brian Larkins, James Dinan, 2016. PGLAS: Extending Message Passing Runtimes to Support Partitioned, Global Logical Address Spaces}
 
 \begin{bottomstuff}
 
 Author's addresses: D. Brian Larkins, Department of Mathematics and Computer Science,
 Rhodes College, Memphis, TN;
-James Dinan, Intel Corporation, Boston, MA.
+James Dinan, Intel Corporation, Hudson, MA.
 
 \end{bottomstuff}
 
@@ -132,7 +142,9 @@ James Dinan, Intel Corporation, Boston, MA.
 
 % Acknowledgments
 \begin{acks}
-The authors would like to thank XSEDE for their big supercomputer powers.
+This work used the Extreme Science and Engineering Discovery Environment
+(XSEDE), which is supported by National Science Foundation grant number
+ACI-1053575.
 \end{acks}
 
 % Bibliography

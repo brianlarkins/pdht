@@ -1,3 +1,6 @@
+SOURCES = $(shell find . -name '*.tex' -print)
+BIBS    = $(shell find . -name '*.bib' -print)
+
 TEX = paper.tex
 
 CLS = acmsmall.cls
@@ -12,7 +15,7 @@ PWD= ${shell pwd}
 
 all: $(PDF)
 
-%.pdf: %.tex $(CLS) $(STY)
+%.pdf: %.tex $(CLS) $(STY) $(SOURCES) $(BIBS)
 	pdflatex $*
 	bibtex $*
 	pdflatex $*
