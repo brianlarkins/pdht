@@ -1,45 +1,87 @@
 \section{Introduction}
 
-Advances in chip design have led to a rise in the number of processor
-cores within a single compute node. While this has added more capacity
-for computation within high-performance computing (HPC) systems, it
-comes at the expense of greater contention for shared resources within
-the system.
+Advances in processor architecture have led to a rise in the number of
+processor cores within a single compute node.  While this trend continues to
+increase the computational capacity of high-performance computing (HPC)
+systems, the amount of memory available per core has not increased at the same
+rate.  As a result, there has been renewed interest in both Partitioned Global
+Address Space (PGAS) parallel programming models as well as sparse and compact
+data representations.
 
-Access to the interconnect network in HPC systems is an area where
-this contention can cause a bottleneck, which may severely impact
-communication throughput and overall system performance. To address
-this problem, modern network interface hardware has been augmented
-with significant computing power and additional circuitry to offload
-many aspects of communication processing.
+PGAS data models are supported by a number of industry standard parallel
+programming frameworks, including Unified Parallel C~\cite{upc-spec},
+OpenSHMEM~\cite{osh-spec}, Fortran 2008 Coarrays~\cite{fortran}, and the MPI
+Remote Memory Access (RMA) interface~\cite{mpi-spec}.  Such models can be used
+to aggregate the memory capacity of multiple nodes in an HPC system to provide
+an efficient, distributed data store.  However, the data stored in the PGAS is
+traditionally referenced using direct pointers or offsets with respect to the
+memory where the data is stored.
 
-Offloading communication is typically performed by a network interface
-stack, such as the Portals network programming interface from Sandia
-or OpenFabrics' OFI/OFED. Among recent innovations in this
-area, Atos/Bull has released their BXI interconnect fabric which
-provides hardware support for the relatively new Portals 4.0
-specification. Parallel applications that rely on middleware systems
-constructed using the Portals interface will utilize new network
-offload hardware automatically when run on systems that support it.
+This model has been effective for storing dense, regular data (e.g., dense
+arrays~\cite{global-arrays}); however, it presents significant challenges to
+storing loosely-structured or sparse data.  For such data, calculating the
+desired location in remote memory may not be possible.  Instead, one or more
+lookups must be performed to identify the storage locations, leading to
+significant runtime overheads.  When location resolution information is stored
+remotely, the application incurs additional network latency overheads on each
+access.  In some instances, the layout of the data may be fixed or slowly
+changing, allowing location resolution structures to be replicated or cached
+locally.  However, caching such structures consumes limited memory capacity and
+can incur additional overheads to maintain cache coherence.
 
-The Portals interface is provides a set of network access operations
-that are intended to support efficient implementation of communication
-middleware systems. Portals supports specific programming abstractions
-useful to implement efficient systems for both message-passing and
-one-sided systems.  Some interface/runtime systems focus on providing
-high-performance message-passing semantics (e.g. OpenMPI, mvapich),
-while others provide one-sided communication models to implement a
-partitioned global address space (PGAS) (e.g. UPC, OpenSHMEM).
+%Access to the interconnect network in HPC systems is an area where
+%this contention can cause a bottleneck, which may severely impact
+%communication throughput and overall system performance. To address
+%this problem, modern network interface hardware has been augmented
+%with significant computing power and additional circuitry to offload
+%many aspects of communication processing.
 
-For message-passing, Portals provides a {\em matching interface}
-framework for supporting a two-sided communication model based on
-pairs of matched sends and receives. Portals also povides a {\em
-  non-matching interface} that foregoes the complexity of a matched
-two-sided communciations system in favor of a lightweight, efficient
-system capable of one-sided operations used in PGAS systems.
+The message matching model used by the Message Passing Interface (MPI)
+establishes a layer of separation between a sender and the location where data
+will be written at the receiver.  Instead of specifying a direct location where
+data will be stored, the sender specifies an application-meaningful {\em tag}
+that the receiver uses to associate the transmission with a data buffer.
+However, while MPI provides a model for pushing data to a tagged location at a
+remote node, it does not support retrieving data from a tagged location at a
+remote node.
 
-While Portals was designed to be a foundation for efficient,
-high-level communications systems, we have developed a distributed
+%Offloading communication is typically performed by a network interface
+%stack, such as the Portals network programming interface from Sandia
+%or OpenFabrics' OFI/OFED. Among recent innovations in this
+%area, Atos/Bull has released their BXI interconnect fabric which
+%provides hardware support for the relatively new Portals 4.0
+%specification. Parallel applications that rely on middleware systems
+%constructed using the Portals interface will utilize new network
+%offload hardware automatically when run on systems that support it.
+
+In this work, we build on networking structures designed to support MPI
+communication in order to establish a partitioned, global logical address space
+(PGLAS) that goes beyond traditional PGAS approaches by allowing applications
+to address shared, distributed data using an application-meaningful logical
+naming scheme rather than a direct memory address.  Our work utilizes the
+Portals~\cite{portals} network programming interface.  Portals provides a set
+of communication primitives that are intended to efficiently support a variety
+of HPC communication middleware systems, including MPI and PGAS models, while
+also lending themselves to efficient hardware
+implementation~\cite{cray-xt,bull-bxi}.
+
+%Portals supports specific programming abstractions
+%useful to implement efficient systems for both message-passing and
+%one-sided systems.  Some interface/runtime systems focus on providing
+%high-performance message-passing semantics (e.g. OpenMPI, mvapich),
+%while others provide one-sided communication models to implement a
+%partitioned global address space (PGAS) (e.g. UPC, OpenSHMEM).
+%
+%For message-passing, Portals provides a {\em matching interface}
+%framework for supporting a two-sided communication model based on
+%pairs of matched sends and receives. Portals also povides a {\em
+%  non-matching interface} that foregoes the complexity of a matched
+%two-sided communciations system in favor of a lightweight, efficient
+%system capable of one-sided operations used in PGAS systems.
+
+Our approach demonstrates that existing Portals constructs designed to support
+MPI messaging can be repurposed to support a PGLAS.  In particular, we have
+developed a distributed
 key/value store that is build directly on top of Portals
 primitives. The novel use of these primitive communication operations
 provides a hardware accelerated parallel hash table system. In this
