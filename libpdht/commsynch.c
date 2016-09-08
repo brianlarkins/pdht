@@ -120,7 +120,6 @@ void pdht_barrier_init(pdht_context_t *c) {
   ptl_handle_me_t me_handle;
   int ret;
 
-
   // initialize our barrier count to one (for ourself)
   c->ptl.barrier_count = 1;
 

@@ -45,17 +45,16 @@ int main(int argc, char **argv) {
   pdht_timer_t ltimer;
   unsigned long key = 0; // whatever, just increasing monotonically
   void *val = NULL;
-  int opt, maxiters = NITER;
-  int mlengths[10] =  { 1, 10, 100, 1000, 2000, 5000, 10000, 20000, 50000, 100000};
+  int opt, maxentries = NITER;
   pdht_timer_t gtimer,total;
 
-  while ((opt = getopt(argc, argv, "i:s:")) != -1) {
+  while ((opt = getopt(argc, argv, "v:s:")) != -1) {
     switch (opt) {
-      case 'i':
-        maxiters = atoi(optarg);
-        break;
       case 's':
         elemsize = atoi(optarg);
+        break;
+      case 'v':
+        maxentries = atoi(optarg);
         break;
     } 
   }
@@ -67,45 +66,46 @@ int main(int argc, char **argv) {
   // create hash table
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
 
-  if (c->size != 2) {
-    if (c->rank == 0) {
-      printf("requires two (and only two) processes to run\n");
-    }
-    goto done;
-  }
+  eprintf("starting run with %d processes, each with %d entries\n", c->size, maxentries);
 
   START_TIMER(total);
 
-  pdht_sethash(ht, remotehash);
+  //pdht_sethash(ht, remotehash);
   //pdht_sethash(ht, localhash);
 
-  for (int iter=0; iter < 100000; iter++) {
-    if (c->rank == 0) {
+  // each process puts maxentries elements into distributed hash
+  if (c->rank == 0) {
+    key = 0;
+    for (int iter=0; iter < c->size * maxentries; iter++) {
       pdht_put(ht, &key, val);
       key++;
-    } 
+    }
   }
+
+  sleep(5);
+  pdht_barrier();
+
+
+  // now we time getting maxentries
+
+
+  key = maxentries * c->rank;
+  START_TIMER(gtimer);
+  for (int iter=0; iter < maxentries; iter++) {
+    pdht_get(ht, &key, val);
+    key++;
+  }
+  STOP_TIMER(gtimer);
+
+  printf("%d: %12.7f ms\n", c->rank,  (READ_TIMER(gtimer)*1000));
 
   pdht_barrier();
 
-  // for each matchlist length in mlengths...
-  for (int len=0; len<10; len++) {
-    if (c->rank == 0) {
-      key = mlengths[len] - 1;
-      START_TIMER(gtimer);
-      for (int iter=0; iter < maxiters; iter++) {
-        pdht_get(ht, &key, val);
-      }
-      STOP_TIMER(gtimer);
-      eprintf(" %7d %12.7f\n", mlengths[len], (READ_TIMER(gtimer)/(double)maxiters)*1000);
-    }
-    pdht_barrier();
-  }
+  STOP_TIMER(total);
+  eprintf("total elapsed time: %12.7f\n", READ_TIMER(total));
 
   pdht_print_stats(ht);
 
-  STOP_TIMER(total);
-  eprintf("total elapsed time: %12.7f\n", READ_TIMER(total));
 done:
   pdht_free(ht);
   free(val);

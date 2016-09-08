@@ -29,7 +29,7 @@
 #define PDHT_DEFAULT_TABLE_SIZE 500000
 #define PDHT_PENDINGQ_SIZE       10000
 
-#define PDHT_DEFAULT_NUM_PTES   2
+#define PDHT_DEFAULT_NUM_PTES   10
 
 #define PDHT_MAXKEYSIZE 8
 
@@ -40,6 +40,9 @@
 
 #define __PDHT_BARRIER_INDEX 0
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
+
+#define offsetof(type, member)  __builtin_offsetof (type, member)
+
 
 /**
  * @file

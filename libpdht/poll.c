@@ -267,6 +267,7 @@ void *pdht_poll(void *arg) {
 
       } else {
         pdht_dprintf("pdht_poll: got event for %s\n", pdht_event_to_string(ev.type));
+        pdht_dump_event(&ev);
       }
     } else {
       // check for other problems

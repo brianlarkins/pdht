@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
   } else {
 
     pdht_barrier();
-    printf("%d: calling poll()\n", c->rank); 
-    pdht_poll(ht);
+    printf("%d: not calling poll()\n", c->rank); 
+    //pdht_poll(ht);
     pdht_barrier();
 
   }
