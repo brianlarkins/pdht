@@ -32,7 +32,7 @@ Efficient and scalable support for translation of keys to memory locations is a
 performance-critical, new requirement imposed by PGLAS.  Traditional one-sided
 communication operations can satisfy the one-sided and asynchronous
 requirements of key translation.  However, multiple operations are required to
-query a remote translation structure, leading to high overheads.  We observe
+query a remote translation structure, leading to high overheads~\cite{namashivayam:15}.  We observe
 that the user-supplied tag used by MPI runtimes to match an incoming message
 (i.e., put) with a posted receive operation supports a key/value-like remote
 write model.  When MPI message processing is performed directly by the NIC,
@@ -82,21 +82,26 @@ sparse data structures given the right application.
 
 \subsection{Related Work}
 
-Other people have done things like this before.
+The idea of logically addressing data across memories in a distributed system
+has been explored in a number of other models.  Distributed, shared key/value
+stores are an intrinsic part of the Piccolo programming model~\cite{power:10}.
+The Linda programming model~\cite{ahuja:86} is build around tuple spaces, which
+allow data to be inserted, read, and removed from global memory and data items
+are identified through a user-supplied tuple.  Such models are of renewed
+interest in the context of resilience~\cite{wilke:14}.  Distributed object
+models, such as Orca~\cite{bal:92}, reference shared data through graphs rather
+than direct pointers.  In the Open Community Runtime (OCR)~\cite{OCR}, data
+blocks (DBs) are identified by a globally unique ID, which is assigned by the
+OCR runtime system and used to portably reference a DB.  Finally, migratable
+object models, such as Charm++~\cite{kale:93}, support a variety of methods for
+representing and querying object collections.
 
-PGLAS:
-Linda
-Orca
-OCR GUIDs
-HPX global space
-Charm++ and mobile object/actor models
-
-Parallel, Distributed Hash Tables:
-Torsten
-SHMEM stuff
-
-Approaches to managing sparsity:
-Global chunks/trees
+Hash tables are also commonly used to store sparse or loosely structured data
+and they have been studied in the context of MPI and popular PGAS
+models~\cite{maynard:12}.  In addition, PGAS-like hierarchical approaches to
+managing sparse spatial decomposition have been proposed~\cite{larkins:08}
+along with runtime methods to manage this data and exploit spatial
+locality~\cite{larkins:12}.
 
 \section{The Portals Networking Interface}
 
