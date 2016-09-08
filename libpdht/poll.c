@@ -95,7 +95,7 @@ void pdht_polling_init(pdht_t *dht) {
       me.start  = &hte->key; // each entry has a unique memory buffer (starts with key)
 
       //pdht_dprintf("init append: %d %d userp: %p\n", i, pdht_find_bucket(dht, hte), hte);
-      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX+ptindex, &me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_polling_init: [%d] PTE: %d PtlMEAppend error: %s\n", i, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
         exit(1);

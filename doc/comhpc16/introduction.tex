@@ -19,9 +19,9 @@ memory where the data is stored.
 
 This model has been effective for storing dense, regular data (e.g., dense
 arrays~\cite{ga}); however, it presents significant challenges to
-storing loosely-structured or sparse data.  For such data, calculating the
+storing loosely-structured or sparse data.  For such data, directly calculating the
 desired location in remote memory may not be possible.  Instead, one or more
-lookups must be performed to identify the storage locations, leading to
+indirections must be performed to identify the storage locations, leading to
 significant runtime overheads.  When location resolution information is stored
 remotely, the application incurs additional network latency overheads on each
 access.  In some instances, the layout of the data may be fixed or slowly
@@ -36,7 +36,7 @@ can incur additional overheads to maintain cache coherence.
 %with significant computing power and additional circuitry to offload
 %many aspects of communication processing.
 
-The message matching model used by the Message Passing Interface (MPI)
+The message matching model used by the Message Passing Interface (MPI)~\cite{mpi-forum:15}
 establishes a layer of separation between a sender and the location where data
 will be written at the receiver.  Instead of specifying a direct location where
 data will be stored, the sender specifies an application-meaningful {\em tag}
@@ -58,8 +58,13 @@ In this work, we build on networking structures designed to support MPI
 communication in order to establish a partitioned, global logical address space
 (PGLAS) that goes beyond traditional PGAS approaches by allowing applications
 to address shared, distributed data using an application-meaningful logical
-naming scheme rather than a direct memory address.  Our work utilizes the
-Portals~\cite{portals4} network programming interface.  Portals provides a set
+naming scheme rather than a direct memory address.
+Further, our scheme uses a scalable, low-overhead method for storing and
+accessing location resolution structure by maintaining them at the destination
+node and performing location resolution during message processing.
+
+Our work utilizes the
+Portals 4 network programming interface~\cite{portals4}.  Portals provides a set
 of communication primitives that are intended to efficiently support a variety
 of HPC communication middleware systems, including MPI and PGAS models, while
 also lending themselves to efficient hardware
@@ -71,7 +76,7 @@ implementation~\cite{brightwell:micro:06,bxi}.
 %high-performance message-passing semantics (e.g. OpenMPI, mvapich),
 %while others provide one-sided communication models to implement a
 %partitioned global address space (PGAS) (e.g. UPC, OpenSHMEM).
-%
+
 %For message-passing, Portals provides a {\em matching interface}
 %framework for supporting a two-sided communication model based on
 %pairs of matched sends and receives. Portals also povides a {\em
@@ -79,28 +84,13 @@ implementation~\cite{brightwell:micro:06,bxi}.
 %two-sided communciations system in favor of a lightweight, efficient
 %system capable of one-sided operations used in PGAS systems.
 
-Our approach demonstrates that existing Portals constructs designed to support
-MPI messaging can be repurposed to support a PGLAS.  In particular, we have
-developed a distributed
-key/value store that is build directly on top of Portals
-primitives. The novel use of these primitive communication operations
-provides a hardware accelerated parallel hash table system. In this
-paper, we describe the implementation of a parallel distributed hash
-table (PDHT) that is implemented using the Portals programming
-interface. This work is based on the following insights: (1)
-implementing data structures using Portals leads to an opportunity for
-efficient implementation with respect to known hardware offload
-engines and (2) that operations on a hash table can be readily mapped
-to hardware accelerated operations within Portals that would be
-difficult to express exclusively within a traditional message-passing
-or PGAS system.
-
-This work makes the following contributions: First, we describe the
-design and implementation of a one-sided distributed hash table that
-is amenable to network hardware offload in an HPC environment. Second,
-we describe a novel application of the Portals matching interface
-operations to realize a distributed data structure. Lastly, we provide
-an experimental validation of our approach.
+In this paper, we describe the implementation of a parallel distributed hash
+table (PDHT) that supports a PGLAS data storage model and is implemented using
+the Portals networking interface.  Our approach demonstrates that existing
+Portals constructs designed to support MPI messaging can be repurposed to
+support a PGLAS and the novel use of these primitive communication operations
+can further provide a hardware-accelerated parallel hash table on systems where
+the Portals constructs are supported through an offload NIC.
 
 
 %%% Local Variables:

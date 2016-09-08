@@ -74,7 +74,7 @@ Other people have done things like this before.
   \label{fig:portals_put}
 \end{figure}
 
-The Portals framework uses several low-level data abstractions that
+The Portals framework provides several low-level data abstractions that
 are used to implement the \pdht system. \pdht is based on a one-sided
 communication model to avoid the need for matched/blocking calls and
 additional synchronization. While Portals provides support for both
@@ -91,7 +91,7 @@ Figure \ref{fig:portals_put}.
 Portals defines two primary roles for communication operations. The
 {\em initiator} is the process that is issuing the communication
 request and the {\em target} is the process receiving the
-requests. The initator defines a {\em memory descriptor}, a
+requests. The initiator defines a {\em memory descriptor}, a
 region to be used for Portals operations and is able to check the
 success or failure of various events. Specific completion information
 and notifications may be only visible to the initiator and not the
