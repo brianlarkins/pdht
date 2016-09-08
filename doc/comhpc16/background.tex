@@ -1,19 +1,68 @@
 \section{Background}
 
+In this work, we explore efficient runtime support for partitioned, global
+logical address spaces (PGLAS).  We define the PGLAS data model to be similar
+to PGAS data models, which have been in use for over two decades, with the
+distinction that data elements are logically addressed using an
+application-meaningful {\em key}.  Each key is mapped to a partition of the
+global address space and an application can query locality information for a
+given key or iterate over local keys, e.g., to support owner-computes models of
+work distribution.  In contrast, PGAS models traditionally use a direct
+addressing model, such as a remote address (OpenSHMEM and UPC), an offset into
+a remote buffer (MPI), or an index into a regular array (Fortran Coarrays).
+While there are differences in memory addressing and layout, PGLAS utilizes the
+same one-sided, asynchronous data access model as existing PGAS approaches and
+data in global space is accessed using one-sided get (read), put
+(write), and atomic access functions.  Thus, PGLAS is a member of the broader
+family of distributed key/value stores where data organization and access are
+similar to PGAS models.
+
+Most PGAS models require global knowledge of data layout in order to
+communicate efficiently.  For example, in the OpenSHMEM model, the layout of
+the globally accessible space must be identical at all processes.  As a result,
+management of globally accessible memory must be performed collectively.  In
+contrast, PGLAS introduces a layer of indirection that translates logical
+addresses to direct addresses.  The introduction of this layer
+has the potential to relax the strong memory management semantics required by
+most PGAS models, enabling more dynamic usage models.  In particular, PGLAS can
+support dynamic insertions and removals of key/value pairs in the global
+address space.
+
+Efficient and scalable support for translation of keys to memory locations is a
+performance-critical, new requirement imposed by PGLAS.  Traditional one-sided
+communication operations can satisfy the one-sided and asynchronous
+requirements of key translation.  However, multiple operations are required to
+query a remote translation structure, leading to high overheads.  We observe
+that the user-supplied tag used by MPI runtimes to match an incoming message
+(i.e., put) with a posted receive operation supports a key/value-like remote
+write model.  When MPI message processing is performed directly by the NIC,
+this model can be seen to support key/value-style put operations.  However,
+there are several key differences between MPI messaging and PGLAS
+communication.  First, MPI requires message ordering, whereas PGLAS utilizes
+the PGAS unordered-by-default communication model.  Further, when an MPI
+runtime receives a message for which there is no matching entry, the message is
+treated as unexpected and will be accepted once a matching receive operation is
+posted.  In contrast, PGLAS models reject remote accesses to nonexistent keys.
+Finally, a posted receive operation is consumed by an incoming message, whereas
+a PGLAS model maintains the key/value association until the entry is freed.
 
 % motivation
+\subsection{Hash Tables}
 
 Hash tables are one of the most widely used data
 structures in sequential programs. Data is stored by mapping a key to
 a value. Values may be retrieved in a random access manner by
 providing the key to get or put operations on the hash table.
-
+%
 % serial vs. parallel approaches
 Hash tables can be implemented with a myriad of different techniques,
 but are traditionally implemented sequentially as an array of pointers
 to objects. Parallel implementations typically distribute table data
 across nodes, requiring that the hash table stores the entire object
 and not simply a reference.
+%
+In this work, we explore the implementation of a parallel, distributed hash
+table as a first implementation of the PGLAS data model.
 
 % sparsity
 \subsection{Sparsity}
@@ -31,18 +80,25 @@ coordinate system and the corresponding data. A global distributed
 hash table could replace a complicated and difficult to parallelize
 sparse data structures given the right application.
 
-\subsection{PGLAS}
-
 \subsection{Related Work}
 
 Other people have done things like this before.
 
+PGLAS:
 Linda
 Orca
 OCR GUIDs
 HPX global space
+Charm++ and mobile object/actor models
 
-\section{Portals 4}
+Parallel, Distributed Hash Tables:
+Torsten
+SHMEM stuff
+
+Approaches to managing sparsity:
+Global chunks/trees
+
+\section{The Portals Networking Interface}
 
 % portals background
 
@@ -73,14 +129,6 @@ HPX global space
 %            - flow control
 
 
-% use figure* to span both cols
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figs/portals_put}
-  \caption{Portals data structures and example put operation.}
-  \label{fig:portals_put}
-\end{figure}
-
 The Portals framework provides several low-level data abstractions that
 are used to implement the \pdht system. \pdht is based on a one-sided
 communication model to avoid the need for matched/blocking calls and
@@ -94,6 +142,14 @@ than conventional PGAS techniques. Portals defines several concepts
 and abstractions that are necessary to the understanding of the
 \pdht. The relationship between these different entities is shown in
 Figure \ref{fig:portals_put}.
+
+% use figure* to span both cols
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figs/portals_put}
+  \caption{Portals data structures and example put operation.}
+  \label{fig:portals_put}
+\end{figure}
 
 Portals defines two primary roles for communication operations. The
 {\em initiator} is the process that is issuing the communication
