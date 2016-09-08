@@ -3,11 +3,11 @@ BIBS    = $(shell find . -name '*.bib' -print)
 
 TEX = paper.tex
 
-CLS = acmsmall.cls
+CLS = IEEEtran.cls
 
-STY = acmcopyright.sty
+STY = 
 
-PACKAGE = acmsmall
+PACKAGE = 
 
 PDF = ${TEX:%.tex=%.pdf}
 
@@ -26,4 +26,4 @@ clean:
 	$(RM) *.aux *.log  *.blg
 
 distclean: clean
-	$(RM) $(PDF) acm-update.pdf *.bbl
+	$(RM) $(PDF) *.bbl
