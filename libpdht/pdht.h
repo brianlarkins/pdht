@@ -117,6 +117,7 @@ struct pdht_context_s {
   int              dhtcount;     //!< DHTs that have been created
   int              rank;         //!< process rank
   int              size;         //!< process count
+  int              dbglvl;       //!< debug level for error printing
   pdht_portals_t   ptl;          //!< Portals 4 ADTs
 };
 typedef struct pdht_context_s pdht_context_t;

@@ -18,11 +18,19 @@
 
 #define PDHT_DEBUG
 //#define PDHT_DEBUG_TRACE
+#define PDHT_DEBUG_NONE     0
+#define PDHT_DEBUG_WARN     1
+#define PDHT_DEBUG_NAG      2
+#define PDHT_DEBUG_VERBOSE  3
 
 #ifdef PDHT_DEBUG
   #define pdht_dprintf(...) pdht_dbg_printf(__VA_ARGS__)
+  #define pdht_lprintf(lvl, ...) pdht_lvl_dbg_printf(lvl, __VA_ARGS__)
+  #define pdht_eprintf(lvl, ...) pdht_lvl_dbg_eprintf(lvl, __VA_ARGS__)
 #else
   #define pdht_dprintf(...) ;
+  #define pdht_lprintf(...) ;
+  #define pdht_eprintf(...) ;
 #endif
 
 // default table size should be bigger than 2x pending queue size
@@ -90,6 +98,8 @@ void init_only_barrier(void);
 // util.c
 int  eprintf(const char *format, ...);
 int  pdht_dbg_printf(const char *format, ...);
+int  pdht_lvl_dbg_printf(int lvl, const char *format, ...);
+int  pdht_lvl_dbg_eprintf(int lvl, const char *format, ...);
 char *pdht_ptl_error(int error_code);
 char *pdht_event_to_string(ptl_event_kind_t evtype);
 void pdht_dump_event(ptl_event_t *ev);
