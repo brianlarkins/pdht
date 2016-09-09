@@ -288,8 +288,6 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   ptl_me_t me;
   int ret;
 
-  // need: ptindex and matchbits
-
   // find our next spot 
   index = (char *)dht->ht;
   index += (dht->nextfree * dht->entrysize); // pointer math

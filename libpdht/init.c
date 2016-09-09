@@ -185,8 +185,8 @@ void pdht_init(void) {
 
   init_pmi();
 
-  eprintf("Initializing Portals 4\n");
-  eprintf("Initializing Network Interface\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Portals 4\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Network Interface\n");
 
   // request portals NI limits
   ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
@@ -210,7 +210,7 @@ void pdht_init(void) {
 #undef PDHT_WANT_DATA_ORDERING
 //#ifdef PTL_TOTAL_DATA_ORDERING
 #ifdef PDHT_WANT_DATA_ORDERING
-  eprintf(" (configured for total data ordering on short get/puts)\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, " (configured for total data ordering on short get/puts)\n");
   ni_req_limits.features = PTL_TOTAL_DATA_ORDERING;
 #else
   ni_req_limits.features = 0;
@@ -237,27 +237,26 @@ void pdht_init(void) {
       &(c->ptl.lni));
 #endif // matching or non-matching?
 
-#define DEBUG_NI_LIMITS
-#ifdef DEBUG_NI_LIMITS
-     eprintf("\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
-     eprintf("\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
-     eprintf("\tmax_mds: %d\n", c->ptl.ni_limits.max_mds);
-     eprintf("\tmax_eqs: %d\n", c->ptl.ni_limits.max_eqs);
-     eprintf("\tmax_cts: %d\n", c->ptl.ni_limits.max_cts);
-     eprintf("\tmax_pt_index: %d\n", c->ptl.ni_limits.max_pt_index);
-     eprintf("\tmax_iovecs: %d\n", c->ptl.ni_limits.max_iovecs);
-     eprintf("\tmax_list_size: %d\n", c->ptl.ni_limits.max_list_size);
-     eprintf("\tmax_triggered_ops: %d\n", c->ptl.ni_limits.max_triggered_ops);
-     eprintf("\tmax_msg_size: %d\n", c->ptl.ni_limits.max_msg_size);
-     eprintf("\tmax_atomic_size: %d\n", c->ptl.ni_limits.max_atomic_size);
-     eprintf("\tmax_fetch_atomic_size: %d\n", c->ptl.ni_limits.max_fetch_atomic_size);
-     eprintf("\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
-     eprintf("\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
-     eprintf("\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
-#endif
+  c->dbglvl = PDHT_DEBUG_WARN;
+
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_mds: %d\n", c->ptl.ni_limits.max_mds);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_eqs: %d\n", c->ptl.ni_limits.max_eqs);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_cts: %d\n", c->ptl.ni_limits.max_cts);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_pt_index: %d\n", c->ptl.ni_limits.max_pt_index);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_iovecs: %d\n", c->ptl.ni_limits.max_iovecs);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_list_size: %d\n", c->ptl.ni_limits.max_list_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_triggered_ops: %d\n", c->ptl.ni_limits.max_triggered_ops);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_msg_size: %d\n", c->ptl.ni_limits.max_msg_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_atomic_size: %d\n", c->ptl.ni_limits.max_atomic_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_fetch_atomic_size: %d\n", c->ptl.ni_limits.max_fetch_atomic_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
 
   if (ret != PTL_OK) {
-    eprintf("Portals logical NI initialization error\n");
+    pdht_eprintf(PDHT_DEBUG_NONE, "Portals logical NI initialization error\n");
     goto error;
   }
 
@@ -265,7 +264,7 @@ void pdht_init(void) {
 
   ret = PtlSetMap(c->ptl.lni, c->size, c->ptl.mapping);
   if (ret != PTL_OK) {
-    eprintf("Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
+    pdht_eprintf(PDHT_DEBUG_NONE, "Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
     goto error;
   }
   /*

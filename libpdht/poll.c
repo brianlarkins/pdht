@@ -35,7 +35,7 @@ void pdht_polling_init(pdht_t *dht) {
   // allocate array for hash table data
   dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
 
-  eprintf("polling init: hash table entry size: %lu (%d + %d)\n", dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
+  pdht_eprintf(PDHT_DEBUG_WARN, "polling init: hash table entry size: %lu (%d + %d)\n", dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
 
   dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
   if (!dht->ht) {
@@ -210,7 +210,7 @@ void *pdht_poll(void *arg) {
   me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
 
-  eprintf("Polling thread is active\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, "Polling thread is active\n");
 
 
   // need to run through the event queue for the putindex
