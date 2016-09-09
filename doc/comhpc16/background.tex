@@ -136,14 +136,15 @@ locality~\cite{larkins:12}.
 
 The Portals framework provides several low-level data abstractions that
 are used to implement the \pdht system. \pdht is based on a one-sided
-communication model to avoid the need for matched/blocking calls and
-additional synchronization. While Portals provides support for both
-one-sided and matched message-passing semantics, a novel feature of
-this project is to utilize the Portals' matching interface
+communication model to allow asynchronous data access while avoiding processor
+involvement at the target node.  Portals provides support for both
+one-sided (a.k.a. non-matching) and matching communication semantics.
+Matching communication was designed to support MPI; we describe
+a novel application of the Portals matching interface
 abstractions to implement a one-sided model that is the basis for
-\pdht. By using features in the Portals library in a unique fashion,
-we can take advantage of network hardware offload  to a greater extent
-than conventional PGAS techniques. Portals defines several concepts
+\pdht. By using features in the Portals library,
+we can take advantage of network hardware offload~\cite{brightwell:micro:06,bxi} to a greater extent
+than if \pdht were implemented using conventional PGAS techniques. Portals defines several concepts
 and abstractions that are necessary to the understanding of the
 \pdht. The relationship between these different entities is shown in
 Figure \ref{fig:portals_put}.
@@ -152,18 +153,9 @@ Figure \ref{fig:portals_put}.
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\linewidth]{figs/portals_put}
-  \caption{Portals data structures and example put operation.}
+  \caption{Portals data structures and example put operation using the Portals matching interface.}
   \label{fig:portals_put}
 \end{figure}
-
-Portals defines two primary roles for communication operations. The
-{\em initiator} is the process that is issuing the communication
-request and the {\em target} is the process receiving the
-requests. The initiator defines a {\em memory descriptor}, a
-region to be used for Portals operations and is able to check the
-success or failure of various events. Specific completion information
-and notifications may be only visible to the initiator and not the
-target, or vice versa.
 
 Portals specifies a {\em network interface} (NI) as a per-process
 abstraction of a physical network interface on the target process.The
@@ -172,10 +164,20 @@ or a {\em non-matching} interface, depending on the intended use for
 the interface (message-passing or one-sided). \pdht relies on the
 Portals matching interface.
 
-Each interface is associated with a portal table. An index into the
+Portals defines two primary roles for communication operations. The
+{\em initiator} is the process that issues Portals put, get, and atomic operation
+requests and the {\em target} is the process receiving
+requests. The initiator defines a {\em memory descriptor} (MD), which defines a
+region of memory to be used for Portals operations, as well as the
+structures used to track communication events for operations utilizing the
+given region.  Specific completion information
+and notifications may be only visible to the initiator and not the
+target, or vice versa.
+
+Target processing is defined in terms of a {\em portal table}. An index into the
 portal table is specified on every Portals communication operation and
 is used to separate and classify different channels between endpoints.
-Every portal table entry (PTE) maintains a list of memory regions that
+Every {\em portal table entry} (PTE) maintains a list of memory regions that
 are available for communication operations as well as an event queue
 to track asynchronous notifications for ongoing communication.
 
@@ -191,28 +193,22 @@ field. Later, Portals would receive a communication request for an
 {\tt MPI\_Send()} with the same match bits, which would be correspond
 to the posted receive.
 
-Additionally, Portals provides both {\em event queues} and {\em event
-  counters} to track the data movement in and out of memory regions
-used by Portals operations. Both events and counters are also used to
-log failure events and other information. 
-
-Events are detailed descriptions of communcation activities. They may
-contain pointers to the transmitted data, send/receive parameters,
-etc. An event queue may be associated with either the initiator
-process or the target process.  On the initiator, an event queue may
-be associated with the memory descriptor, whereas on the target,
-an event queue may be associated with each PTE. 
-
+Portals provides {\em event queues} (EQ) and {\em event counters} (CT) to track events
+relating to initiator- and target-side Portals operations.  Full events contain
+detailed information about the event and communication operation involved,
+whereas counting events are lighter weight and capture only the success or
+failure of a given operation.
 Counters are useful for lightweight event counting, where copying a
 large amount of data from the Portals implementation to the
-application is unneccessary. Counters track the count of both
-successful and failed communicadtion operations and are designed to
-support efficient one-sided communication models. Like event queues, a
-counter may be associated with either initiator or target
-processes. Unlike target-side event queues, a counter may be
+application is unnecessary.
+
+On the initiator, an EQ may be associated with an MD, whereas on the
+target, an EQ may be associated with each PTE.  CTs can also be used to
+track both initiator and target events.
+Unlike target-side EQs, a counter may be
 associated with each ME in the match-list. Multiple MEs may share a
 single counter, if desired. \pdht typically uses counters to watch for
-successful completion, and events to track specific failures. More
+successful completion, and full events to track specific failures. More
 detailed descriptions of event and counter use within \pdht is
 discussed below.
 
@@ -224,11 +220,12 @@ interface, with the expected match bits set to 74. When the target
 process receives the request, it is dispatched through the
 initiator-specified PT index. Next, the match list is searched, until
 a 74 is found, or the end of the list is reached. Once the ME has been
-located, the PtlPut data is copied into the corresponding memory
+located, the {\tt PtlPut} data is copied into the corresponding memory
 region. The operation may cause a {\tt PUT} event to be appended to
 the event queue or ME success counter to be incremented. An
 acknowledgement is sent back to the initiator, possibly generating
-another full event or counting event.
+another full event or counting event according to the MD that the initiator
+supplied to the {\tt PtlPut} operation.
 
 
 

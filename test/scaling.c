@@ -15,6 +15,8 @@
 
 #define NITER 1000
 
+int maxentries = NITER;
+
 extern pdht_context_t *c;
 int eprintf(const char *format, ...);
 
@@ -38,6 +40,12 @@ void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptind
   *ptindex = 1;
 }
 
+void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
+  *mbits = *(unsigned long *)key;
+  *ptindex = *(unsigned long *)key % dht->nptes;
+  (*rank).rank = *(unsigned long *)key % c->size;
+}
+
 
 int main(int argc, char **argv) {
   pdht_t *ht;
@@ -46,7 +54,7 @@ int main(int argc, char **argv) {
   pdht_timer_t ltimer;
   unsigned long key = 0; // whatever, just increasing monotonically
   unsigned long val = 0;
-  int opt, maxentries = NITER;
+  int opt;
   pdht_timer_t gtimer,total;
 
   setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
@@ -70,31 +78,26 @@ int main(int argc, char **argv) {
 
   START_TIMER(total);
 
-  //pdht_sethash(ht, remotehash);
-  //pdht_sethash(ht, localhash);
+  pdht_sethash(ht, ahash);
   
-
   // each process puts maxentries elements into distributed hash
-  key = c->rank * maxentries;
+  key = c->rank;
   for (int iter=0; iter < maxentries; iter++) {
     val = key + 10;
-    pdht_put(ht, &key, &val);
-    key++;
-    if ((iter % 1000) == 0) { printf("%d ", c->rank); fflush(stdout); }
+    pdht_insert(ht, key, key % ht->nptes, &key, &val);
+    key += c->size;
   }
-  printf("\nrank %d done with put\n", c->rank); fflush(stdout);
   sleep(5);
   pdht_barrier();
 
   eprintf("starting fetches\n");
 
   // now we time getting maxentries
-
-  key = maxentries * c->rank;
+  key = (c->rank != 0) ? c->rank-1 : c->size - 1;
   START_TIMER(gtimer);
   for (int iter=0; iter < maxentries; iter++) {
     pdht_get(ht, &key, &val);
-    key++;
+    key += c->size;
   }
   STOP_TIMER(gtimer);
 

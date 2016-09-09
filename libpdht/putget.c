@@ -208,7 +208,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
   if (ret != PTL_OK) {
-    pdht_dprintf("pdht_get: PtlGet() failed\n");
+    pdht_dprintf("pdht_get: PtlGet(key: %lu, rank: %d, ptindex: %d/%d) failed: %s\n", *(long *)key, rank.rank, ptindex, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
     goto error;
   }
 
@@ -309,8 +309,8 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   memcpy(&hte->key, key, PDHT_MAXKEYSIZE); // fucking shoot me.
   memcpy(&hte->data, value, dht->elemsize);
 
-  pdht_dprintf("inserting val: %lu on rank %d ptindex %d [%d] matchbits %lu\n", 
-       *(unsigned long *)value, c->rank, ptindex, dht->ptl.getindex[ptindex], bits);
+  //pdht_dprintf("inserting val: %lu on rank %d ptindex %d [%d] matchbits %lu\n", 
+  //     *(unsigned long *)value, c->rank, ptindex, dht->ptl.getindex[ptindex], bits);
   ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->ame);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_insert: ME append failed (active) : %s\n", pdht_ptl_error(ret));
