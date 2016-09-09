@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   size_t elemsize = sizeof(unsigned long);
   pdht_timer_t ltimer;
   unsigned long key = 0; // whatever, just increasing monotonically
-  void *val = NULL;
+  unsigned long val = 0;
   int opt, maxentries = NITER;
   pdht_timer_t gtimer,total;
 
@@ -60,9 +60,6 @@ int main(int argc, char **argv) {
         break;
     } 
   }
-
-  val = malloc(elemsize);
-  memset(val,0,elemsize);
 
 
   // create hash table
@@ -80,7 +77,8 @@ int main(int argc, char **argv) {
   // each process puts maxentries elements into distributed hash
   key = c->rank * maxentries;
   for (int iter=0; iter < maxentries; iter++) {
-    pdht_put(ht, &key, val);
+    val = key + 10;
+    pdht_put(ht, &key, &val);
     key++;
     if ((iter % 1000) == 0) { printf("%d ", c->rank); fflush(stdout); }
   }
@@ -92,11 +90,10 @@ int main(int argc, char **argv) {
 
   // now we time getting maxentries
 
-
   key = maxentries * c->rank;
   START_TIMER(gtimer);
   for (int iter=0; iter < maxentries; iter++) {
-    pdht_get(ht, &key, val);
+    pdht_get(ht, &key, &val);
     key++;
   }
   STOP_TIMER(gtimer);
@@ -112,5 +109,4 @@ int main(int argc, char **argv) {
 
 done:
   pdht_free(ht);
-  free(val);
 }

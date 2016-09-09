@@ -282,38 +282,45 @@ error:
  *  @param value - value for table entry
  *  @returns status of operation
  */
-pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, void *value) {
+pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, void *key, void *value) {
+  char *index;
   _pdht_ht_entry_t *hte;
+  ptl_me_t me;
   int ret;
 
-#if 0
-  // find our next spot -- pointer math
-  hte = (_pdht_ht_entry_t *)((dht->nextfree * dht->entrysize) + (char *)dht->ht);
+  // need: ptindex and matchbits
 
-  // initialize value
-  memcpy(hte->data, value, dht->elemsize);
+  // find our next spot 
+  index = (char *)dht->ht;
+  index += (dht->nextfree * dht->entrysize); // pointer math
+  hte = (_pdht_ht_entry_t *)index;
+  assert(dht->nextfree == pdht_find_bucket(dht, hte));
+
+  // setup ME to append to active list
+  me.start         = &hte->key;
+  me.length        = PDHT_MAXKEYSIZE + dht->elemsize; // storing HT key _and_ HT entry in each elem.
+  me.ct_handle     = PTL_CT_NONE;
+  me.uid           = PTL_UID_ANY;
+  // disable auto-unlink events, we just check for PUT completion
+  me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE 
+    | PTL_ME_EVENT_UNLINK_DISABLE | PTL_ME_EVENT_LINK_DISABLE;
+  me.match_id.rank = PTL_RANK_ANY;
+  me.match_bits    = bits;
+  me.ignore_bits   = 0;
+ 
+  memcpy(&hte->key, key, PDHT_MAXKEYSIZE); // fucking shoot me.
+  memcpy(&hte->data, value, dht->elemsize);
+
+  pdht_dprintf("inserting val: %lu on rank %d ptindex %d [%d] matchbits %lu\n", 
+       *(unsigned long *)value, c->rank, ptindex, dht->ptl.getindex[ptindex], bits);
+  ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->ame);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_insert: ME append failed (active) : %s\n", pdht_ptl_error(ret));
+    exit(1);
+  }
 
   dht->nextfree++;
 
-  // create counter for our entry
-  ret = PtlCTAlloc(dht->ptl.lni, &hte->ct);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_insert: counter allocation failed\n");
-    goto error;
-  } 
-
-  // update our ME template with new match bits
-  dht->ptl.me.ct_handle = hte->ct;
-  dht->ptl.me.match_bits = bits;
-
-  // XXX - need to upate ME with actual start, length fields to correctly locate hte
-
-  ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex, &dht->ptl.me, PTL_PRIORITY_LIST, NULL, &hte->me);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_insert: match-list insertion failed\n");
-    goto error;
-  } 
-#endif 
   return PdhtStatusOK;
 
 error:

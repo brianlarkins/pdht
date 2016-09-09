@@ -240,11 +240,13 @@ void pdht_print_stats(pdht_t *dht) {
        printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1), PDHT_READ_TIMER(dht,t2));
        printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3), PDHT_READ_TIMER(dht,t4));
        printf("\tt5:         %10.4f sec\tt6:       %10.4f sec\n", PDHT_READ_TIMER(dht,t5), PDHT_READ_TIMER(dht,t6));
+#ifdef WANT_PTE_BREAKDOWN_STATS
        for (int j=0; j<dht->nptes;j++) {
          printf("\tptcount[%d] : %12lu\n", j, dht->stats.ptcounts[j]);
          total += dht->stats.ptcounts[j];
        }
        printf("\ttotal ptcounts : %12lu\n", total);
+#endif
        fflush(stdout);
      }
      pdht_barrier();

@@ -21,6 +21,9 @@ collision: pdhtlibs collision.c
 csort: pdhtlibs csort.c
 	$(CC) $(CFLAGS) -o csort csort.c $(PDHT_LIBS)
 
+insert: pdhtlibs insert.c
+	$(CC) $(CFLAGS) -o insert insert.c $(PDHT_LIBS)
+
 latency: pdhtlibs latency.c
 	$(CC) $(CFLAGS) -o latency latency.c $(PDHT_LIBS)
 
