@@ -89,7 +89,6 @@ int pdht_lvl_dbg_eprintf(int lvl, const char *format, ...) {
 
   if ((c->rank == 0) && (lvl <= c->dbglvl)) {
     va_start(ap, format);
-    fprintf(stdout,"%d: ", c->rank);
     ret = vfprintf(stdout, format, ap);
     va_end(ap);
     fflush(stdout);

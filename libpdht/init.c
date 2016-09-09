@@ -29,6 +29,8 @@ static void print_fucking_mapping(void);
 pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   pdht_t *dht;
   ptl_md_t md;
+  _pdht_ht_entry_t *hte;
+  char *iter; // used for pointer math
   int ret;
 
   if (!c) {
@@ -44,7 +46,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pdht_dprintf("pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
     pdht_dprintf("\t (update value in pdht_impl.h and recompile)\n");
   }
-  
+
   dht->keysize = keysize;
   dht->elemsize = elemsize;
   dht->nptes = PDHT_DEFAULT_NUM_PTES;
@@ -56,6 +58,31 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   // portals info
   dht->ptl.lni = c->ptl.lni;
+
+  // allocate array for hash table data
+  dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
+
+  pdht_eprintf(PDHT_DEBUG_WARN, "pdht_create: hash table entry size: %lu (%d + %d)\n", 
+         dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tcontext: %lu bytes ht: %lu bytes table: %lu\n", 
+        sizeof(pdht_context_t), sizeof(pdht_t), PDHT_DEFAULT_TABLE_SIZE * dht->entrysize);
+
+  dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
+  if (!dht->ht) {
+    pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
+    exit(1);
+  }
+
+  // use a byte pointer as iterator over variable-sized element array
+  iter = (char *)dht->ht;
+
+  // initialize entire hash table array
+  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
+    hte = (_pdht_ht_entry_t *)iter;
+    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
+    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
+    iter += dht->entrysize; // pointer math, danger.
+  }
 
   // setup data structures for pending puts
   if (dht->pmode == PdhtPendingPoll) {
@@ -208,7 +235,7 @@ void pdht_init(void) {
   ni_req_limits.max_war_ordered_size = 512;
   ni_req_limits.max_volatile_size = 512;
 #undef PDHT_WANT_DATA_ORDERING
-//#ifdef PTL_TOTAL_DATA_ORDERING
+  //#ifdef PTL_TOTAL_DATA_ORDERING
 #ifdef PDHT_WANT_DATA_ORDERING
   pdht_eprintf(PDHT_DEBUG_WARN, " (configured for total data ordering on short get/puts)\n");
   ni_req_limits.features = PTL_TOTAL_DATA_ORDERING;

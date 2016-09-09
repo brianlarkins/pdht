@@ -31,30 +31,6 @@ void pdht_polling_init(pdht_t *dht) {
   ptl_me_t me;
   ptl_event_t ev;
 
-
-  // allocate array for hash table data
-  dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
-
-  pdht_eprintf(PDHT_DEBUG_WARN, "polling init: hash table entry size: %lu (%d + %d)\n", dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
-
-  dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
-  if (!dht->ht) {
-    pdht_dprintf("pdht_polling_init: calloc error: %s\n", strerror(errno));
-    exit(1);
-  }
-
-  // use a byte pointer as iterator over variable-sized element array
-  iter = (char *)dht->ht;
-
-
-  // initialize entire hash table array
-  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
-    hte = (_pdht_ht_entry_t *)iter;
-    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
-    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
-    iter += dht->entrysize; // pointer math, danger.
-  }
-
   // default match-list entry values
   me.length      = PDHT_MAXKEYSIZE + dht->elemsize; // storing key _and_ value for each entry
   me.ct_handle   = PTL_CT_NONE;
@@ -65,7 +41,6 @@ void pdht_polling_init(pdht_t *dht) {
   me.match_id.rank = PTL_RANK_ANY;
   me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
   me.ignore_bits = 0xffffffffffffffff; // ignore it all
-
 
   // deal with multiple PTEs per hash table to handle match list length
   for (int ptindex = 0; ptindex < dht->nptes; ptindex++) {
