@@ -26,8 +26,8 @@
 #endif
 
 // default table size should be bigger than 2x pending queue size
-#define PDHT_DEFAULT_TABLE_SIZE 500000
-#define PDHT_PENDINGQ_SIZE       10000
+#define PDHT_DEFAULT_TABLE_SIZE 200000
+#define PDHT_PENDINGQ_SIZE       1000
 
 #define PDHT_DEFAULT_NUM_PTES   10
 

@@ -216,8 +216,10 @@ int le_get_mr(ni_t *restrict ni, const ptl_le_t *le_init, le_t *le)
 
             if (!mr_lookup_app
                 (ni, le_init->start, le_init->length,
-                 &le->mr_start) == PTL_OK)
+                 &le->mr_start) == PTL_OK) {
+                printf("oops %p %lu\n",le_init->start, le_init->length);
                 return PTL_ARG_INVALID;
+            }
         }
 
         le->length = le_init->length;

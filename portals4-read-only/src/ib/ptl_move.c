@@ -111,8 +111,9 @@ int _PtlPut(PPEGBL ptl_handle_md_t md_handle, ptl_size_t local_offset,
 #endif
 
     err = get_transport_buf(ni, target_id, &buf);
-    if (unlikely(err))
+    if (unlikely(err)) {
         goto err2;
+    }
 
     hdr = (req_hdr_t *) buf->data;
 
@@ -138,8 +139,10 @@ int _PtlPut(PPEGBL ptl_handle_md_t md_handle, ptl_size_t local_offset,
     buf->init_state = STATE_INIT_START;
 
     err = process_init(buf);; 
-    if (unlikely(err))
+    if (unlikely(err)) {
+        printf("suspect-er!\n");
         goto err1;
+    }
 
     gbl_put();
     return PTL_OK;

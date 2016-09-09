@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE 600
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -48,6 +49,7 @@ int main(int argc, char **argv) {
   int opt, maxentries = NITER;
   pdht_timer_t gtimer,total;
 
+  setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
   while ((opt = getopt(argc, argv, "v:s:")) != -1) {
     switch (opt) {
       case 's':
@@ -67,24 +69,26 @@ int main(int argc, char **argv) {
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
 
   eprintf("starting run with %d processes, each with %d entries\n", c->size, maxentries);
+  pdht_barrier();
 
   START_TIMER(total);
 
   //pdht_sethash(ht, remotehash);
   //pdht_sethash(ht, localhash);
+  
 
   // each process puts maxentries elements into distributed hash
-  if (c->rank == 0) {
-    key = 0;
-    for (int iter=0; iter < c->size * maxentries; iter++) {
-      pdht_put(ht, &key, val);
-      key++;
-    }
+  key = c->rank * maxentries;
+  for (int iter=0; iter < maxentries; iter++) {
+    pdht_put(ht, &key, val);
+    key++;
+    if ((iter % 1000) == 0) { printf("%d ", c->rank); fflush(stdout); }
   }
-
+  printf("\nrank %d done with put\n", c->rank); fflush(stdout);
   sleep(5);
   pdht_barrier();
 
+  eprintf("starting fetches\n");
 
   // now we time getting maxentries
 

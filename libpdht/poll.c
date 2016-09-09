@@ -87,17 +87,22 @@ void pdht_polling_init(pdht_t *dht) {
     //pdht_dprintf("%d: %d %d\n", ptindex, __PDHT_PENDING_INDEX+ptindex, dht->ptl.putindex[ptindex]);
 
     // iterator = ht[PTE * QSIZE] (i.e. PENDINGQ_SIZE per PTE)
-    iter = (char *)dht->ht + ((PDHT_PENDINGQ_SIZE * ptindex) * dht->entrysize); 
+    iter = (char *)dht->ht + ((PDHT_PENDINGQ_SIZE * ptindex) * dht->entrysize);  // pointer math
+    //pdht_dprintf("init append: ptindex: %d %d ht[%d] userp: %p\n", ptindex, dht->ptl.putindex[ptindex], pdht_find_bucket(dht, iter), iter);
 
     // append one-time match entres to the put PTE to catch incoming puts
     for (int i=0; i < PDHT_PENDINGQ_SIZE; i++) {
       hte = (_pdht_ht_entry_t *)iter;
+      assert(hte->pme == PTL_INVALID_HANDLE);
+      assert(hte->ame == PTL_INVALID_HANDLE);
       me.start  = &hte->key; // each entry has a unique memory buffer (starts with key)
 
       //pdht_dprintf("init append: %d %d userp: %p\n", i, pdht_find_bucket(dht, hte), hte);
       ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
-        pdht_dprintf("pdht_polling_init: [%d] PTE: %d PtlMEAppend error: %s\n", i, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
+        pdht_dprintf("pdht_polling_init: [%d/%d]:ht[%d] PTE: %d PtlMEAppend error: %s\n", ptindex, i, pdht_find_bucket(dht,iter),dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
+        pdht_dprintf("start %p len: %lu %d %d %8x %8x %8x\n", me.start, me.length, (me.ct_handle==PTL_CT_NONE), 
+                         (me.uid==PTL_UID_ANY), me.options, me.match_bits, me.ignore_bits);
         exit(1);
       } 
       // clean out the LINK events from the event queue
@@ -190,6 +195,7 @@ void *pdht_poll(void *arg) {
   char *index;
   int ret;
   unsigned int ptindex;
+  int pollcount = 0;
 
 
   // NOTE: we have one thread per DHT, we could re-write to handle _all_ 
@@ -213,9 +219,9 @@ void *pdht_poll(void *arg) {
 
     if ((ret = PtlEQPoll(dht->ptl.eq,dht->nptes, PTL_TIME_FOREVER, &ev, &ptindex)) == PTL_OK)  {
       PDHT_START_TIMER(dht,t5);
-
       // found something to do, is it something we care about?
       if (ev.type == PTL_EVENT_PUT) {
+        pollcount++;
         hte = (_pdht_ht_entry_t *)ev.user_ptr;
         //eprintf("+");
 #ifdef PDHT_DEBUG_TRACE
@@ -235,7 +241,7 @@ void *pdht_poll(void *arg) {
           // append this pending put to the active PTE match list
           ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->ame);
           if (ret != PTL_OK) {
-            pdht_dprintf("pdht_poll: ME append failed (active): %s\n", pdht_ptl_error(ret));
+            pdht_dprintf("pdht_poll: ME append failed (active) [%d]: %s\n", pollcount, pdht_ptl_error(ret));
             exit(1);
           }
         } 
@@ -260,6 +266,7 @@ void *pdht_poll(void *arg) {
         // add replacement entry to put/pending ME
         ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->pme);
         if (ret != PTL_OK) {
+          pdht_dprintf("append: ptindex: %d pollcount: %d %d %d userp: %p\n", ptindex, pollcount, dht->nextfree, pdht_find_bucket(dht, hte), hte);
           pdht_dprintf("pdht_poll: PtlMEAppend error (pending): %s\n", pdht_ptl_error(ret));
         }
 

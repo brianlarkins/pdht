@@ -28,7 +28,7 @@
 #include <slurm/pmi.h>
 #include <portals4.h>
 
-#define PDHT_MAX_PTES 256
+#define PDHT_MAX_PTES 25
 
 /**********************************************/
 /* statistics/performance data                */

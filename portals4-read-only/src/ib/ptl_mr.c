@@ -237,6 +237,8 @@ static int mr_create(ni_t *ni, void *start, ptl_size_t length, mr_t **mr_p)
         );
     if (!mr->ibmr) {
         err = errno;
+        perror("ibv_reg_mr");
+        printf("error is: %d\n", errno == ENOMEM);
         WARN();
         /* Try again for a read only MR */
         mr->ibmr =
@@ -430,7 +432,6 @@ int mr_lookup(ni_t *ni, struct ni_mr_tree *tree, void *start,
             goto again;
         }
 #endif
-
         *mr_p = NULL;
         ret = PTL_FAIL;
     } else {

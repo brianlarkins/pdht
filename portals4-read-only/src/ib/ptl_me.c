@@ -99,8 +99,9 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     //Only get the mr if we need it
     if (me_init->start != NULL && me_init->length > 0) {
         err = le_get_mr(ni, (ptl_le_t *)me_init, (le_t *)me);
-        if (unlikely(err))
+        if (unlikely(err)) {
             goto err3;
+        }
     } else {
         me->length = me_init->length;
         me->num_iov = 0;
@@ -129,8 +130,10 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     if (me_handle_p) {
         /* Only append can modify counters. */
         err = to_ct(MYGBL_ me_init->ct_handle, &me->ct);
-        if (err)
+        if (err) {
+            printf("b\n");
             goto err3;
+        }
     } else {
         me->ct = NULL;
     }
@@ -191,9 +194,10 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
             err = check_overflow_search_only((le_t *)me);
         else
             err = check_overflow_search_delete((le_t *)me);
-
-        if (err)
+ 
+        if (err) {
             goto err3;
+         }
 
         me_put(me);
     }

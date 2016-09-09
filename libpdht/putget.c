@@ -90,7 +90,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex[ptindex], 
       mbits, 0, value, 0);
   if (ret != PTL_OK) {
-    pdht_dprintf("pdht_put: PtlPut() failed\n");
+    pdht_dprintf("pdht_put: PtlPut(key: %lu, rank: %d, ptindex: %d) failed: %s\n", *(long *)key, rank.rank, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
     goto error;
   }
 

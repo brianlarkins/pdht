@@ -192,7 +192,7 @@ void pdht_init(void) {
   ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+2;
+  ni_req_limits.max_eqs = (PDHT_MAX_PTES)+2;
   ni_req_limits.max_cts = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+2;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
@@ -200,7 +200,7 @@ void pdht_init(void) {
   ni_req_limits.max_pt_index = 2*PDHT_MAX_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = PDHT_DEFAULT_TABLE_SIZE;
-  ni_req_limits.max_triggered_ops = PDHT_DEFAULT_TABLE_SIZE;
+  ni_req_limits.max_triggered_ops = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+100;
   ni_req_limits.max_msg_size = LONG_MAX;
   ni_req_limits.max_atomic_size = 512;
   ni_req_limits.max_fetch_atomic_size = 512;
