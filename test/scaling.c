@@ -55,11 +55,14 @@ int main(int argc, char **argv) {
   unsigned long key = 0; // whatever, just increasing monotonically
   unsigned long val = 0;
   int opt;
+  int iters = 1;
   pdht_timer_t gtimer,total;
 
   setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
-  while ((opt = getopt(argc, argv, "v:s:")) != -1) {
+  while ((opt = getopt(argc, argv, "i:s:v:")) != -1) {
     switch (opt) {
+      case 'i':
+        iters = atoi(optarg);
       case 's':
         elemsize = atoi(optarg);
         break;
@@ -73,13 +76,13 @@ int main(int argc, char **argv) {
   // create hash table
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
 
-  eprintf("starting run with %d processes, each with %d entries\n", c->size, maxentries);
+  eprintf("starting run with %d processes, each with %d entries (total reads == %d)\n", c->size, maxentries,iters*maxentries);
   pdht_barrier();
 
   START_TIMER(total);
 
   pdht_sethash(ht, ahash);
-  
+
   // each process puts maxentries elements into distributed hash
   key = c->rank;
   for (int iter=0; iter < maxentries; iter++) {
@@ -95,13 +98,16 @@ int main(int argc, char **argv) {
   eprintf("starting fetches\n");
 
   // now we time getting maxentries
-  key = (c->rank != 0) ? c->rank-1 : c->size - 1;
-  START_TIMER(gtimer);
-  for (int iter=0; iter < maxentries; iter++) {
-    pdht_get(ht, &key, &val);
-    key += c->size;
+  for (int it=0; it<iters; it++) {
+    key = (c->rank != 0) ? c->rank-1 : c->size - 1;
+    START_TIMER(gtimer);
+    for (int iter=0; iter < maxentries; iter++) {
+      pdht_get(ht, &key, &val);
+      key += c->size;
+    }
+    STOP_TIMER(gtimer);
+    pdht_barrier();
   }
-  STOP_TIMER(gtimer);
 
   printf("%d: %12.7f ms\n", c->rank,  (READ_TIMER(gtimer)*1000));
 
