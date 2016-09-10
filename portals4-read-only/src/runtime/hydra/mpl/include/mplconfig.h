@@ -7,7 +7,9 @@
 
 /* define if valgrind is old and/or broken compared to what we are expecting
    */
-/* #undef HAVE_BROKEN_VALGRIND */
+#ifndef MPL_HAVE_BROKEN_VALGRIND 
+#define MPL_HAVE_BROKEN_VALGRIND  1 
+#endif
 
 /* Define to 1 if you have the <ctype.h> header file. */
 #ifndef MPL_HAVE_CTYPE_H 
@@ -114,27 +116,19 @@
 #endif
 
 /* Define to 1 if you have the <valgrind/drd.h> header file. */
-#ifndef MPL_HAVE_VALGRIND_DRD_H 
-#define MPL_HAVE_VALGRIND_DRD_H  1 
-#endif
+/* #undef HAVE_VALGRIND_DRD_H */
 
 /* Define to 1 if you have the <valgrind.h> header file. */
 /* #undef HAVE_VALGRIND_H */
 
 /* Define to 1 if you have the <valgrind/helgrind.h> header file. */
-#ifndef MPL_HAVE_VALGRIND_HELGRIND_H 
-#define MPL_HAVE_VALGRIND_HELGRIND_H  1 
-#endif
+/* #undef HAVE_VALGRIND_HELGRIND_H */
 
 /* Define to 1 if you have the <valgrind/memcheck.h> header file. */
-#ifndef MPL_HAVE_VALGRIND_MEMCHECK_H 
-#define MPL_HAVE_VALGRIND_MEMCHECK_H  1 
-#endif
+/* #undef HAVE_VALGRIND_MEMCHECK_H */
 
 /* Define to 1 if you have the <valgrind/valgrind.h> header file. */
-#ifndef MPL_HAVE_VALGRIND_VALGRIND_H 
-#define MPL_HAVE_VALGRIND_VALGRIND_H  1 
-#endif
+/* #undef HAVE_VALGRIND_VALGRIND_H */
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */

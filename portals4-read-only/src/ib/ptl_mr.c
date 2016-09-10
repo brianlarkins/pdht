@@ -546,7 +546,7 @@ void mr_init(ni_t *ni)
     }
     else {
         global_umn_fd = -1;
-        fprintf(stderr, "NOTE: Ummunotify and IB registered mem cache disabled, set PTL_DISABLE_MEM_REG_CACHE=0 to re-enable.\n"); 
+        //fprintf(stderr, "NOTE: Ummunotify and IB registered mem cache disabled, set PTL_DISABLE_MEM_REG_CACHE=0 to re-enable.\n"); 
     }
 }
 #endif

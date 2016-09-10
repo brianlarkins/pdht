@@ -86,9 +86,11 @@ int main(int argc, char **argv) {
     val = key + 10;
     pdht_insert(ht, key, key % ht->nptes, &key, &val);
     key += c->size;
+    if ((iter % 1000) == 0) eprintf(".");
   }
   sleep(5);
   pdht_barrier();
+  eprintf(".\n");
 
   eprintf("starting fetches\n");
 
