@@ -1,14 +1,14 @@
 \section{Implementation of \pdht}
 
 
-The \pdht system implements a distributed, PGLAS key/value store that is
-asynchronously accessible through one-sided {\em insert}, {\em read}, {\em
-write}, and {\em atomic update}
-operations.  \pdht uses a hash function to map an arbitrary
-user-supplied key to a process rank and 64-bit hash value, giving each key a
-deterministic location within the distributed hash table.
+The \pdht system implements a distributed, PGLAS key/value store that
+is asynchronously accessible through one-sided {\em insert}, {\em
+  read}, {\em write}, and {\em atomic update} operations.  \pdht uses
+a hash function to map an arbitrary user-supplied key (i.e. a logical
+address) to a process rank and 64-bit hash value, giving each key a
+deterministic physical location within the distributed hash table.
 
-A \pdht structure is treated as a distributed array of objects, with a
+A \pdht structure is treated as a distributed array of objects, with
 partitions spanning all processes. Upon the creation of a new
 distributed hash table, \pdht allocates two portal table
 entries (PTEs). The first PTE contains the {\em pending} match list and the
@@ -60,7 +60,7 @@ in Figure \ref{fig:put} (c).
 The current approach to handle the match list management between the
 pending and active lists is to use a dedicated progress thread. This
 thread blocks on the event queue associated with the pending PTE,
-and is automatically woken up by the Portals layer when an insert request
+and is automatically notified by the Portals layer when an insert request
 arrives. As insert requests are received, the
 progress thread replaces the consumed wildcard ME on the pending list and allocates a
 new pending list entry buffer. The thread also creates a new
@@ -69,15 +69,15 @@ list. Subsequent data access operations will find a match in the active list.
 
 \subsection{Data Access Operations}
 
-One-sided read, write, and atomic update operations are handled by computing
-the hash function on the key, then performing corresponding one-sided Portals
-get, put, or atomic operation, using the process rank and
-match bits provided by the hash. If the operation is unable to
-find a matching entry on the active match list, the operation reports
-a not-found message. If the retrieved table entry doesn't match the
-requested full key, \pdht notes the collision and either returns
-control to the application or performs a linear probe, depending on
-the desired behavior.
+One-sided read, write, and atomic update operations are handled by
+computing the hash function on the key, then performing corresponding
+one-sided Portals get, put, or atomic operation, using the process
+rank and match bits provided by the hash. If the operation is unable
+to find a matching entry on the active match list, the operation
+reports a not-found message. If the key of the retrieved table entry
+doesn't match the requested key, \pdht notes the collision and either
+returns control to the application or performs a linear probe,
+depending on the desired behavior.
 
 \subsection{Collisions and Key Sparsity}
 
@@ -85,8 +85,14 @@ Collisions occur when multiple keys map to the same rank/hash pair.
 In the case of a collision,
 PDHT utilizes a linear probing solution. The library can
 also be configured to simply detect collisions and let the application
-take appropriate action. 
+take appropriate an action. 
 % JSD: How does linear probing work?
+% DBL:
+% pdht_get(key,...): -> 
+% while (!found) {
+%    PtlGet(match, pte, rank, data, ...)
+%    if (data.key != key) { match = match+1; }
+% }
 
 A significant difference between traditional hash tables and \pdht is
 that using the Portals match list for table entries detaches the link
@@ -98,6 +104,14 @@ much larger than $N$, the likelihood of collisions increases. In order
 to manage collisions, hash tables typically store a list of objects within
 each array entry.
 % JSD: The set of processes sort of takes the place of the array?
+% 
+% DBL: the set of processes + set of match bits takes place of the array
+%
+% traditional: hash(key) -> bucket in |0..N-1| -> array[bucket]
+%
+% pdht: hash(key) -> rank,bits in |NP * 2^64| -> ME
+%           each ME -> array[bucket] at creation time via insert or
+%           polling thread
 
 \pdht also uses an array to hold the collection of hash table
 entries, but the indexing into this array is performed indirectly,

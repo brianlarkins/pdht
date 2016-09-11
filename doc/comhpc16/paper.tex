@@ -50,15 +50,16 @@
 
 \begin{abstract}
 
-Partitioned Global Address Space (PGAS) parallel programming models can provide
-an efficient mechanism for managing shared data stored across multiple nodes in a
-distributed memory system.  However, these models are traditionally directly
-addressed and, for applications with loosely-structured or sparse data,
-determining the location of a given data element within a PGAS can incur
-significant overheads.  When location resolution structures are remote,
-applications incur overhead from the network latency of remote lookups.
-Further, for large data, caching such structures locally incurs space and
-coherence overheads that can limit scaling.
+Partitioned Global Address Space (PGAS) parallel programming models
+can provide an efficient mechanism for managing shared data stored
+across multiple nodes in a distributed memory system.  However,
+these models are traditionally directly addressed and, for
+applications with loosely-structured or sparse data, determining the
+location of a given data element within a PGAS can incur significant
+overheads.  Applications incur additional overhead from the network
+latency of lookups from remote location resolution structures.
+Further, for large data, caching such structures locally incurs
+space and coherence overheads that can limit scaling.
 %
 We observe that the matching structures used by implementations of the Message
 Passing Interface (MPI) establish a separation between incoming data writes and

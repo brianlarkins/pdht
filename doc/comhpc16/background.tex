@@ -82,19 +82,21 @@ sparse data structures given the right application.
 
 \subsection{Related Work}
 
-The idea of logically addressing data across memories in a distributed system
-has been explored in a number of other models.  Distributed, shared key/value
-stores are an intrinsic part of the Piccolo programming model~\cite{power:10}.
-The Linda programming model~\cite{ahuja:86} is build around tuple spaces, which
-allow data to be inserted, read, and removed from global memory and data items
-are identified through a user-supplied tuple.  Such models are of renewed
-interest in the context of resilience~\cite{wilke:14}.  Distributed object
-models, such as Orca~\cite{bal:92}, reference shared data through graphs rather
-than direct pointers.  In the Open Community Runtime (OCR)~\cite{OCR}, data
-blocks (DBs) are identified by a globally unique ID, which is assigned by the
-OCR runtime system and used to portably reference a DB.  Finally, migratable
-object models, such as Charm++~\cite{kale:93}, support a variety of methods for
-representing and querying object collections.
+The idea of logically addressing data across memories in a distributed
+system has been explored in a number of other models.  Distributed,
+shared key/value stores are an intrinsic part of the Piccolo
+programming model~\cite{power:10}.  The Linda programming
+model~\cite{ahuja:86} is built around tuple spaces, that allows data
+to be inserted, read, and removed from global memory. Linda data items
+are identified through a user-supplied tuple.  Such models are of
+renewed interest in the context of resilience~\cite{wilke:14}.
+Distributed object models, such as Orca~\cite{bal:92}, reference
+shared data through graphs rather than direct pointers.  In the Open
+Community Runtime (OCR)~\cite{OCR}, data blocks (DBs) are identified
+by a globally unique ID, which is assigned by the OCR runtime system
+and used to portably reference a DB.  Finally, migratable object
+models, such as Charm++~\cite{kale:93}, support a variety of methods
+for representing and querying object collections.
 
 Hash tables are also commonly used to store sparse or loosely structured data
 and they have been studied in the context of MPI and popular PGAS
@@ -135,7 +137,7 @@ locality~\cite{larkins:12}.
 
 
 The Portals framework provides several low-level data abstractions that
-are used to implement the \pdht system. \pdht is based on a one-sided
+are used to implement \pdht, our parallel distributed hash table system. \pdht is based on a one-sided
 communication model to allow asynchronous data access while avoiding processor
 involvement at the target node.  Portals provides support for both
 one-sided (a.k.a. non-matching) and matching communication semantics.
@@ -193,7 +195,7 @@ field. Later, Portals would receive a communication request for an
 {\tt MPI\_Send()} with the same match bits, which would be correspond
 to the posted receive.
 
-Portals provides {\em event queues} (EQ) and {\em event counters} (CT) to track events
+Portals provides {\em event queues} and {\em event counters} to track events
 relating to initiator- and target-side Portals operations.  Full events contain
 detailed information about the event and communication operation involved,
 whereas counting events are lighter weight and capture only the success or
@@ -202,10 +204,10 @@ Counters are useful for lightweight event counting, where copying a
 large amount of data from the Portals implementation to the
 application is unnecessary.
 
-On the initiator, an EQ may be associated with an MD, whereas on the
-target, an EQ may be associated with each PTE.  CTs can also be used to
+On the initiator, an event queue may be associated with an MD, whereas on the
+target, a queue may be associated with each PTE.  Counters can also be used to
 track both initiator and target events.
-Unlike target-side EQs, a counter may be
+Unlike target-side event queues, a counter may be
 associated with each ME in the match-list. Multiple MEs may share a
 single counter, if desired. \pdht typically uses counters to watch for
 successful completion, and full events to track specific failures. More
