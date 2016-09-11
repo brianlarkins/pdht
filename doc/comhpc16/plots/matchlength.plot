@@ -10,7 +10,8 @@ set xlabel "Matchlist Length"
 set logscale x
 set xrange [100:100000]
 set ylabel "Read Latency (ms)"
-set logscale y
+#set logscale y
+set yrange [0:60]
 set key top left
 
 plot 'matchlength.dat' using 1:2 title "8 bytes local", \
