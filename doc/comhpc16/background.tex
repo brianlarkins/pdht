@@ -100,9 +100,12 @@ and used to portably reference a DB.  Finally, migratable object
 models, such as Charm++~\cite{kale:93}, support a variety of methods
 for representing and querying object collections.
 
-Hash tables are also commonly used to store sparse or loosely structured data
-and they have been studied in the context of MPI and popular PGAS
-models~\cite{maynard:12}.  In addition, PGAS-like hierarchical approaches to
+Hash tables are also commonly used to store sparse or loosely structured
+data~\cite{memcached04,chord01,docan:12}
+and their implementation has been studied in the context of MPI and popular PGAS
+models~\cite{zht13,fompi13,cmpi10,maynard:12,memcached12,mht15} as well as in
+the context of RDMA offload~\cite{memcached12,mitchell:13,kalia:14}.  In
+addition, PGAS-like hierarchical approaches to
 managing sparse spatial decomposition have been proposed~\cite{larkins:08}
 along with runtime methods to manage this data and exploit spatial
 locality~\cite{larkins:12}.
