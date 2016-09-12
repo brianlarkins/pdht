@@ -13,7 +13,14 @@ containing dual 12-core Intel\regtm Xeon\regtm E5-2680 processors and 128
 gigabytes of memory.  Nodes are connected using a Mellanox\othertm FDR 56 Gb/s
 InfiniBand\othertm fabric.
 
-As an initial proof point, we measure the performance of retrieving elements
+An initial study of the performance of \pdht can be seen in
+Figure~\ref{fig:throughput}. This figure shows that \pdht scales
+reasonably, with communication volume increasing as processor counts
+grow. This experiment was run on one core per node, with the hash
+function configured to ensure all reads occur remotely, over the
+Infiniband\othertm interface.
+
+Additionally, we measure the performance of retrieving elements
 from the \pdht in different scenarios.  These results are shown in
 Figure~\ref{fig:mlen} and provide an initial characterization of the lookup
 cost associated with our \pdht implementation.  In contrast with traditional

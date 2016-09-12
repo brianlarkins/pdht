@@ -28,7 +28,7 @@ incurs additional network latency overheads for each data access. In
 some instances, the layout of the data may be fixed or slowly
 changing, allowing location resolution structures to be replicated or
 cached locally. Caching remote lookup structures can mitigate this
-impact, but consumes limited memory capacity and can incur additional
+impact, but consumes limited memory capacity and can cause additional
 overheads to maintain cache coherence.
 
 %Access to the interconnect network in HPC systems is an area where
@@ -83,9 +83,9 @@ implementation~\cite{brightwell:micro:06,bxi}.
 
 %For message-passing, Portals provides a {\em matching interface}
 %framework for supporting a two-sided communication model based on
-%pairs of matched sends and receives. Portals also povides a {\em
+%pairs of matched sends and receives. Portals also provides a {\em
 %  non-matching interface} that foregoes the complexity of a matched
-%two-sided communciations system in favor of a lightweight, efficient
+%two-sided communications system in favor of a lightweight, efficient
 %system capable of one-sided operations used in PGAS systems.
 
 In this paper, we describe the implementation of a parallel distributed hash

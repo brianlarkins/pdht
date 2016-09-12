@@ -72,7 +72,7 @@ Of interest to the HPC community, we see PGLAS as a
 means for dealing with sparsity. Many common HPC applications rely on
 sparse data structures, which causes numerous problems in the hunt for
 high performance. Matrix and tensor representations often must contend
-with sparse data, resulting in specialized formats such compressed
+with sparse data, resulting in specialized formats such as compressed
 sparse row (CSR) and variants. Other problems, such as N-body
 simulation, grid and mesh solvers, are naturally expressed using
 spatial decomposition trees such as quadtrees and octrees. 
@@ -80,7 +80,7 @@ spatial decomposition trees such as quadtrees and octrees.
 In these cases, there is a natural mapping between an index or
 coordinate system and the corresponding data. A global distributed
 key/value store could replace a complicated and difficult to parallelize
-sparse data structures given the right application.
+sparse data structure given the right application.
 
 \subsection{Related Work}
 
@@ -165,7 +165,7 @@ Figure \ref{fig:portals_put}.
 \end{figure}
 
 Portals specifies a {\em network interface} (NI) as a per-process
-abstraction of a physical network interface on the target process.The
+abstraction of a physical network interface on the target process. The
 interface is defined at creation to be either a {\em matching}
 or a {\em non-matching} interface, depending on the intended use for
 the interface (message-passing or one-sided). \pdht relies on the
@@ -192,7 +192,7 @@ A PTE using the matching interface maintains a list of match-list
 entries (ME). Each ME specifies a set of matching criteria and a
 memory region associated with the entry. If all of the match criteria
 are satisfied, the communication operation commences working on
-corresponding memory region. In particular, each ME contains a 64-bit
+the corresponding memory region. In particular, each ME contains a 64-bit
 {\em match bits} field that must correspond to the match bits
 specified on an incoming communication request. For example, a process
 would post an {\tt MPI\_Recv()} with a specific match bits
