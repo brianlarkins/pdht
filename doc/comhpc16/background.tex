@@ -35,8 +35,10 @@ requirements of key translation.  However, multiple operations are required to
 query a remote translation structure, leading to high overheads~\cite{namashivayam:15}.  We observe
 that the user-supplied tag used by MPI runtimes to match an incoming message
 (i.e., put) with a posted receive operation supports a key/value-like remote
-write model.  When MPI message processing is performed directly by the NIC,
-this model can be seen to support key/value-style put operations.  However,
+write model.
+%When MPI message processing is performed directly by the NIC,
+%this model can be seen to support key/value-style put operations.
+However,
 there are several key differences between MPI messaging and PGLAS
 communication.  First, MPI requires message ordering, whereas PGLAS utilizes
 the PGAS unordered-by-default communication model.  Further, when an MPI
