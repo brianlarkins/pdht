@@ -1,7 +1,10 @@
 \section{Implementation of \pdht}
 
 
-The \pdht system implements a distributed, PGLAS key/value store that
+In this work, we explore the implementation of a parallel, distributed hash
+table (\pdht) as a first implementation of the PGLAS data model.
+%
+The \pdht system implements a distributed, key/value store that
 is asynchronously accessible through one-sided {\em insert}, {\em
   read}, {\em write}, and {\em atomic update} operations.  \pdht uses
 a hash function to map an arbitrary user-supplied key (i.e. a logical

@@ -49,26 +49,26 @@ Finally, a posted receive operation is consumed by an incoming message, whereas
 a PGLAS model maintains the key/value association until the entry is freed.
 
 % motivation
-\subsection{Hash Tables}
-
-Hash tables are one of the most widely used data
-structures in sequential programs. Data is stored by mapping a key to
-a value. Values may be retrieved in a random access manner by
-providing the key to get or put operations on the hash table.
+%\subsection{Hash Tables}
 %
-% serial vs. parallel approaches
-Hash tables can be implemented with a myriad of different techniques,
-but are traditionally implemented sequentially as an array of pointers
-to objects. Parallel implementations typically distribute table data
-across nodes, requiring that the hash table stores the entire object
-and not simply a reference.
-%
-In this work, we explore the implementation of a parallel, distributed hash
-table as a first implementation of the PGLAS data model.
+%Hash tables are one of the most widely used data
+%structures in sequential programs. Data is stored by mapping a key to
+%a value. Values may be retrieved in a random access manner by
+%providing the key to get or put operations on the hash table.
+%%
+%% serial vs. parallel approaches
+%Hash tables can be implemented with a myriad of different techniques,
+%but are traditionally implemented sequentially as an array of pointers
+%to objects. Parallel implementations typically distribute table data
+%across nodes, requiring that the hash table stores the entire object
+%and not simply a reference.
+%%
+%In this work, we explore the implementation of a parallel, distributed hash
+%table as a first implementation of the PGLAS data model.
 
-% sparsity
-\subsection{Sparsity}
-Of interest to the HPC community, we see parallel hash tables as a
+\subsection{Managing Distributed, Sparse Data}
+
+Of interest to the HPC community, we see PGLAS as a
 means for dealing with sparsity. Many common HPC applications rely on
 sparse data structures, which causes numerous problems in the hunt for
 high performance. Matrix and tensor representations often must contend
@@ -79,7 +79,7 @@ spatial decomposition trees such as quadtrees and octrees.
 
 In these cases, there is a natural mapping between an index or
 coordinate system and the corresponding data. A global distributed
-hash table could replace a complicated and difficult to parallelize
+key/value store could replace a complicated and difficult to parallelize
 sparse data structures given the right application.
 
 \subsection{Related Work}
