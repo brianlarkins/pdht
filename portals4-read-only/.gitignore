@@ -48,3 +48,6 @@ strsep
 strsep.log
 strsep.trs
 test-suite.log
+autom4te.cache/requests
+src/runtime/hydra/autom4te.cache/requests
+src/runtime/hydra/mpl/autom4te.cache/requests
