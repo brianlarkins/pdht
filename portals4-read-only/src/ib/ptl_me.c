@@ -131,7 +131,6 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
         /* Only append can modify counters. */
         err = to_ct(MYGBL_ me_init->ct_handle, &me->ct);
         if (err) {
-            printf("b\n");
             goto err3;
         }
     } else {
@@ -314,6 +313,7 @@ int _PtlTriggeredMEAppend(PPEGBL ptl_handle_ni_t ni_handle,
     buf = malloc(sizeof(buf_t));
 
 #ifdef DEBUGGING_INSANE_UNION_BULLSHIT
+    printf("sizeof buf: %d\n", sizeof(buf_t));
     printf("user_ptr:     offset: %lu length: %lu\n", offsetof(buf_t, user_ptr), sizeof(buf->user_ptr));
     printf("ct_threshold: offset: %lu length: %lu\n", offsetof(buf_t, ct_threshold), sizeof(buf->ct_threshold));
     printf("threshold:    offset: %lu length: %lu\n", offsetof(buf_t, threshold), sizeof(buf->threshold));
