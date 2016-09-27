@@ -15,19 +15,21 @@ Remote Memory Access (RMA) interface~\cite{mpi-forum:15}.  Such models can be us
 to aggregate the memory capacity of multiple nodes in an HPC system to provide
 an efficient, distributed data store.  However, the data stored in the PGAS is
 traditionally referenced using direct pointers or offsets with respect to the
-memory where the data is stored.
+process memory where the data is stored.
 
-This model has been effective for storing dense, regular data (e.g., dense
-arrays~\cite{ga}); however, it presents significant challenges to
-storing loosely-structured or sparse data.  For such data, directly calculating the
-desired location in remote memory may not be possible.  Instead, one or more
-indirections must be performed to identify the storage locations, leading to
-significant runtime overheads.  When location resolution information is stored
-remotely, the application incurs additional network latency overheads on each
-access.  In some instances, the layout of the data may be fixed or slowly
-changing, allowing location resolution structures to be replicated or cached
-locally.  However, caching such structures consumes limited memory capacity and
-can incur additional overheads to maintain cache coherence.
+This model has been effective for storing dense, regular data (e.g.,
+dense arrays~\cite{ga}); however, it presents significant challenges
+to storing loosely-structured or sparse data.  For such data, directly
+calculating the desired location in remote memory may not be possible.
+Instead, one or more indirections must be performed to identify the
+storage locations, leading to significant runtime overheads.  When
+location resolution information is stored remotely, the application
+incurs additional network latency overheads for each data access. In
+some instances, the layout of the data may be fixed or slowly
+changing, allowing location resolution structures to be replicated or
+cached locally. Caching remote lookup structures can mitigate this
+impact, but consumes limited memory capacity and can cause additional
+overheads to maintain cache coherence.
 
 %Access to the interconnect network in HPC systems is an area where
 %this contention can cause a bottleneck, which may severely impact
@@ -36,14 +38,15 @@ can incur additional overheads to maintain cache coherence.
 %with significant computing power and additional circuitry to offload
 %many aspects of communication processing.
 
-The message matching model used by the Message Passing Interface (MPI)~\cite{mpi-forum:15}
-establishes a layer of separation between a sender and the location where data
-will be written at the receiver.  Instead of specifying a direct location where
-data will be stored, the sender specifies an application-meaningful {\em tag}
-that the receiver uses to associate the transmission with a data buffer.
-However, while MPI provides a model for pushing data to a tagged location at a
-remote node, it does not support retrieving data from a tagged location at a
-remote node.
+The message matching model used by the Message Passing Interface
+(MPI)~\cite{mpi-forum:15} establishes a layer of separation between a
+sender and the location where data will be written at the receiver.
+Instead of specifying a direct memory location where data will be
+stored, the sender specifies an application-meaningful {\em tag} that
+the receiver uses to associate the transmission with a data buffer.
+While MPI provides a model for pushing data to a tagged location at a
+remote node, it does not support retrieving data from a tagged
+location at a remote node.
 
 %Offloading communication is typically performed by a network interface
 %stack, such as the Portals network programming interface from Sandia
@@ -54,19 +57,20 @@ remote node.
 %constructed using the Portals interface will utilize new network
 %offload hardware automatically when run on systems that support it.
 
-In this work, we build on networking structures designed to support MPI
-communication in order to establish a partitioned, global logical address space
-(PGLAS) that goes beyond traditional PGAS approaches by allowing applications
-to address shared, distributed data using an application-meaningful logical
-naming scheme rather than a direct memory address.
-Further, our scheme uses a scalable, low-overhead method for storing and
-accessing location resolution structure by maintaining them at the destination
-node and performing location resolution during message processing.
+In this work, we build on networking structures designed to support
+MPI communication in order to establish a partitioned, global {\em
+  logical} address space (PGLAS) that goes beyond traditional PGAS
+approaches by allowing applications to address shared, distributed
+data using an application-meaningful logical naming scheme rather than
+a direct memory address.  Further, our scheme uses a scalable,
+low-overhead method for storing and accessing location resolution
+information by maintaining lookup information at the requesting node
+and performing location resolution during message processing.
 
-Our work utilizes the
-Portals 4 network programming interface~\cite{portals4}.  Portals provides a set
-of communication primitives that are intended to efficiently support a variety
-of HPC communication middleware systems, including MPI and PGAS models, while
+Our work utilizes the Portals 4 network programming
+interface~\cite{portals4}.  Portals provides a set of communication
+primitives that are intended to efficiently support a variety of HPC
+communication middleware systems, including MPI and PGAS models, while
 also lending themselves to efficient hardware
 implementation~\cite{brightwell:micro:06,bxi}.
 
@@ -79,16 +83,16 @@ implementation~\cite{brightwell:micro:06,bxi}.
 
 %For message-passing, Portals provides a {\em matching interface}
 %framework for supporting a two-sided communication model based on
-%pairs of matched sends and receives. Portals also povides a {\em
+%pairs of matched sends and receives. Portals also provides a {\em
 %  non-matching interface} that foregoes the complexity of a matched
-%two-sided communciations system in favor of a lightweight, efficient
+%two-sided communications system in favor of a lightweight, efficient
 %system capable of one-sided operations used in PGAS systems.
 
 In this paper, we describe the implementation of a parallel distributed hash
 table (PDHT) that supports a PGLAS data storage model and is implemented using
 the Portals networking interface.  Our approach demonstrates that existing
 Portals constructs designed to support MPI messaging can be repurposed to
-support a PGLAS and the novel use of these primitive communication operations
+support a PGLAS and that the novel use of these primitive communication operations
 can further provide a hardware-accelerated parallel hash table on systems where
 the Portals constructs are supported through an offload NIC.
 

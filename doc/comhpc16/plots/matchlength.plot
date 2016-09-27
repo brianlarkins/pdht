@@ -1,5 +1,5 @@
-TITLE = "Read Times vs. Matchlist Length"
-set title TITLE offset char 0, char -1
+#TITLE = "Read Times vs. Matchlist Length"
+#set title TITLE offset char 0, char -1
 set style data linespoints
 #set term pdf size 800, 600
 set terminal postscript eps enhanced color 'Helvetica,24' lw 2
@@ -9,8 +9,9 @@ set output "mlen.eps"
 set xlabel "Matchlist Length"
 set logscale x
 set xrange [100:100000]
-set ylabel "Time (ms)"
-set logscale y
+set ylabel "Read Latency (ms)"
+#set logscale y
+set yrange [0:60]
 set key top left
 
 plot 'matchlength.dat' using 1:2 title "8 bytes local", \

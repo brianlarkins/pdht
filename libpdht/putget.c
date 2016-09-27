@@ -17,6 +17,10 @@
  */
 
 
+// local-only discriminator for add/update/put operations
+typedef enum { PdhtPTQPending, PdhtPTQActive } pdht_ptq_t;
+static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdht_ptq_t which);
+
 /**
  * pdht_put - puts or overwrites an entry in the global hash table
  *   @param key - hash table key
@@ -24,10 +28,11 @@
  *   @param value - value for table entry
  *   @returns status of operation
  */
-pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
+static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdht_ptq_t which) {
   ptl_match_bits_t mbits; 
   ptl_process_t rank;
   uint32_t ptindex;
+  pt_index_t ptl_ptindex;
   ptl_size_t loffset;
   ptl_size_t lsize;
   ptl_ct_event_t ctevent;
@@ -86,11 +91,19 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   //pdht_dprintf("pdht_put: pre: success: %lu fail: %lu\n", dht->ptl.curcounts.success, dht->ptl.curcounts.failure);
 
 
+  // find out which ME queue we're off too...
+  if (which == PdhtPTQPending)
+    ptl_pt_index = dht->ptl.putindex[ptindex];  // put/add to pending
+  else
+    ptl_pt_index = dht->ptl.getindex[ptindex];  // update to active
+
   // 2. put hash entry on target
-  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, dht->ptl.putindex[ptindex], 
-      mbits, 0, value, 0);
+  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, ptl_pt_index,
+	       mbits, 0, value, 0);
+
   if (ret != PTL_OK) {
-    pdht_dprintf("pdht_put: PtlPut(key: %lu, rank: %d, ptindex: %d) failed: %s\n", *(long *)key, rank.rank, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
+    pdht_dprintf("pdht_put: PtlPut(key: %lu, rank: %d, ptindex: %d) failed: %s\n",
+		 *(long *)key, rank.rank, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
     goto error;
   }
 
@@ -169,6 +182,44 @@ error:
   return PdhtStatusError;
 }
 
+
+
+/**
+ * pdht_add - adds an entry in the global hash table
+ *   @param key - hash table key
+ *   @param ksize - size of key
+ *   @param value - value for table entry
+ *   @returns status of operation
+ */
+pdht_status_t pdht_add(pdht_t *dht, void *key, void *value) {
+  pdht_do_put(dht,key,value, PdhtPTQPending);
+}
+
+
+
+/**
+ * pdht_put - adds an entry to the global hash table
+ *   @param key - hash table key
+ *   @param ksize - size of key
+ *   @param value - value for table entry
+ *   @returns status of operation
+ */
+pdht_status_t pdht_update(pdht_t *dht, void *key, void *value) {
+  pdht_do_put(dht,key,value,PdhtPTQPending);
+}
+
+
+
+/**
+ * pdht_update - overwrites an entry in the global hash table
+ *   @param key - hash table key
+ *   @param ksize - size of key
+ *   @param value - value for table entry
+ *   @returns status of operation
+ */
+pdht_status_t pdht_update(pdht_t *dht, void *key, void *value) {
+  pdht_do_put(dht,key,value,PdhtPTQActive);
+}
 
 
 /**
@@ -324,3 +375,6 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
 error:
   return PdhtStatusError;
 }
+
+
+

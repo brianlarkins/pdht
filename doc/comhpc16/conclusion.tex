@@ -1,8 +1,31 @@
 \section{Conclusion}
 
-Capture contributions
+We have presented \pdht, a partitioned, distributed hash table implementation
+that uses a novel application of Portals networking interface constructs
+initially intended for supporting MPI messaging.  By building \pdht on top of
+Portals, we will be able to take advantage of offload NICs that support the
+Portals layer with a hardware processing engine.  \pdht is an example of the
+broader family of partitioned, global logical address space (PGLAS) parallel
+programming models and we anticipate that efficient implementations of such
+models will be a key enabling technology for sparse methods, which are of
+increased interest within the scientific and data analytics communities.
 
-Discussion and Future work
+In this initial design study, we have identified a first mapping of the \pdht
+data structure to Portals primitives; however, there are a number of open areas
+for future work.
+
+Currently, we use a progress thread to process incoming insertion requests.  We
+plan to investigate the use of the proposed Portals triggered ME append
+operation~\cite{schneider:13} to allow \pdht to take full advantage of
+asynchronous progress provided through the Portals layer.  However, in order
+for this to work, we suspect changes to Portals may be necessary, as the ME
+that is to be appended must also be updated with the user-supplied match bits
+prior to being appended to the active list.
+
+In Section~\ref{sec:results}, we identified list traversal as a significant
+source of overhead.  A variety of solutions are possible, such as hashing
+within the Portals implementation, and are also of potential benefit to MPI
+implementations~\cite{flajslik:16}.
 
 %%% Local Variables:
 %%% mode: latex

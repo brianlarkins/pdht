@@ -241,6 +241,8 @@ void                 pdht_barrier(void);
 
 // Put / Get Operations -- putget.c
 pdht_status_t        pdht_put(pdht_t *dht, void *key, void *value);
+pdht_status_t        pdht_add(pdht_t *dht, void *key, void *value);
+pdht_status_t        pdht_update(pdht_t *dht, void *key, void *value);
 pdht_status_t        pdht_get(pdht_t *dht, void *key, void *value);
 pdht_status_t        pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, void * key, void *value);
 

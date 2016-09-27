@@ -35,8 +35,10 @@ requirements of key translation.  However, multiple operations are required to
 query a remote translation structure, leading to high overheads~\cite{namashivayam:15}.  We observe
 that the user-supplied tag used by MPI runtimes to match an incoming message
 (i.e., put) with a posted receive operation supports a key/value-like remote
-write model.  When MPI message processing is performed directly by the NIC,
-this model can be seen to support key/value-style put operations.  However,
+write model.
+%When MPI message processing is performed directly by the NIC,
+%this model can be seen to support key/value-style put operations.
+However,
 there are several key differences between MPI messaging and PGLAS
 communication.  First, MPI requires message ordering, whereas PGLAS utilizes
 the PGAS unordered-by-default communication model.  Further, when an MPI
@@ -47,58 +49,63 @@ Finally, a posted receive operation is consumed by an incoming message, whereas
 a PGLAS model maintains the key/value association until the entry is freed.
 
 % motivation
-\subsection{Hash Tables}
-
-Hash tables are one of the most widely used data
-structures in sequential programs. Data is stored by mapping a key to
-a value. Values may be retrieved in a random access manner by
-providing the key to get or put operations on the hash table.
+%\subsection{Hash Tables}
 %
-% serial vs. parallel approaches
-Hash tables can be implemented with a myriad of different techniques,
-but are traditionally implemented sequentially as an array of pointers
-to objects. Parallel implementations typically distribute table data
-across nodes, requiring that the hash table stores the entire object
-and not simply a reference.
-%
-In this work, we explore the implementation of a parallel, distributed hash
-table as a first implementation of the PGLAS data model.
+%Hash tables are one of the most widely used data
+%structures in sequential programs. Data is stored by mapping a key to
+%a value. Values may be retrieved in a random access manner by
+%providing the key to get or put operations on the hash table.
+%%
+%% serial vs. parallel approaches
+%Hash tables can be implemented with a myriad of different techniques,
+%but are traditionally implemented sequentially as an array of pointers
+%to objects. Parallel implementations typically distribute table data
+%across nodes, requiring that the hash table stores the entire object
+%and not simply a reference.
+%%
+%In this work, we explore the implementation of a parallel, distributed hash
+%table as a first implementation of the PGLAS data model.
 
-% sparsity
-\subsection{Sparsity}
-Of interest to the HPC community, we see parallel hash tables as a
+\subsection{Managing Distributed, Sparse Data}
+
+Of interest to the HPC community, we see PGLAS as a
 means for dealing with sparsity. Many common HPC applications rely on
 sparse data structures, which causes numerous problems in the hunt for
 high performance. Matrix and tensor representations often must contend
-with sparse data, resulting in specialized formats such compressed
+with sparse data, resulting in specialized formats such as compressed
 sparse row (CSR) and variants. Other problems, such as N-body
 simulation, grid and mesh solvers, are naturally expressed using
 spatial decomposition trees such as quadtrees and octrees. 
 
 In these cases, there is a natural mapping between an index or
 coordinate system and the corresponding data. A global distributed
-hash table could replace a complicated and difficult to parallelize
-sparse data structures given the right application.
+key/value store could replace a complicated and difficult to parallelize
+sparse data structure given the right application.
 
 \subsection{Related Work}
 
-The idea of logically addressing data across memories in a distributed system
-has been explored in a number of other models.  Distributed, shared key/value
-stores are an intrinsic part of the Piccolo programming model~\cite{power:10}.
-The Linda programming model~\cite{ahuja:86} is build around tuple spaces, which
-allow data to be inserted, read, and removed from global memory and data items
-are identified through a user-supplied tuple.  Such models are of renewed
-interest in the context of resilience~\cite{wilke:14}.  Distributed object
-models, such as Orca~\cite{bal:92}, reference shared data through graphs rather
-than direct pointers.  In the Open Community Runtime (OCR)~\cite{OCR}, data
-blocks (DBs) are identified by a globally unique ID, which is assigned by the
-OCR runtime system and used to portably reference a DB.  Finally, migratable
-object models, such as Charm++~\cite{kale:93}, support a variety of methods for
-representing and querying object collections.
+The idea of logically addressing data across memories in a distributed
+system has been explored in a number of other models.  Distributed,
+shared key/value stores are an intrinsic part of the Piccolo
+programming model~\cite{power:10}.  The Linda programming
+model~\cite{ahuja:86} is built around tuple spaces, that allows data
+to be inserted, read, and removed from global memory. Linda data items
+are identified through a user-supplied tuple.  Such models are of
+renewed interest in the context of resilience~\cite{wilke:14}.
+Distributed object models, such as Orca~\cite{bal:92}, reference
+shared data through graphs rather than direct pointers.  In the Open
+Community Runtime (OCR)~\cite{OCR}, data blocks (DBs) are identified
+by a globally unique ID, which is assigned by the OCR runtime system
+and used to portably reference a DB.  Finally, migratable object
+models, such as Charm++~\cite{kale:93}, support a variety of methods
+for representing and querying object collections.
 
-Hash tables are also commonly used to store sparse or loosely structured data
-and they have been studied in the context of MPI and popular PGAS
-models~\cite{maynard:12}.  In addition, PGAS-like hierarchical approaches to
+Hash tables are also commonly used to store sparse or loosely structured
+data~\cite{memcached04,chord01,docan:12}
+and their implementation has been studied in the context of MPI and popular PGAS
+models~\cite{zht13,fompi13,cmpi10,maynard:12,memcached12,mht15} as well as in
+the context of RDMA offload~\cite{memcached12,mitchell:13,kalia:14}.  In
+addition, PGAS-like hierarchical approaches to
 managing sparse spatial decomposition have been proposed~\cite{larkins:08}
 along with runtime methods to manage this data and exploit spatial
 locality~\cite{larkins:12}.
@@ -135,7 +142,7 @@ locality~\cite{larkins:12}.
 
 
 The Portals framework provides several low-level data abstractions that
-are used to implement the \pdht system. \pdht is based on a one-sided
+are used to implement \pdht, our parallel distributed hash table system. \pdht is based on a one-sided
 communication model to allow asynchronous data access while avoiding processor
 involvement at the target node.  Portals provides support for both
 one-sided (a.k.a. non-matching) and matching communication semantics.
@@ -158,7 +165,7 @@ Figure \ref{fig:portals_put}.
 \end{figure}
 
 Portals specifies a {\em network interface} (NI) as a per-process
-abstraction of a physical network interface on the target process.The
+abstraction of a physical network interface on the target process. The
 interface is defined at creation to be either a {\em matching}
 or a {\em non-matching} interface, depending on the intended use for
 the interface (message-passing or one-sided). \pdht relies on the
@@ -185,7 +192,7 @@ A PTE using the matching interface maintains a list of match-list
 entries (ME). Each ME specifies a set of matching criteria and a
 memory region associated with the entry. If all of the match criteria
 are satisfied, the communication operation commences working on
-corresponding memory region. In particular, each ME contains a 64-bit
+the corresponding memory region. In particular, each ME contains a 64-bit
 {\em match bits} field that must correspond to the match bits
 specified on an incoming communication request. For example, a process
 would post an {\tt MPI\_Recv()} with a specific match bits
@@ -193,7 +200,7 @@ field. Later, Portals would receive a communication request for an
 {\tt MPI\_Send()} with the same match bits, which would be correspond
 to the posted receive.
 
-Portals provides {\em event queues} (EQ) and {\em event counters} (CT) to track events
+Portals provides {\em event queues} and {\em event counters} to track events
 relating to initiator- and target-side Portals operations.  Full events contain
 detailed information about the event and communication operation involved,
 whereas counting events are lighter weight and capture only the success or
@@ -202,10 +209,10 @@ Counters are useful for lightweight event counting, where copying a
 large amount of data from the Portals implementation to the
 application is unnecessary.
 
-On the initiator, an EQ may be associated with an MD, whereas on the
-target, an EQ may be associated with each PTE.  CTs can also be used to
+On the initiator, an event queue may be associated with an MD, whereas on the
+target, a queue may be associated with each PTE.  Counters can also be used to
 track both initiator and target events.
-Unlike target-side EQs, a counter may be
+Unlike target-side event queues, a counter may be
 associated with each ME in the match-list. Multiple MEs may share a
 single counter, if desired. \pdht typically uses counters to watch for
 successful completion, and full events to track specific failures. More
