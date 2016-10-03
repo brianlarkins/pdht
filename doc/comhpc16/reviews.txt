@@ -1,0 +1,69 @@
+----------------------- REVIEW 1 ---------------------
+PAPER: 11
+TITLE: Extending a Message Passing Runtime to Support Partitioned, Global Logical Address Spaces
+AUTHORS: D. Brian Larkins and James Dinan
+
+OVERALL EVALUATION: 1 (weak accept)
+
+----------- OVERALL EVALUATION -----------
+Portals is an interesting low-level communication system with sophisticated
+features to support MPI tag matching.  This paper considers building on that
+mechanism to provide a variation on PGAS that provides a logical addressing
+capability.  A parallel distributed hash table is implemented in support of
+this model, with an experimental evaluation using the Portals reference
+implementation on the Comet system at SDSC (with one core per node).  The
+authors identify some challenges, such as the number of keys in the active
+matchlist.
+
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 11
+TITLE: Extending a Message Passing Runtime to Support Partitioned, Global Logical Address Spaces
+AUTHORS: D. Brian Larkins and James Dinan
+
+OVERALL EVALUATION: 2 (accept)
+
+----------- OVERALL EVALUATION -----------
+The authors have proposed to solve an important problem in PGAS models for
+addressing sparse PGAS data structures. State of the art methods need several
+rounds of communication to solve this (such as row pointer, followed by actual
+data). By proposing a PGLAS extension, the authors have provided a nice and
+elegant solution to this problem.
+
++ Simple, yet effective solution to an important problem
+
++ Actual implementation, with albeit simple application kernel
+
+A few problems (probably not addressable in paper, but hopefully in the talk:)
+- Why not consider MPI-3 RMA? (Performance portability)
+
+- 8 bytes local latency is higher than remote (performance evaluation section
+  needs some real work, at the moment, it is 2 results and really short on
+explanation)
+
+- No application results, there are several PGAS applications, both UPC++ and
+  Global Arrays. (Another reason to consider MPI-3 backend).
+
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 11
+TITLE: Extending a Message Passing Runtime to Support Partitioned, Global Logical Address Spaces
+AUTHORS: D. Brian Larkins and James Dinan
+
+OVERALL EVALUATION: 1 (weak accept)
+
+----------- OVERALL EVALUATION -----------
+In this paper, the authors present an implementation of a distributed hash
+table on portals, a system typically used to implement message passing systems.
+It shows how this mapping works and how it can be used to bridge the gap
+between PGAS and MP systems.
+
+The work is a bit preliminary, but useful as a short paper contribution to a
+workshop. It could find some interest and discussion and could inspire similar
+work on other systems.
+
+The evaluation section could use some additional explanations. Especially the
+exact benchmark setup and pattern for Figure 3 is unclear, which makes it hard
+to understand how the results should be interpreted - similar for Figure 4. A
+clear definition of the metrics that should be used to explore PDHTs and how
+they map to the benchmarks would be helpful.
