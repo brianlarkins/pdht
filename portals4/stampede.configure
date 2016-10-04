@@ -1,0 +1,5 @@
+#!/bin/bash
+#module load autotools
+#./autogen.sh
+#export TEST_RUNNER=ibrun
+./configure --prefix=$HOME/pdht/opt --with-ev=$HOME/pdht/opt --enable-transport-ib --enable-zeromrs --with-ofed=/opt/ofed --enable-zero-mrs --enable-me-triggered LDFLAGS="-R/usr/lib64 -L/usr/lib64" 
