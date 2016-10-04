@@ -1,1 +1,0 @@
-./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-zeromrs --enable-zero-mrs --enable-me-triggered
