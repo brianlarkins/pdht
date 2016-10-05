@@ -96,7 +96,12 @@ Distributed object models, such as Orca~\cite{bal:92}, reference
 shared data through graphs rather than direct pointers.  In the Open
 Community Runtime (OCR)~\cite{OCR}, data blocks (DBs) are identified
 by a globally unique ID, which is assigned by the OCR runtime system
-and used to portably reference a DB.  Finally, migratable object
+and used to portably reference a DB.
+In the MPI-3 RMA model~\cite{mpi-forum:15}, windows allowing remote
+access to the private memory of a process can be created.  However,
+window creation is collective and each process must maintain a table of
+all window handles.
+Finally, migratable object
 models, such as Charm++~\cite{kale:93}, support a variety of methods
 for representing and querying object collections.
 
