@@ -111,3 +111,9 @@ src/runtime/hydra/mpl/confdb/test-driver
 src/runtime/hydra/mpl/configure
 src/runtime/hydra/mpl/include/config.h.in
 src/runtime/hydra/mpl/include/mplconfig.h
+test/benchmarks/CT_LE_rtt_latency
+test/benchmarks/CT_ME_rtt_latency
+test/benchmarks/EQ_LE_rtt_latency
+test/benchmarks/EQ_ME_rtt_latency
+test/benchmarks/P4msgrate
+test/sfw/test
