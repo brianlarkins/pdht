@@ -177,6 +177,15 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
 
         err = le_append_pt(ni, (le_t *)me);
 
+#ifdef WITH_UNORDERED_MATCHING
+       if ((pt->options & PTL_PT_MATCH_UNORDERED) && (ni->options & PTL_NI_MATCHING)) {
+           pt_me_hash_t *newbuf = calloc(1,sizeof(pt_me_hash_t)); // zeroed for UTHash
+           newbuf->match_bits = me->match_bits;
+           newbuf->match_entry = me;
+           HASH_ADD(hh, pt->matchlist_ht, match_bits, sizeof(ptl_match_bits_t), newbuf);
+       }
+#endif
+
         PTL_FASTLOCK_UNLOCK(&pt->lock);
 
         if (unlikely(err)) {
@@ -438,6 +447,18 @@ int _PtlMEUnlink(PPEGBL ptl_handle_me_t me_handle)
         err = PTL_ARG_INVALID;
         goto err1;
     }
+
+#ifdef WITH_UNORDERED_MATCHING
+    pt_t *pt = me->pt;
+    if (pt->options & PTL_PT_MATCH_UNORDERED) {
+        pt_me_hash_t *hashentry;
+        HASH_FIND(hh, pt->matchlist_ht, &me->match_bits, sizeof(ptl_match_bits_t), hashentry);
+        if (hashentry) {
+            HASH_DEL(pt->matchlist_ht, hashentry);
+            free(hashentry);
+        }
+    }
+#endif
 
     le_unlink((le_t *)me, 0);
 

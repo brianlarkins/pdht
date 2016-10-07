@@ -94,6 +94,11 @@ TESTS += \
 	test_triggered_ME_ops
 endif
 
+if WITH_UNORDERED_MATCHING
+TESTS += \
+	test_ME_unordered_match_ops
+endif
+
 check_PROGRAMS = $(TESTS)
 
 NPROCS ?= 2
@@ -246,11 +251,15 @@ test_LE_get_truncate_CPPFLAGS = $(AM_CPPFLAGS) -DINTERFACE=0
 test_ME_get_truncate_SOURCES = test_get_truncate.c
 test_ME_get_truncate_CPPFLAGS = $(AM_CPPFLAGS) -DINTERFACE=1
 
+test_ME_unordered_match_ops_SOURCES = test_unordered_match_ops.c
+test_ME_unordered_match_ops_CPPFLAGS = $(AM_CPP_FLAGS) -DINTERFACE=1
+
 test_triggered_LE_put_SOURCES = test_triggered_put.c
 test_triggered_LE_put_CPPFLAGS = $(AM_CPPFLAGS) -DINTERFACE=0
 
 test_triggered_ME_put_SOURCES = test_triggered_put.c
 test_triggered_ME_put_CPPFLAGS = $(AM_CPPFLAGS) -DINTERFACE=1
+
 
 test_triggered_ME_ops_SOURCES = test_triggered_me_ops.c
 test_triggered_ME_ops_CPPFLAGS = $(AM_CPP_FLAGS) -DINTERFACE=1
