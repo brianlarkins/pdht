@@ -134,9 +134,11 @@ static void umn_register(ni_t *ni, mr_t *mr, void *start, size_t size)
     if (ni->umn_fd == -1)
         return;
 
-    if (ioctl(ni->umn_fd, UMMUNOTIFY_REGISTER_REGION, &r)) {
-        perror("register ioctl");
-        return;
+    if (get_param(PTL_DISABLE_MEM_REG_CACHE) != 1) {
+        if (ioctl(ni->umn_fd, UMMUNOTIFY_REGISTER_REGION, &r)) {
+            perror("register ioctl");
+            return;
+        }
     }
 
     mr->umn_cookie = r.user_cookie;
@@ -530,12 +532,19 @@ void mr_init(ni_t *ni)
                 fprintf(stderr,
                         "WARNING: Ummunotify not found: Not using ummunotify can result in incorrect results download and install ummunotify from:\n http://support.systemfabricworks.com/downloads/ummunotify/ummunotify-v2.tar.bz2\n");
                 global_umn_init = 0;
+                if (get_param(PTL_DISABLE_MEM_REG_CACHE) == 2) {
+                    global_umn_init = 1;
+                    global_umn_fd = open("/dev/null", O_RDONLY | O_NONBLOCK);
+                    global_umn_counter = malloc(sizeof*(global_umn_counter));   
+                }
                 return;
             }   
 
-            global_umn_counter =
-                mmap(NULL, sizeof *(global_umn_counter), PROT_READ, MAP_SHARED,
+            if (get_param(PTL_DISABLE_MEM_REG_CACHE) != 2) {
+                global_umn_counter =
+                    mmap(NULL, sizeof *(global_umn_counter), PROT_READ, MAP_SHARED,
                      global_umn_fd, 0);
+            }
             if (global_umn_counter == MAP_FAILED) {
                 close(global_umn_fd);
                 global_umn_fd = -1;
