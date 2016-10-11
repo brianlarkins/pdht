@@ -32,13 +32,12 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
   ptl_match_bits_t mbits; 
   ptl_process_t rank;
   uint32_t ptindex;
-  pt_index_t ptl_ptindex;
   ptl_size_t loffset;
   ptl_size_t lsize;
   ptl_ct_event_t ctevent;
   ptl_event_t fault;
+  ptl_pt_index_t ptl_pt_index;
   int ret;
-  unsigned which;
   ptl_me_t *mep;
   char *valp, *kval;
   pdht_status_t rval = PdhtStatusOK;
@@ -148,6 +147,8 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     while (1) {
       // check failure EQ for flow control
       ret = PtlEQPoll(&dht->ptl.lmdeq, 1, 100, &fault, &which);
+      // XXX which is not legal, now a formal param for which PTE
+      assert(0);
       if (ret == PTL_OK) {
         // flow control on remote NI
         if (fault.ni_fail_type == PTL_NI_PT_DISABLED) {
@@ -161,6 +162,8 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
 
       // check for success again
       ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
+      // XXX which is not legal, now a formal param for which PTE
+      assert(0);
       if (ret == PTL_OK) {
         goto done;
       }
@@ -204,7 +207,7 @@ pdht_status_t pdht_add(pdht_t *dht, void *key, void *value) {
  *   @param value - value for table entry
  *   @returns status of operation
  */
-pdht_status_t pdht_update(pdht_t *dht, void *key, void *value) {
+pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
   pdht_do_put(dht,key,value,PdhtPTQPending);
 }
 

@@ -28,7 +28,7 @@ void init_pmi() {
 
     PMI_KVS_Get_my_name(name, name_max);
 
-    PtlGetId(c->ptl.phy, &me);
+    PtlGetPhysId(c->ptl.lni, &me);
     //printf("PMI rank: %lu Portals rank: %ld\n", c->rank, me.rank);
 
     snprintf(key, key_max, "pdht-%ld-nid", (long unsigned) c->rank);
