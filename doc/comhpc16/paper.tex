@@ -1,4 +1,7 @@
 \documentclass[10pt,conference]{IEEEtran}
+%\makeatletter
+%\def\@IEEEpubidpullup{2\baselineskip}
+%\makeatother
 
 \usepackage{times}
 \usepackage{amssymb}
@@ -36,16 +39,20 @@
 \newcommand{\regtm}{\textsuperscript{\textregistered{}}\xspace}
 \newcommand{\tm}{{\scriptsize\texttrademark{}}\xspace}
 
+
 % Document starts
 \begin{document}
-
+\IEEEoverridecommandlockouts
 % Title portion
 \title{Extending a Message Passing Runtime to Support Partitioned, Global Logical Address Spaces}
 \author{\IEEEauthorblockN{D. Brian Larkins}
 \IEEEauthorblockA{Rhodes College}
 \and
 \IEEEauthorblockN{James Dinan}
-\IEEEauthorblockA{Intel Corporation}}
+\IEEEauthorblockA{Intel Corporation}
+\thanks{\hspace{-1em}COMHPC16; Salt Lake City, Utah; November 2016\newline
+   978-1-5090-3829-9/16/\$31.00 \copyright 2016 IEEE}
+}
 
 \maketitle
 
