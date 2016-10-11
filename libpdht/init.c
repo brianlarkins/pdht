@@ -66,6 +66,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
          dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tcontext: %lu bytes ht: %lu bytes table: %lu\n", 
         sizeof(pdht_context_t), sizeof(pdht_t), PDHT_DEFAULT_TABLE_SIZE * dht->entrysize);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax table size: %d pending q size: %d\n", PDHT_DEFAULT_TABLE_SIZE, PDHT_PENDINGQ_SIZE);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tPT Entries: %d initial pending entries: %d\n", PDHT_DEFAULT_NUM_PTES, PDHT_DEFAULT_NUM_PTES*PDHT_PENDINGQ_SIZE);
 
   dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
   if (!dht->ht) {

@@ -30,6 +30,7 @@ void pdht_polling_init(pdht_t *dht) {
   char *iter; // used for pointer math
   ptl_me_t me;
   ptl_event_t ev;
+  int pentries = 0;
 
   // default match-list entry values
   me.length      = PDHT_MAXKEYSIZE + dht->elemsize; // storing key _and_ value for each entry
@@ -80,6 +81,7 @@ void pdht_polling_init(pdht_t *dht) {
                          (me.uid==PTL_UID_ANY), me.options, me.match_bits, me.ignore_bits);
         exit(1);
       } 
+      pentries++;
       // clean out the LINK events from the event queue
       // PtlEQWait(dht->ptl.eq, &ev);
 
@@ -249,6 +251,7 @@ void *pdht_poll(void *arg) {
 
       } else {
         pdht_dprintf("pdht_poll: got event for %s\n", pdht_event_to_string(ev.type));
+        pdht_dprintf("pdht_poll: pollcount: %d\n", pollcount);
         pdht_dump_event(&ev);
       }
     } else {

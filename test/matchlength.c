@@ -10,6 +10,7 @@
  *   - need to make sure that PDHT_DEFAULT_TABLE_SIZE is at least 100K * NUM_PTES
  *   - set PDHT_DEFAULT_NUM_PTES to 2
  *   - set PDHT_DEFAULT_TABLE_SIZE 250000
+ *   - set PDHT_PENDINGQ_SIZE 100000
  */
 
 #define NITER 1000
@@ -27,14 +28,14 @@ void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptinde
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
   //*ptindex = *(unsigned long *)key % dht->nptes;
-  *ptindex = 1;
+  *ptindex = 0;
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
   //*ptindex = *(unsigned long *)key % dht->nptes;
-  *ptindex = 1;
+  *ptindex = 0;
 }
 
 
@@ -97,7 +98,7 @@ int main(int argc, char **argv) {
         pdht_get(ht, &key, val);
       }
       STOP_TIMER(gtimer);
-      eprintf(" %7d %12.7f\n", mlengths[len], (READ_TIMER(gtimer)/(double)maxiters)*1000);
+      eprintf(" %7d %12.7f\n", mlengths[len], (READ_TIMER(gtimer)/(double)maxiters)*1000000);
     }
     pdht_barrier();
   }
