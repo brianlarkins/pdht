@@ -2,7 +2,7 @@
 
 Advances in processor architecture have led to a rise in the number of
 processor cores within a single compute node.  While this trend continues to
-increase the computational capacity of high-performance computing (HPC)
+increase the capacity of high-performance computing (HPC)
 systems, the amount of memory available per core has not increased at the same
 rate.  As a result, there has been renewed interest in both Partitioned Global
 Address Space (PGAS) parallel programming models as well as sparse and compact
@@ -15,7 +15,7 @@ Remote Memory Access (RMA) interface~\cite{mpi-forum:15}.  Such models can be us
 to aggregate the memory capacity of multiple nodes in an HPC system to provide
 an efficient, distributed data store.  However, the data stored in the PGAS is
 traditionally referenced using direct pointers or offsets with respect to the
-process memory where the data is stored.
+process memory where the data is located.
 
 This model has been effective for storing dense, regular data (e.g.,
 dense arrays~\cite{ga}); however, it presents significant challenges
@@ -40,7 +40,7 @@ overheads to maintain cache coherence.
 
 The message matching model used by the Message Passing Interface
 (MPI)~\cite{mpi-forum:15} establishes a layer of separation between a
-sender and the location where data will be written at the receiver.
+sender and the location where data is be written at the receiver.
 Instead of specifying a direct memory location where data will be
 stored, the sender specifies an application-meaningful {\em tag} that
 the receiver uses to associate the transmission with a data buffer.
@@ -96,6 +96,7 @@ support a PGLAS and that the novel use of these primitive communication operatio
 can further provide a hardware-accelerated parallel hash table on systems where
 the Portals constructs are supported through an offload NIC.
 
+%\IEEEpubidadjcol
 
 %%% Local Variables:
 %%% mode: latex

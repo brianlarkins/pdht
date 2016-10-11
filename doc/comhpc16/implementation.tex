@@ -85,10 +85,10 @@ depending on the desired behavior.
 \subsection{Collisions and Key Sparsity}
 
 Collisions occur when multiple keys map to the same rank/hash pair.
-In the case of a collision,
-PDHT utilizes a linear probing solution. The library can
-also be configured to simply detect collisions and let the application
-take an appropriate action.
+In the case of a collision, PDHT utilizes a linear probing
+solution. The library can also be configured to simply detect
+collisions and defer to the aplication.
+
 % JSD: How does linear probing work?
 % DBL:
 % pdht_get(key,...): -> 

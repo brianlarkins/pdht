@@ -13,24 +13,34 @@ containing dual 12-core Intel\regtm Xeon\regtm E5-2680 processors and 128
 gigabytes of memory.  Nodes are connected using a Mellanox\othertm FDR 56 Gb/s
 InfiniBand\othertm fabric.
 
-An initial study of the performance of \pdht can be seen in
-Figure~\ref{fig:throughput}. This figure shows that \pdht scales
+Our first experiment, shown in Figure~\ref{fig:throughput}, measures
+the overall throughput of a set of distinct remote read operations on
+the distributed key/value store. This figure shows that \pdht scales
 reasonably, with communication volume increasing as processor counts
-grow. This experiment was run on one core per node, with the hash
+grow. Each \pdht process is run on one core per node, with the hash
 function configured to ensure all reads occur remotely, over the
 Infiniband\othertm interface.
 
-Additionally, we measure the performance of retrieving elements
-from the \pdht in different scenarios.  These results are shown in
-Figure~\ref{fig:mlen} and provide an initial characterization of the lookup
-cost associated with our \pdht implementation.  In contrast with traditional
-PGAS approaches, building a remotely accessible key/value store on top of a
-mechanism intended to support MPI message matching can add new overheads.  In
-particular, the Portals message processing engine must traverse the active
-match list until an ME that matches the given query is located.  In cases where
-the element does not exist, the Portals layer must reach the end of the list to
-make this conclusion.  Thus, there is a list traversal overhead that is
-proportional to the number of elements visited before finding a match.
+%An initial study of the performance of \pdht can be seen in
+%Figure~\ref{fig:throughput}. This figure shows that \pdht reads scale
+%reasonably, with communication volume increasing as processor counts
+%grow. This experiment was run on one core per node, with the hash
+%function configured to ensure all reads occur remotely, over the
+%Infiniband\othertm interface.
+
+Additionally, we measure the performance of retrieving elements from
+the \pdht in with respect to the number of elements on each process.
+These results are shown in Figure~\ref{fig:mlen} and provide an
+initial characterization of the lookup cost associated with our \pdht
+implementation.  In contrast with traditional PGAS approaches,
+building a remotely accessible key/value store on top of a mechanism
+intended to support MPI message matching can add new overheads.  In
+particular, the Portals message processing engine must traverse the
+active match list until an ME that matches the given query is located.
+In cases where the element does not exist, the Portals layer must
+reach the end of the list to make this conclusion.  Thus, there is a
+list traversal overhead that is proportional to the number of elements
+visited before finding a match.
 
 \begin{figure}
     \centering
