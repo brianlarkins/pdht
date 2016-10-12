@@ -66,6 +66,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
          dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tcontext: %lu bytes ht: %lu bytes table: %lu\n", 
         sizeof(pdht_context_t), sizeof(pdht_t), PDHT_DEFAULT_TABLE_SIZE * dht->entrysize);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax table size: %d pending q size: %d\n", PDHT_DEFAULT_TABLE_SIZE, PDHT_PENDINGQ_SIZE);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tPT Entries: %d initial pending entries: %d\n", PDHT_DEFAULT_NUM_PTES, PDHT_DEFAULT_NUM_PTES*PDHT_PENDINGQ_SIZE);
 
   dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
   if (!dht->ht) {
@@ -202,6 +204,7 @@ void pdht_init(void) {
     pdht_dprintf("portals initialization error\n");
     exit(-1);
   }
+#if 0
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
       PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
       PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
@@ -209,11 +212,7 @@ void pdht_init(void) {
     pdht_dprintf("Portals physical NI initialization problem. (return=%d)\n", ret);
     exit(-1);
   }
-
-  init_pmi();
-
-  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Portals 4\n");
-  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Network Interface\n");
+#endif
 
   // request portals NI limits
   ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
@@ -243,18 +242,6 @@ void pdht_init(void) {
   ni_req_limits.features = 0;
 #endif
 
-
-  // we are not using non-matching right now
-#if USE_NON_MATCHING
-  // create non-matching logical NI
-  ret = PtlNIInit(PTL_IFACE_DEFAULT,
-      PTL_NI_NO_MATCHING | PTL_NI_LOGICAL,
-      PTL_PID_ANY,
-      &ni_req_limits,
-      &(c->ptl.ni_limits),
-      &(c->ptl.lni));
-
-#else
   // create matching logical NI
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
       PTL_NI_MATCHING | PTL_NI_LOGICAL,
@@ -262,7 +249,17 @@ void pdht_init(void) {
       &ni_req_limits,
       &(c->ptl.ni_limits),
       &(c->ptl.lni));
-#endif // matching or non-matching?
+
+  init_pmi();
+
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Portals 4\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Network Interface\n");
+
+  if (ret != PTL_OK) {
+    pdht_eprintf(PDHT_DEBUG_NONE, "Portals logical NI initialization error\n");
+    goto error;
+  }
+
 
   c->dbglvl = PDHT_DEBUG_WARN;
 
@@ -281,11 +278,6 @@ void pdht_init(void) {
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
-
-  if (ret != PTL_OK) {
-    pdht_eprintf(PDHT_DEBUG_NONE, "Portals logical NI initialization error\n");
-    goto error;
-  }
 
   //print_fucking_mapping();
 
@@ -326,7 +318,7 @@ void pdht_fini(void) {
   PtlMDRelease(c->ptl.barrier_md);
 
   PtlNIFini(c->ptl.lni);
-  PtlNIFini(c->ptl.phy);
+  //PtlNIFini(c->ptl.phy);
   if (c->ptl.mapping)
     free(c->ptl.mapping);
   PtlFini();
