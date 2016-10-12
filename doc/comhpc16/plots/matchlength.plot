@@ -8,13 +8,16 @@ set output "mlen.eps"
 
 set xlabel "Matchlist Length"
 set logscale x
-set xrange [100:100000]
-set ylabel "Read Latency (ms)"
-#set logscale y
-set yrange [0:60]
+#set xrange [100:100000]
+set xtics (1,10,100,1000,10000,100000)
+set ylabel "Read Latency (usec)"
+set logscale y
+set yrange [5:5000]
 set key top left
 
-plot 'matchlength.dat' using 1:2 title "8 bytes local", \
-     'matchlength.dat' using 1:3 title "8 bytes remote", \
-     'matchlength.dat' using 1:4 title "128 bytes remote", \
-     'matchlength.dat' using 1:5 title "1K bytes remote"        
+#plot 'matchlength.dat' using 1:2 title "8 bytes local", \
+#     'matchlength.dat' using 1:3 title "8 bytes shared", \
+
+plot 'matchlength.dat' using 1:4 title "8 bytes", \
+     'matchlength.dat' using 1:5 title "128 bytes", \
+     'matchlength.dat' using 1:6 title "1K bytes"        
