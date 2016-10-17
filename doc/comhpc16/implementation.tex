@@ -33,6 +33,8 @@ handled entirely by the Portals implementation.
 % TODO --
 %\pdht's usage of the Portals matching interface differs from MPI in several important ways: ...
 
+\vspace{-2mm}
+
 \subsection{Insert Operation}
 
 When adding a new key/value object to the hash table, the key is
@@ -55,7 +57,7 @@ in Figure \ref{fig:put} (c).
 
 \begin{figure*}
   \centering
-  \includegraphics[width=0.9\linewidth]{figs/put}
+  \includegraphics[width=0.85\linewidth]{figs/put}
   \caption{Sequence of target-side actions performed during a \pdht~{\tt insert()} operation.}
   \label{fig:put}
 \end{figure*}
@@ -70,6 +72,8 @@ new pending list entry buffer. The thread also creates a new
 ME with the appropriate match bits set and appends it to the active
 list. Subsequent data access operations will find a match in the active list.
 
+\vspace{-2mm}
+
 \subsection{Data Access Operations}
 
 One-sided read, write, and atomic update operations are handled by
@@ -82,12 +86,14 @@ doesn't match the requested key, \pdht notes the collision and either
 returns control to the application or performs a linear probe,
 depending on the desired behavior.
 
+\vspace{-1mm}
+
 \subsection{Collisions and Key Sparsity}
 
 Collisions occur when multiple keys map to the same rank/hash pair.
 In the case of a collision, PDHT utilizes a linear probing
 solution. The library can also be configured to simply detect
-collisions and defer to the aplication.
+collisions and defer to the application.
 
 % JSD: How does linear probing work?
 % DBL:

@@ -67,6 +67,8 @@ a PGLAS model maintains the key/value association until the entry is freed.
 %In this work, we explore the implementation of a parallel, distributed hash
 %table as a first implementation of the PGLAS data model.
 
+\vspace{-2.1mm}
+
 \subsection{Managing Distributed, Sparse Data}
 
 Of interest to the HPC community, we see PGLAS as a
@@ -83,9 +85,11 @@ and the corresponding data. A global distributed key/value store could
 replace a complicated and difficult to parallelize sparse data
 structure given the right application.
 
+\vspace{-2mm}
+
 \subsection{Related Work}
 
-The idea of logically addressing data across memories in a distributed
+Logically addressing data across memories in a distributed
 system has been explored in a number of other models.  Distributed,
 shared key/value stores are an intrinsic part of the Piccolo
 programming model~\cite{power:10}.  The Linda programming
@@ -115,6 +119,8 @@ addition, PGAS-like hierarchical approaches to
 managing sparse spatial decomposition have been proposed~\cite{larkins:08}
 along with runtime methods to manage this data and exploit spatial
 locality~\cite{larkins:12}.
+
+\vspace{-2mm}
 
 \section{The Portals Networking Interface}
 
@@ -170,6 +176,7 @@ Figure \ref{fig:portals_put}.
   \label{fig:portals_put}
 \end{figure}
 
+
 Portals specifies a {\em network interface} (NI) as a per-process
 abstraction of a physical network interface on the target process. The
 interface is defined at creation to be either a {\em matching}
@@ -221,7 +228,7 @@ also be used to track both initiator and target events. Unlike
 target-side event queues, a counter may be associated with each ME in
 the match-list. Multiple MEs may share a single counter, if
 desired. \pdht typically uses counters to watch for successful
-completion, and full events to track specific failures. More detailed
+completion and full events to track specific failures. More detailed
 descriptions of event and counter use within \pdht is discussed below.
 
 To put everything together, Figure \ref{fig:portals_put} shows the
