@@ -29,6 +29,7 @@ enum pt_state {
 };
 
 
+#ifdef WITH_UNORDERED_MATCHING
 /**
  * PT hash table structure for unordered match lists
  */
@@ -38,6 +39,7 @@ struct pt_me_hash {
     UT_hash_handle hh; 
 };
 typedef struct pt_me_hash pt_me_hash_t;
+#endif
 
 
 /**

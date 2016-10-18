@@ -123,7 +123,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   for (int ptindex=0; ptindex < dht->nptes; ptindex++) {
     // create PTE for matching gets, will be populated by pending put poller
-    ret = PtlPTAlloc(dht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
+    ret = PtlPTAlloc(dht->ptl.lni, PDHT_PTALLOC_OPTIONS, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d]\n", ptindex);
       exit(1);

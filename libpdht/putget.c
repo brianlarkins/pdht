@@ -259,12 +259,14 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_dprintf("pdht_get: key: %lu from active queue of %d with match: %lu\n", *(unsigned long *)key, rank, mbits);
 #endif  
 
+  PDHT_STOP_TIMER(dht, t1);
 
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_get: PtlGet(key: %lu, rank: %d, ptindex: %d/%d) failed: %s\n", *(long *)key, rank.rank, ptindex, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
     goto error;
   }
+  PDHT_STOP_TIMER(dht, t2);
 
   // check for completion or failure
   ret = PtlCTWait(dht->ptl.lmdct, dht->ptl.curcounts.success+1, &ctevent);
@@ -272,6 +274,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     pdht_dprintf("pdht_get: PtlCTWait() failed\n");
     goto error;
   }
+
 
   //pdht_dprintf("pdht_get: event counter: success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
 
@@ -288,7 +291,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
         PtlCTInc(dht->ptl.lmdct, ctevent);
         dht->stats.notfound++;
         rval = PdhtStatusNotFound;
-        PDHT_STOP_TIMER(dht, t2);
         goto done;
       } else {
         pdht_dprintf("pdht_get: found fail event: %s\n", pdht_event_to_string(ev.type));   
@@ -300,7 +302,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     }
   }
 
-  PDHT_STOP_TIMER(dht, t1);
   //pdht_dprintf("collision checking: %lu == %lu (size: %d)\n", *(u_int64_t *)buf, *(u_int64_t *)key, dht->keysize);
 
   // fetched entry has key + value concatenated, validate key

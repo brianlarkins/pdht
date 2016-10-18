@@ -215,12 +215,14 @@ void *pdht_poll(void *arg) {
           me.match_bits = ev.match_bits; // copy over match_bits from put
           me.ignore_bits   = 0;
 
+          PDHT_START_TIMER(dht,t6);
           // append this pending put to the active PTE match list
           ret = PtlMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->ame);
           if (ret != PTL_OK) {
             pdht_dprintf("pdht_poll: ME append failed (active) [%d]: %s\n", pollcount, pdht_ptl_error(ret));
             exit(1);
           }
+          PDHT_STOP_TIMER(dht,t6);
         } 
 
         // setup ME entry to replace the one that was just consumed
@@ -240,12 +242,14 @@ void *pdht_poll(void *arg) {
 
         //pdht_dprintf("append: %d %d userp: %p\n", dht->nextfree, pdht_find_bucket(dht, hte), hte);
 
+        PDHT_START_TIMER(dht,t6);
         // add replacement entry to put/pending ME
         ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &me, PTL_PRIORITY_LIST, hte, &hte->pme);
         if (ret != PTL_OK) {
           pdht_dprintf("append: ptindex: %d pollcount: %d %d %d userp: %p\n", ptindex, pollcount, dht->nextfree, pdht_find_bucket(dht, hte), hte);
           pdht_dprintf("pdht_poll: PtlMEAppend error (pending): %s\n", pdht_ptl_error(ret));
         }
+        PDHT_STOP_TIMER(dht,t6);
 
         dht->nextfree++; // update next free space in local HT table
 
