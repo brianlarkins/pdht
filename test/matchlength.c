@@ -13,7 +13,7 @@
  *   - set PDHT_PENDINGQ_SIZE 100000
  */
 
-#define NITER 1000
+#define NITER 10000
 
 extern pdht_context_t *c;
 int eprintf(const char *format, ...);
@@ -48,7 +48,11 @@ int main(int argc, char **argv) {
   void *val = NULL;
   int opt, maxiters = NITER;
   int mlengths[10] =  { 1, 10, 100, 1000, 2000, 5000, 10000, 20000, 50000, 100000};
+  int lastlength = 9;
   pdht_timer_t gtimer,total;
+
+  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+  setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   while ((opt = getopt(argc, argv, "i:s:")) != -1) {
     switch (opt) {
@@ -80,7 +84,8 @@ int main(int argc, char **argv) {
   pdht_sethash(ht, remotehash);
   //pdht_sethash(ht, localhash);
 
-  for (int iter=0; iter < 100000; iter++) {
+  printf("putting from %d to %d\n", 0, mlengths[lastlength]);fflush(stdout);
+  for (int iter=0; iter < mlengths[lastlength]; iter++) {
     if (c->rank == 0) {
       pdht_put(ht, &key, val);
       key++;
@@ -90,7 +95,7 @@ int main(int argc, char **argv) {
   pdht_barrier();
 
   // for each matchlist length in mlengths...
-  for (int len=0; len<10; len++) {
+  for (int len=0; len<=lastlength; len++) {
     if (c->rank == 0) {
       key = mlengths[len] - 1;
       START_TIMER(gtimer);

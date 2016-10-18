@@ -1,18 +1,22 @@
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <pdht.h>
+
 
 #define ITERCOUNT 2
 
 #define PROGRESS_BAR
 
 //#define NHASH 10000
-#define NHASH 20000
+#define NHASH 50000
 //#define NHASH 160000
 #define modulus 1073741827
 #define multipl 33554467
 
 //#define ASIZE 10
+extern int setenv (const char *, const char *, int);
 
 typedef unsigned long int numb;
 
@@ -136,6 +140,8 @@ int main(int argc, char **argv) {
   //double pbuf[ASIZE], gbuf[ASIZE];
   //
   setbuf(stdout, NULL);
+  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+  setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   // create hash table
   ht = pdht_create(sizeof(unsigned long), sizeof(unsigned long), PdhtModeStrict);

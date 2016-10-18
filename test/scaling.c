@@ -13,7 +13,7 @@
  *   - set PDHT_DEFAULT_TABLE_SIZE 250000
  */
 
-#define NITER 1000
+#define NITER 2000
 
 int maxentries = NITER;
 
@@ -58,7 +58,9 @@ int main(int argc, char **argv) {
   int iters = 1;
   pdht_timer_t gtimer,total;
 
-  setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
+  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+  setenv("PTL_PROGRESS_NOSLEEP","1",1);
+  //setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
   while ((opt = getopt(argc, argv, "i:s:v:")) != -1) {
     switch (opt) {
       case 'i':
