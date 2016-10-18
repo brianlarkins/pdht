@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
   for (int len=0; len<=lastlength; len++) {
     if (c->rank == 0) {
       key = mlengths[len] - 1;
+      memset(&gtimer,0,sizeof(pdht_timer_t));
       START_TIMER(gtimer);
       for (int iter=0; iter < maxiters; iter++) {
         pdht_get(ht, &key, val);
