@@ -80,6 +80,12 @@ int main(int   argc,
     libtest_barrier();
 
     /* now I can communicate between ranks with ni_logical */
+ 
+    // XXX tests
+    //   - test hashed get with expected match
+    //   - test hashed get on non-existent matchlist entry
+    //   - test hashed put with expected match
+    //   - test hashed put on non-existent matchlist entry
 
     /* set up the landing pad so that I can read others' values */
     read_md.start     = &readval;

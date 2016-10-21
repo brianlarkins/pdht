@@ -21,6 +21,7 @@ int eprintf(const char *format, ...) {
 
 
 
+#ifdef DEPRECATED
 /**
  *  pdht_get_wtime - get a wall clock time for performance analysis
  */
@@ -34,7 +35,7 @@ double pdht_get_wtime() {
 
   return t;
 }
-
+#endif // moved to inline code, uses clock_gettime()
 
 
 /**
@@ -279,10 +280,10 @@ void pdht_print_stats(pdht_t *dht) {
       printf("pdht statistics for rank %d\n", p);
       printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
       printf("\tcollisions: %12lu \tnotfound: %12lu\n", dht->stats.collisions, dht->stats.notfound);
-      printf("\tputtime:    %10.4f sec\tgettime:  %10.4f sec\n", PDHT_READ_TIMER(dht,ptimer), PDHT_READ_TIMER(dht,gtimer));
-      printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1), PDHT_READ_TIMER(dht,t2));
-      printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3), PDHT_READ_TIMER(dht,t4));
-      printf("\tt5:         %10.4f sec\tt6:       %10.4f sec\n", PDHT_READ_TIMER(dht,t5), PDHT_READ_TIMER(dht,t6));
+      printf("\tputtime:    %10.4f sec\tgettime:  %10.4f sec\n", PDHT_READ_TIMER(dht,ptimer)/(double)1e9, PDHT_READ_TIMER(dht,gtimer)/(double)1e9);
+      printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1)/(double)1e9, PDHT_READ_TIMER(dht,t2)/(double)1e9);
+      printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3)/(double)1e9, PDHT_READ_TIMER(dht,t4)/(double)1e9);
+      printf("\tt5:         %10.4f sec\tt6:       %10.4f sec\n", PDHT_READ_TIMER(dht,t5)/(double)1e9, PDHT_READ_TIMER(dht,t6)/(double)1e9);
 #ifdef WANT_PTE_BREAKDOWN_STATS
       for (int j=0; j<dht->nptes;j++) {
         printf("\tptcount[%d] : %12lu\n", j, dht->stats.ptcounts[j]);

@@ -24,7 +24,50 @@ static inline long pdht_get_rank(void) {
   return c->rank;
 }
 
+
+/* timing routines */
+
+/**
+ *  pdht_get_wtime - get a wall clock time for performance analysis
+ */
+static inline struct timespec pdht_get_wtime() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+  return ts;
+}
+#define PDHT_START_ATIMER(TMR) TMR.last   = pdht_get_wtime();
+#define PDHT_STOP_ATIMER(TMR) do {\
+                                  TMR.temp = pdht_get_wtime();\
+                                  TMR.total.tv_sec += (TMR.temp.tv_sec - TMR.last.tv_sec);\
+                                  TMR.total.tv_nsec += (TMR.temp.tv_nsec - TMR.last.tv_nsec);\
+                                } while (0)
+// PDHT_READ_TIMER returns elapsed time in nanoseconds
+#define PDHT_READ_ATIMER(TMR)  ((1000000000L * (TMR.total.tv_sec)) + TMR.total.tv_nsec)
+#define PDHT_READ_ATIMER_USEC(TMR)  PDHT_READ_ATIMER(TMR)/1000.0
+#define PDHT_READ_ATIMER_MSEC(TMR)  PDHT_READ_ATIMER(TMR)/(double)1e6
+#define PDHT_READ_ATIMER_SEC(TMR)   PDHT_READ_ATIMER(TMR)/(double)1e9
+
+// PDHT_READ_TIMER returns elapsed time in nanoseconds
+#define PDHT_START_TIMER(HT,TMR) PDHT_START_ATIMER(HT->stats.TMR)
+#define PDHT_STOP_TIMER(HT,TMR)  PDHT_STOP_ATIMER(HT->stats.TMR)
+#define PDHT_READ_TIMER(HT,TMR)  PDHT_READ_ATIMER(HT->stats.TMR)
+
+#define PDHT_READ_TIMER_USEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/1000.0
+#define PDHT_READ_TIMER_MSEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/(double)1e6
+#define PDHT_READ_TIMER_SEC(HT,TMR)   PDHT_READ_TIMER(HT,TMR)/(double)1e9
+
+
 #ifdef DEPRECATED
+
+#define PDHT_START_TIMER(HT,TMR) HT->stats.TMR.last   = pdht_get_wtime();
+#define PDHT_STOP_TIMER(HT,TMR) do {\
+                                  HT->stats.TMR.temp = pdht_get_wtime();\
+                                  HT->stats.TMR.total.tv_sec += (HT->stats.TMR.temp.tv_sec - HT->stats.TMR.last.tv_sec);\
+                                  HT->stats.TMR.total.tv_nsec += (HT->stats.TMR.temp.tv_nsec - HT->stats.TMR.last.tv_nsec);\
+                                } while (0)
+// PDHT_READ_TIMER returns elapsed time in nanoseconds
+#define PDHT_READ_TIMER(HT,TMR)  ((1000000000L * (HT->stats.TMR.total.tv_sec)) + HT->stats.TMR.total.tv_nsec)
+
 
 /* blocking shortcuts */
 

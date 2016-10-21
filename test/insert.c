@@ -20,10 +20,6 @@ int eprintf(const char *format, ...);
 
 int main(int argc, char **argv);
 
-#define START_TIMER(TMR) TMR.last = pdht_get_wtime();
-#define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
-#define READ_TIMER(TMR) TMR.total
-
 void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   *mbits = *(unsigned long *)key;
   *ptindex = *(unsigned long *)key % dht->nptes;
@@ -59,7 +55,7 @@ int main(int argc, char **argv) {
   eprintf("starting run with %d processes, each with %d entries\n", c->size, maxentries);
   pdht_barrier();
 
-  START_TIMER(total);
+  PDHT_START_ATIMER(total);
 
   pdht_sethash(ht, ahash);
   
@@ -80,8 +76,8 @@ int main(int argc, char **argv) {
 
   pdht_barrier();
 
-  STOP_TIMER(total);
-  eprintf("total elapsed time: %12.7f\n", READ_TIMER(total));
+  PDHT_STOP_ATIMER(total);
+  eprintf("total elapsed time: %12.7f\n", PDHT_READ_ATIMER_SEC(total));
 
   pdht_print_stats(ht);
 

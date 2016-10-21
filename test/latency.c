@@ -95,8 +95,8 @@ int main(int argc, char **argv) {
 
   pdht_barrier();
   pdht_print_stats(ht);
-  eprintf("\n\ntotal latency between put and get:\t %12.7f s\n", PDHT_READ_TIMER(ht,t6));
-  eprintf("unit latency between put and get:\t%12.7f ms\n", (PDHT_READ_TIMER(ht,t6)/(double)NITER)*1000);
+  eprintf("\n\ntotal latency between put and get:\t %12.7f s\n", PDHT_READ_TIMER_SEC(ht,t6));
+  eprintf("unit latency between put and get:\t%12.7f ms\n", (PDHT_READ_TIMER_MSEC(ht,t6)/(double)NITER));
 
 done:
   pdht_free(ht);

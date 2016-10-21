@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -38,8 +39,9 @@
  *  timer counter/accumulator
  */
 struct pdht_timer_s {
-  double total;  //!< total time accumulated
-  double last;   //!< keeps last start time
+  struct timespec total;  //!< total time accumulated
+  struct timespec last;   //!< keeps last start time
+  struct timespec temp;   //!< for accumulation
 };
 typedef struct pdht_timer_s pdht_timer_t;
 
@@ -59,10 +61,6 @@ struct pdht_stats_s {
   pdht_timer_t t6; // utility timer 6
 };
 typedef struct pdht_stats_s pdht_stats_t;
-
-#define PDHT_START_TIMER(HT,TMR) HT->stats.TMR.last   = pdht_get_wtime();
-#define PDHT_STOP_TIMER(HT,TMR)  HT->stats.TMR.total += pdht_get_wtime() - HT->stats.TMR.last;
-#define PDHT_READ_TIMER(HT,TMR)  HT->stats.TMR.total
 
 
 /**********************************************/
@@ -270,7 +268,6 @@ void print_count(pdht_t *dht, char *msg);
 
 
 //util.c
-double pdht_get_wtime(void);
 void   pdht_print_stats(pdht_t *dht);
 
 #include <pdht_inline.h>

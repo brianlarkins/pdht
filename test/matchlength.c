@@ -20,10 +20,6 @@ int eprintf(const char *format, ...);
 
 int main(int argc, char **argv);
 
-#define START_TIMER(TMR) TMR.last = pdht_get_wtime();
-#define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
-#define READ_TIMER(TMR) TMR.total
-
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
@@ -51,7 +47,7 @@ int main(int argc, char **argv) {
   int lastlength = 9;
   pdht_timer_t gtimer,total;
 
-  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+//  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   while ((opt = getopt(argc, argv, "i:s:")) != -1) {
@@ -79,7 +75,7 @@ int main(int argc, char **argv) {
     goto done;
   }
 
-  START_TIMER(total);
+  PDHT_START_ATIMER(total);
 
   pdht_sethash(ht, remotehash);
   //pdht_sethash(ht, localhash);
@@ -99,20 +95,20 @@ int main(int argc, char **argv) {
     if (c->rank == 0) {
       key = mlengths[len] - 1;
       memset(&gtimer,0,sizeof(pdht_timer_t));
-      START_TIMER(gtimer);
+      PDHT_START_ATIMER(gtimer);
       for (int iter=0; iter < maxiters; iter++) {
         pdht_get(ht, &key, val);
       }
-      STOP_TIMER(gtimer);
-      eprintf(" %7d %12.7f\n", mlengths[len], (READ_TIMER(gtimer)/(double)maxiters)*1000000);
+      PDHT_STOP_ATIMER(gtimer);
+      eprintf(" %7d %12.7f\n", mlengths[len], PDHT_READ_ATIMER_MSEC(gtimer)/(double)(maxiters));
     }
     pdht_barrier();
   }
 
   pdht_print_stats(ht);
 
-  STOP_TIMER(total);
-  eprintf("total elapsed time: %12.7f\n", READ_TIMER(total));
+  PDHT_STOP_ATIMER(total);
+  eprintf("total elapsed time: %12.7f ns\n", (double)PDHT_READ_ATIMER(total));
 done:
   pdht_free(ht);
   free(val);

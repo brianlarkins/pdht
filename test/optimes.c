@@ -13,9 +13,9 @@ int eprintf(const char *format, ...);
 
 int main(int argc, char **argv);
 
-#define START_TIMER(TMR) TMR.last = pdht_get_wtime();
-#define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
-#define READ_TIMER(TMR) TMR.total
+//#define START_TIMER(TMR) TMR.last = pdht_get_wtime();
+//#define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
+//#define READ_TIMER(TMR) TMR.total
 
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
@@ -72,137 +72,146 @@ int main(int argc, char **argv) {
     goto done;
   }
 
-  START_TIMER(total);
+  PDHT_START_ATIMER(total);
+  sleep(5);
+  PDHT_STOP_ATIMER(total);
+  printf("%12.5f sec %12.5f ms %12.5f us %12.5f ns\n",
+     PDHT_READ_ATIMER_SEC(total),
+     PDHT_READ_ATIMER_MSEC(total),
+     PDHT_READ_ATIMER_USEC(total),
+     (double)PDHT_READ_ATIMER(total));
+
+  PDHT_START_ATIMER(total);
 
   pdht_sethash(ht, localhash);
     
   // nothing should be in hash, so everything should be not found
-  START_TIMER(lnotfound);
+  PDHT_START_ATIMER(lnotfound);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(lnotfound);
+  PDHT_STOP_ATIMER(lnotfound);
  
   pdht_barrier();
   pdht_sethash(ht, remotehash);
 
   // repeat for remote checks
-  START_TIMER(rnotfound);
+  PDHT_START_ATIMER(rnotfound);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(rnotfound);
+  PDHT_STOP_ATIMER(rnotfound);
  
   // get times for local puts / gets
   pdht_barrier();
   key = 10;
   pdht_sethash(ht, localhash);
 
-  START_TIMER(lput);
+  PDHT_START_ATIMER(lput);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_put(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(lput);
+  PDHT_STOP_ATIMER(lput);
 
   pdht_barrier();
   key = 10;
-  START_TIMER(lget);
+  PDHT_START_ATIMER(lget);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(lget);
+  PDHT_STOP_ATIMER(lget);
 
   // times for remote puts 
   pdht_barrier();
   pdht_sethash(ht, remotehash);
   key = 100 + maxiters;
 
-  START_TIMER(rput);
+  PDHT_START_ATIMER(rput);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_put(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(rput);
+  PDHT_STOP_ATIMER(rput);
 
   pdht_barrier();
   key = 100 + maxiters;
 
   // remote gets
-  START_TIMER(rget);
+  PDHT_START_ATIMER(rget);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &key, val);
       key++;
     } 
   }
-  STOP_TIMER(rget);
+  PDHT_STOP_ATIMER(rget);
 
   pdht_barrier();
 
   // head of matchlist gets
   unsigned long headkey = 100+maxiters;
   // head of ME list gets
-  START_TIMER(hget);
+  PDHT_START_ATIMER(hget);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &headkey, val);
     } 
   }
-  STOP_TIMER(hget);
+  PDHT_STOP_ATIMER(hget);
 
   pdht_barrier();
 
   // tail of matchlist gets
   key--; // key was autoincremented at end of gets/loop
-  START_TIMER(tget);
+  PDHT_START_ATIMER(tget);
   for (int iter=0; iter < maxiters; iter++) {
     if (c->rank == 0) {
       pdht_get(ht, &key, val);
     } 
   }
-  STOP_TIMER(tget);
+  PDHT_STOP_ATIMER(tget);
 
   pdht_barrier();
-  STOP_TIMER(total);
+  PDHT_STOP_ATIMER(total);
 
   pdht_print_stats(ht);
-  eprintf("\n\nelemsize %lu iterations: %d elapsed time: %12.7f s\n", elemsize, maxiters, READ_TIMER(total));
+  eprintf("\n\nelemsize %lu iterations: %d elapsed time: %12.7f s\n", elemsize, maxiters, PDHT_READ_ATIMER(total)/(double)1e9);
 
   eprintf("  totl: local  get: %12.7f s  put: %12.7f s   -- notfound: %12.7f s\n", 
-     READ_TIMER(lget),
-     READ_TIMER(lput),
-     READ_TIMER(lnotfound));
+     PDHT_READ_ATIMER_SEC(lget),
+     PDHT_READ_ATIMER_SEC(lput),
+     PDHT_READ_ATIMER_SEC(lnotfound));
   eprintf("  totl: remote get: %12.7f s  put: %12.7f s   -- notfound: %12.7f s \n", 
-     READ_TIMER(rget),
-     READ_TIMER(rput),
-     READ_TIMER(rnotfound));
+     PDHT_READ_ATIMER_SEC(rget),
+     PDHT_READ_ATIMER_SEC(rput),
+     PDHT_READ_ATIMER_SEC(rnotfound));
 
   eprintf("\n");
-  eprintf("  unit: local  get: %12.7f ms put: %12.7f ms  -- notfound: %12.7f ms\n", 
-     (READ_TIMER(lget)/(double)maxiters)*1000, 
-     (READ_TIMER(lput)/(double)maxiters)*1000, 
-     (READ_TIMER(lnotfound)/(double)maxiters)*1000);
-  eprintf("  unit: remote get: %12.7f ms put: %12.7f ms  -- notfound: %12.7f ms \n", 
-     (READ_TIMER(rget)/(double)maxiters)*1000, 
-     (READ_TIMER(rput)/(double)maxiters)*1000, 
-     (READ_TIMER(rnotfound)/(double)maxiters)*1000);
-  eprintf("  unit: matchlist head: %12.7f ms matchlist tail: %12.7f ms\n", 
-     (READ_TIMER(hget)/(double)maxiters)*1000, 
-     (READ_TIMER(tget)/(double)maxiters)*1000);
+  eprintf("  unit: local  get: %12.7f us put: %12.7f us  -- notfound: %12.7f us\n", 
+     (PDHT_READ_ATIMER_USEC(lget)/(double)maxiters), 
+     (PDHT_READ_ATIMER_USEC(lput)/(double)maxiters), 
+     (PDHT_READ_ATIMER_USEC(lnotfound)/(double)maxiters));
+  eprintf("  unit: remote get: %12.7f us put: %12.7f us  -- notfound: %12.7f us \n", 
+     (PDHT_READ_ATIMER_USEC(rget)/(double)maxiters), 
+     (PDHT_READ_ATIMER_USEC(rput)/(double)maxiters), 
+     (PDHT_READ_ATIMER_USEC(rnotfound)/(double)maxiters));
+  eprintf("  unit: matchlist head: %12.7f us matchlist tail: %12.7f us\n", 
+     (PDHT_READ_ATIMER_USEC(hget)/(double)maxiters), 
+     (PDHT_READ_ATIMER_USEC(tget)/(double)maxiters));
 done:
   pdht_free(ht);
   free(val);
