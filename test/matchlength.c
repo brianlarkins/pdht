@@ -5,14 +5,6 @@
 
 #include <pdht.h>
 
-/*
- * TO RUN:
- *   - need to make sure that PDHT_DEFAULT_TABLE_SIZE is at least 100K * NUM_PTES
- *   - set PDHT_DEFAULT_NUM_PTES to 2
- *   - set PDHT_DEFAULT_TABLE_SIZE 250000
- *   - set PDHT_PENDINGQ_SIZE 100000
- */
-
 #define NITER 10000
 
 extern pdht_context_t *c;
@@ -54,21 +46,32 @@ int main(int argc, char **argv) {
   pdht_config_t cfg;
   cfg.nptes        = 1; 
   cfg.pendmode     = PdhtPendingPoll;
-  //cfg.pendmode     = PdhtPendingTriggered;
   cfg.maxentries   = 250000;
   cfg.pendq_size   = 100000;
   cfg.ptalloc_opts = 0;
-  //cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
-  pdht_tune(PDHT_TUNE_ALL, &cfg);
 
 
-  while ((opt = getopt(argc, argv, "i:s:")) != -1) {
+  while ((opt = getopt(argc, argv, "hi:s:tu")) != -1) {
     switch (opt) {
+      case 'h':
+        eprintf("usage: matchlength -htu -i <iters> -s <elemsize>\n");
+        eprintf("\t-h this message\n");
+        eprintf("\t-i # iterations\n");
+        eprintf("\t-s element size\n");
+        eprintf("\t-t use triggered ops (instead of polling)\n");
+        eprintf("\t-u use unordered matching (hashing) in Portals\n");
+        break;
       case 'i':
         maxiters = atoi(optarg);
         break;
       case 's':
         elemsize = atoi(optarg);
+        break;
+      case 't':
+        cfg.pendmode     = PdhtPendingTrig;
+        break;
+      case 'u':
+        cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
         break;
     } 
   }
@@ -76,8 +79,8 @@ int main(int argc, char **argv) {
   val = malloc(elemsize);
   memset(val,0,elemsize);
 
-
   // create hash table
+  pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
 
   if (c->size != 2) {

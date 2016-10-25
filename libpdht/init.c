@@ -68,7 +68,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->hashfn = pdht_hash;
 
   // portals info
-  dht->ptl.nptes = cfg.nptes;
+  dht->ptl.nptes         = cfg.nptes;
+  dht->ptl.ptalloc_opts  = cfg.ptalloc_opts;
   assert(dht->ptl.nptes < PDHT_MAX_PTES);
   dht->ptl.putindex_base = __PDHT_ACTIVE_INDEX + dht->ptl.nptes;
   dht->ptl.lni           = c->ptl.lni;
@@ -227,6 +228,7 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->pendq_size   = config->pendq_size;
   if (opts & PDHT_TUNE_PTOPT)
     __pdht_config->ptalloc_opts = config->ptalloc_opts;
+  printf("%d\n", __pdht_config->ptalloc_opts);
 
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
