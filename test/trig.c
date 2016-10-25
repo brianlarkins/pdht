@@ -15,6 +15,10 @@ int main(int argc, char **argv) {
   pdht_t *ht;
   unsigned long key = 10;
   double pbuf[ASIZE], gbuf[ASIZE];
+ 
+  pdht_config_t cfg;
+  cfg.pendmode = PdhtPendingTrig;
+  pdht_tune(PDHT_TUNE_PMODE, &cfg);
   
   // create hash table
   ht = pdht_create(sizeof(unsigned long), ASIZE * sizeof(double), PdhtModeStrict);

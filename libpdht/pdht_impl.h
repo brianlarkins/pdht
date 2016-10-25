@@ -54,6 +54,7 @@
 
 #define offsetof(type, member)  __builtin_offsetof (type, member)
 
+extern pdht_config_t   *__pdht_config; 
 
 /**
  * @file
@@ -87,7 +88,7 @@ typedef struct _pdht_ht_trigentry_s _pdht_ht_trigentry_t;
 /********************************************************/
 
 // Initialization / Finalization -- init.c
-void                 pdht_init(void);
+void                 pdht_init(pdht_config_t *cfg);
 void                 pdht_fini(void);
 void                 pdht_clearall(void);
 

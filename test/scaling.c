@@ -25,20 +25,20 @@ int main(int argc, char **argv);
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
-  //*ptindex = *(unsigned long *)key % dht->nptes;
+  //*ptindex = *(unsigned long *)key % dht->ptl.nptes;
   *ptindex = 1;
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
-  //*ptindex = *(unsigned long *)key % dht->nptes;
+  //*ptindex = *(unsigned long *)key % dht->ptl.nptes;
   *ptindex = 1;
 }
 
 void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->nptes;
+  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   (*rank).rank = *(unsigned long *)key % c->size;
 }
 
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   key = c->rank;
   for (int iter=0; iter < maxentries; iter++) {
     val = key + 10;
-    pdht_insert(ht, key, key % ht->nptes, &key, &val);
+    pdht_insert(ht, key, key % ht->ptl.nptes, &key, &val);
     key += c->size;
     if ((iter % 1000) == 0) eprintf(".");
   }

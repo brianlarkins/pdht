@@ -164,6 +164,9 @@ typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *b
 /* portals-specific data structures */
 struct pdht_htportals_s {
   ptl_handle_ni_t lni;                          //!< portals logical NI
+  unsigned        ptalloc_opts;                 //!< options to PtlPTAlloc (for unordered matching)
+  unsigned        nptes;                        //!< number of pending / active PTE pairs
+  ptl_pt_index_t  putindex_base;                //!< actve_base (1) + dht->nptes
   ptl_pt_index_t  getindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_pt_index_t  putindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
@@ -185,7 +188,8 @@ struct pdht_s {
   unsigned          keysize;
   unsigned          elemsize;
   unsigned          entrysize;
-  unsigned          nptes;
+  unsigned          maxentries;
+  unsigned          pendq_size;
   pdht_hashfunc     hashfn;
   unsigned          nextfree;
   pdht_mode_t       mode;
@@ -199,11 +203,30 @@ struct pdht_s {
 };
 typedef struct pdht_s pdht_t;
 
+
+/* application-specified tunable parameters */
+#define PDHT_TUNE_NPTES      0x01
+#define PDHT_TUNE_PMODE      0x02
+#define PDHT_TUNE_ENTRY      0x04
+#define PDHT_TUNE_PENDQ      0x08
+#define PDHT_TUNE_PTOPT      0x10
+#define PDHT_TUNE_ALL        0xffffffff
+struct pdht_config_s {
+  unsigned      nptes;
+  pdht_pmode_t  pendmode;
+  unsigned      maxentries;
+  unsigned      pendq_size;
+  unsigned      ptalloc_opts;
+};
+typedef struct pdht_config_s pdht_config_t;
+
+/* atomic associative operators */
 enum pdht_oper_e {
   AssocOpAdd
 };
 typedef enum pdht_oper_e pdht_oper_t;
 
+/* atomic operation data types */
 enum pdht_datatype_e {
   IntType,
   DoubleType,
@@ -212,6 +235,7 @@ enum pdht_datatype_e {
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
 
+/* DHT iterators (UNSUPPORTED) */
 struct pdht_iter_s {
   // XXX iteration state stuff needs added.
   int   (*hasnext)(struct pdht_iter_s *it);
@@ -226,6 +250,7 @@ typedef struct pdht_iter_s pdht_iter_t;
 // create / destroy single DHT -- init.c
 pdht_t              *pdht_create(int keysize, int elemsize, pdht_mode_t mode);
 void                 pdht_free(pdht_t *dht);
+void                 pdht_tune(unsigned opts, pdht_config_t *config);
 
 
 // Communication Completion Operations -- commsynch.c

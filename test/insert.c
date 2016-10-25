@@ -22,7 +22,7 @@ int main(int argc, char **argv);
 
 void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->nptes;
+  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   (*rank).rank = *(unsigned long *)key / maxentries;
 }
 
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   
   key = c->rank;
   val = 10 + key;
-  pdht_insert(ht, key, key % ht->nptes, &key, &val);
+  pdht_insert(ht, key, key % ht->ptl.nptes, &key, &val);
 
   pdht_barrier();
 

@@ -23,14 +23,14 @@ int main(int argc, char **argv);
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
-  //*ptindex = *(unsigned long *)key % dht->nptes;
+  //*ptindex = *(unsigned long *)key % dht->ptl.nptes;
   *ptindex = 0;
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
-  //*ptindex = *(unsigned long *)key % dht->nptes;
+  //*ptindex = *(unsigned long *)key % dht->ptl.nptes;
   *ptindex = 0;
 }
 
@@ -49,6 +49,18 @@ int main(int argc, char **argv) {
 
 //  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
+
+  // setup experimental configuration
+  pdht_config_t cfg;
+  cfg.nptes        = 1; 
+  cfg.pendmode     = PdhtPendingPoll;
+  //cfg.pendmode     = PdhtPendingTriggered;
+  cfg.maxentries   = 250000;
+  cfg.pendq_size   = 100000;
+  cfg.ptalloc_opts = 0;
+  //cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+  pdht_tune(PDHT_TUNE_ALL, &cfg);
+
 
   while ((opt = getopt(argc, argv, "i:s:")) != -1) {
     switch (opt) {
@@ -80,7 +92,7 @@ int main(int argc, char **argv) {
   pdht_sethash(ht, remotehash);
   //pdht_sethash(ht, localhash);
 
-  printf("putting from %d to %d\n", 0, mlengths[lastlength]);fflush(stdout);
+  //printf("putting from %d to %d\n", 0, mlengths[lastlength]);fflush(stdout);
   for (int iter=0; iter < mlengths[lastlength]; iter++) {
     if (c->rank == 0) {
       pdht_put(ht, &key, val);
@@ -90,6 +102,7 @@ int main(int argc, char **argv) {
 
   pdht_barrier();
 
+  eprintf("#entries  time (usec)\n");
   // for each matchlist length in mlengths...
   for (int len=0; len<=lastlength; len++) {
     if (c->rank == 0) {
@@ -100,7 +113,7 @@ int main(int argc, char **argv) {
         pdht_get(ht, &key, val);
       }
       PDHT_STOP_ATIMER(gtimer);
-      eprintf(" %7d %12.7f\n", mlengths[len], PDHT_READ_ATIMER_MSEC(gtimer)/(double)(maxiters));
+      eprintf(" %7d %12.7f\n", mlengths[len], PDHT_READ_ATIMER_USEC(gtimer)/(double)(maxiters));
     }
     pdht_barrier();
   }

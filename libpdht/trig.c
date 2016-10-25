@@ -21,52 +21,19 @@
  * @param dht - hash table data structure
  */
 void pdht_trig_init(pdht_t *dht) {
-  int tablesize, ret;
+  int ret;
   _pdht_ht_trigentry_t *hte;
   char *iter; // used for pointer math
   ptl_event_t ev;
   unsigned hdrsize;
 
-
-  // allocate array for hash table data
-  dht->entrysize = (sizeof(_pdht_ht_trigentry_t)) + dht->elemsize;
-
-  dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
-  if (!dht->ht) {
-    pdht_dprintf("pdht_trig_init: calloc %lu bytes (entrysize: %lu) yields error: %s\n", PDHT_DEFAULT_TABLE_SIZE * dht->entrysize, dht->entrysize, strerror(errno));
-    exit(1);
-  }
-
-  // use a byte pointer as iterator over variable-sized element array
-  iter = (char *)dht->ht;
-
-  // initialize entire hash table array
-  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
-    hte = (_pdht_ht_trigentry_t *)iter;
-    hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
-    hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
-
-    // setup match list entry template
-    hte->me.length      = dht->elemsize + hdrsize; // need to include latter half of ptl_me_t in xfer
-    hte->me.uid         = PTL_UID_ANY;
-    // disable AUTO unlink events, we just check for PUT completion
-    hte->me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE | PTL_ME_EVENT_CT_COMM
-      | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
-    hte->me.match_id.rank = PTL_RANK_ANY;
-    hte->me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
-    hte->me.ignore_bits = 0xffffffffffffffff; // ignore it all
-
-    iter += dht->entrysize; // pointer math, danger.
-  }
-
   // only xfer latter half of ME entry in put to pending ME
   hdrsize = sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits); 
 
-
-  for (int ptindex = 0; ptindex < dht->nptes; ptindex++) {
+  for (int ptindex = 0; ptindex < dht->ptl.nptes; ptindex++) {
 
     // allocate event queue for pending puts
-    ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.eq[ptindex]);
+    ret = PtlEQAlloc(dht->ptl.lni, dht->pendq_size, &dht->ptl.eq[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_trig_init: PtlEQAlloc failure\n");
       exit(1);
@@ -74,16 +41,16 @@ void pdht_trig_init(pdht_t *dht) {
 
     // allocate PTE for pending put
     ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
-        dht->ptl.eq[ptindex], __PDHT_PENDING_INDEX+ptindex, &dht->ptl.putindex[ptindex]);
+        dht->ptl.eq[ptindex], dht->ptl.putindex_base+ptindex, &dht->ptl.putindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_trig_init: PtlPTAlloc failure\n");
       exit(1);
     }
 
-    iter = (char *)dht->ht + (PDHT_PENDINGQ_SIZE * ptindex);
+    iter = (char *)dht->ht + ((dht->pendq_size * ptindex) * dht->entrysize);
 
     // append one-time match entres to the put PTE to catch incoming puts
-    for (int i=0; i < PDHT_PENDINGQ_SIZE; i++) {
+    for (int i=0; i < dht->pendq_size; i++) {
       hte = (_pdht_ht_trigentry_t *)iter;
 
       // allocate per-pending elem trigger event counter
@@ -93,18 +60,19 @@ void pdht_trig_init(pdht_t *dht) {
         exit(1);
       }
 
-
-      hte->me.start  = &hte->me.match_bits; // each entry has a unique memory buffer
-      //hte->me.length = dht->elemsize; // done with ME/match_bits + data stuff
-      hte->me.length = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + PDHT_MAXKEYSIZE + dht->elemsize;
-      hte->me.ct_handle   = hte->tct;
-
-      //if ((c->rank == 1) && (i==0)) {
-      //   print_count(dht, "pending:");
-      //}
+      // set pending ME params / options
+      hte->me.start         = &hte->me.match_bits; // each entry has a unique memory buffer
+      hte->me.length        = hdrsize + PDHT_MAXKEYSIZE + dht->elemsize;
+      hte->me.uid           = PTL_UID_ANY;
+      hte->me.options       = PTL_ME_OP_PUT | PTL_ME_USE_ONCE | PTL_ME_EVENT_CT_COMM 
+                            | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE | PTL_ME_EVENT_LINK_DISABLE;
+      hte->me.match_id.rank = PTL_RANK_ANY;
+      hte->me.match_bits    = __PDHT_PENDING_MATCH;
+      hte->me.ignore_bits   = 0xffffffffffffffff; // ignore it all
+      hte->me.ct_handle     = hte->tct;
 
       // append ME to the pending ME list
-      ret = PtlMEAppend(dht->ptl.lni, __PDHT_PENDING_INDEX+ptindex, &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex_base+ptindex, &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_trig_init: PtlMEAppend error\n");
         exit(1);
@@ -117,11 +85,7 @@ void pdht_trig_init(pdht_t *dht) {
       hte->me.ignore_bits   = 0;
 
       // clean out the LINK events from the event queue
-      PtlEQWait(dht->ptl.eq[ptindex], &ev);
-
-      //if ((c->rank == 1) && (i==0)) {
-      // print_count(dht, "trigger:");
-      //}
+      //PtlEQWait(dht->ptl.eq[ptindex], &ev); // could set PTL_ME_EVENT_LINK_DISABLE on ME
 
       // once match bits have been copied, append to active match list
       ret = PtlTriggeredMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX+ptindex, &hte->me, PTL_PRIORITY_LIST,
@@ -130,7 +94,7 @@ void pdht_trig_init(pdht_t *dht) {
     iter += dht->entrysize; // pointer math, danger.
   }
 
-  dht->nextfree = dht->nptes * PDHT_PENDINGQ_SIZE; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
+  dht->nextfree = dht->ptl.nptes * dht->pendq_size; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
 }
 
 
@@ -146,11 +110,11 @@ void pdht_trig_fini(pdht_t *dht) {
   int ret;
 
   // disable any new messages arriving on the portals table put entry
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
   // kill off event queue
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++)  {
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++)  {
     if (!PtlHandleIsEqual(dht->ptl.eq[ptindex], PTL_EQ_NONE)) {
       PtlEQFree(dht->ptl.eq[ptindex]);
     }
@@ -159,7 +123,7 @@ void pdht_trig_fini(pdht_t *dht) {
   // remove all match entries from the table
   iter = (char *)dht->ht;
 
-  for (int i=0; i<PDHT_DEFAULT_TABLE_SIZE; i++) {
+  for (int i=0; i<dht->maxentries; i++) {
     hte = (_pdht_ht_trigentry_t *)iter;
 
     // pending/put ME entries
@@ -187,7 +151,7 @@ void pdht_trig_fini(pdht_t *dht) {
   }
 
   // free our table entry
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
 
   // release all storage for ht objects

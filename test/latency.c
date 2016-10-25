@@ -49,7 +49,7 @@ int main(int argc, char **argv);
 void fakehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 1;
   *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->nptes;
+  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
 }
 
 

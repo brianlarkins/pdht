@@ -11,7 +11,8 @@
 #include <time.h>
 #include <pdht_impl.h>
 
-pdht_context_t *c = NULL; // a global variable. for shame.
+pdht_context_t *c = NULL;       // a global variable. for shame.
+pdht_config_t   *__pdht_config = NULL; // another one. i'm over it. (used only during init)
 
 static void print_fucking_mapping(void);
 
@@ -30,11 +31,21 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   pdht_t *dht;
   ptl_md_t md;
   _pdht_ht_entry_t *hte;
+  pdht_config_t cfg;
   char *iter; // used for pointer math
   int ret;
 
+  if (!__pdht_config) {
+     cfg.nptes      = PDHT_DEFAULT_NUM_PTES;
+     cfg.pendmode   = PDHT_DEFAULT_PMODE;
+     cfg.maxentries = PDHT_DEFAULT_TABLE_SIZE;
+     cfg.pendq_size = PDHT_PENDINGQ_SIZE;
+  } else {
+    memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
+  }
+
   if (!c) {
-    pdht_init();
+    pdht_init(&cfg);
   }
 
   dht = (pdht_t *)malloc(sizeof(pdht_t));
@@ -49,27 +60,41 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   dht->keysize = keysize;
   dht->elemsize = elemsize;
-  dht->nptes = PDHT_DEFAULT_NUM_PTES;
-  assert(dht->nptes < PDHT_MAX_PTES);
+  dht->maxentries = cfg.maxentries;
+  dht->pendq_size = cfg.pendq_size;
   dht->mode = mode;
-  dht->pmode = PDHT_DEFAULT_PMODE;
+  dht->pmode = cfg.pendmode;
 
   dht->hashfn = pdht_hash;
 
   // portals info
-  dht->ptl.lni = c->ptl.lni;
+  dht->ptl.nptes = cfg.nptes;
+  assert(dht->ptl.nptes < PDHT_MAX_PTES);
+  dht->ptl.putindex_base = __PDHT_ACTIVE_INDEX + dht->ptl.nptes;
+  dht->ptl.lni           = c->ptl.lni;
 
   // allocate array for hash table data
-  dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
+  if (dht->pmode == PdhtPendingPoll) 
+    dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
+  else if (dht->pmode == PdhtPendingTrig)
+    dht->entrysize = (sizeof(_pdht_ht_trigentry_t)) + dht->elemsize;
+  else
+    pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: illegal polling mode\n");
 
+  // print runtime settings
   pdht_eprintf(PDHT_DEBUG_WARN, "pdht_create: hash table entry size: %lu (%d + %d)\n", 
          dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tcontext: %lu bytes ht: %lu bytes table: %lu\n", 
-        sizeof(pdht_context_t), sizeof(pdht_t), PDHT_DEFAULT_TABLE_SIZE * dht->entrysize);
-  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax table size: %d pending q size: %d\n", PDHT_DEFAULT_TABLE_SIZE, PDHT_PENDINGQ_SIZE);
-  pdht_eprintf(PDHT_DEBUG_WARN, "\tPT Entries: %d initial pending entries: %d\n", PDHT_DEFAULT_NUM_PTES, PDHT_DEFAULT_NUM_PTES*PDHT_PENDINGQ_SIZE);
+        sizeof(pdht_context_t), sizeof(pdht_t), dht->maxentries * dht->entrysize);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tmax table size: %d pending q size: %d\n", dht->maxentries, dht->pendq_size);
+  pdht_eprintf(PDHT_DEBUG_WARN, "\tPT Entries: %d initial pending entries: %d\n", dht->ptl.nptes, dht->ptl.nptes*dht->pendq_size);
+  if (dht->pmode == PdhtPendingPoll) {
+    pdht_eprintf(PDHT_DEBUG_WARN, "\tpending PTE mode: polling\n");
+  } else {
+    pdht_eprintf(PDHT_DEBUG_WARN, "\tpending PTE mode: triggered\n");
+  }
 
-  dht->ht = calloc(PDHT_DEFAULT_TABLE_SIZE, dht->entrysize);
+  dht->ht = calloc(dht->maxentries, dht->entrysize);
   if (!dht->ht) {
     pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
     exit(1);
@@ -79,7 +104,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   iter = (char *)dht->ht;
 
   // initialize entire hash table array
-  for (int i=0; i < PDHT_DEFAULT_TABLE_SIZE; i++) {
+  for (int i=0; i < dht->maxentries; i++) {
     hte = (_pdht_ht_entry_t *)iter;
     hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
@@ -101,7 +126,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   }
 
   // allocate event queue
-  ret = PtlEQAlloc(dht->ptl.lni, PDHT_PENDINGQ_SIZE, &dht->ptl.lmdeq);
+  ret = PtlEQAlloc(dht->ptl.lni, dht->pendq_size, &dht->ptl.lmdeq);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlEQAlloc failure\n");
     exit(1);
@@ -121,9 +146,9 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
 
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++) {
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
     // create PTE for matching gets, will be populated by pending put poller
-    ret = PtlPTAlloc(dht->ptl.lni, PDHT_PTALLOC_OPTIONS, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
+    ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d]\n", ptindex);
       exit(1);
@@ -147,7 +172,7 @@ void pdht_free(pdht_t *dht) {
   c->dhtcount--;
 
   // disable incoming gets
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTDisable(dht->ptl.lni, dht->ptl.getindex[ptindex]);
 
   // cleans up from pending put MEs 
@@ -155,7 +180,7 @@ void pdht_free(pdht_t *dht) {
   pdht_polling_fini(dht);
 
   // free our table entries
-  for (int ptindex=0; ptindex < dht->nptes; ptindex++) 
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
 
   // free our memory descriptor
@@ -176,6 +201,40 @@ void pdht_free(pdht_t *dht) {
 
 
 /**
+ ** pdht_tune - sets tunable parameters for PDHT
+ * @param opts - bit flags marking modified parameters
+ * @param config - config tunable structure
+ */
+void pdht_tune(unsigned opts, pdht_config_t *config) {
+  if (!config)
+     return;
+
+  if (!__pdht_config) {
+     __pdht_config = (pdht_config_t *)calloc(1, sizeof(pdht_config_t));
+     __pdht_config->nptes        = PDHT_DEFAULT_NUM_PTES;
+     __pdht_config->pendmode     = PDHT_DEFAULT_PMODE;
+     __pdht_config->maxentries   = PDHT_DEFAULT_TABLE_SIZE;
+     __pdht_config->pendq_size   = PDHT_PENDINGQ_SIZE;
+     __pdht_config->ptalloc_opts = PDHT_PTALLOC_OPTIONS;
+  }
+  if (opts & PDHT_TUNE_NPTES) 
+    __pdht_config->nptes        = config->nptes;
+  if (opts & PDHT_TUNE_PMODE) 
+    __pdht_config->pendmode     = config->pendmode;
+  if (opts & PDHT_TUNE_ENTRY) 
+    __pdht_config->maxentries   = config->maxentries;
+  if (opts & PDHT_TUNE_PENDQ)
+    __pdht_config->pendq_size   = config->pendq_size;
+  if (opts & PDHT_TUNE_PTOPT)
+    __pdht_config->ptalloc_opts = config->ptalloc_opts;
+
+  // copy back tunables, so app can see
+  memcpy(config,__pdht_config, sizeof(pdht_config_t));
+}
+
+
+
+/**
  * pdht_clear - resets a DHT
  * @param dht - the dht to clear
  */
@@ -188,7 +247,7 @@ void pdht_clear(pdht_t *dht) {
 /**
  * pdht_init - initializes PDHT system
  */
-void pdht_init(void) {
+void pdht_init(pdht_config_t *cfg) {
   ptl_ni_limits_t ni_req_limits;
   ptl_process_t me;
   int ret;
@@ -215,18 +274,18 @@ void pdht_init(void) {
 #endif
 
   // request portals NI limits
-  ni_req_limits.max_entries = PDHT_DEFAULT_TABLE_SIZE;
+  ni_req_limits.max_entries = cfg->maxentries;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = (PDHT_MAX_PTES)+2;
-  ni_req_limits.max_cts = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+2;
+  ni_req_limits.max_eqs = (cfg->nptes)+2;
+  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+2;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_pt_index = 64;
-  ni_req_limits.max_pt_index = 2*PDHT_MAX_PTES + 1;
+  ni_req_limits.max_pt_index = 2*cfg->nptes + 1;
   ni_req_limits.max_iovecs = 1024;
-  ni_req_limits.max_list_size = PDHT_DEFAULT_TABLE_SIZE;
-  ni_req_limits.max_triggered_ops = (PDHT_MAX_PTES*PDHT_PENDINGQ_SIZE)+100;
+  ni_req_limits.max_list_size = cfg->maxentries;
+  ni_req_limits.max_triggered_ops = (cfg->nptes*cfg->pendq_size)+100;
   ni_req_limits.max_msg_size = LONG_MAX;
   ni_req_limits.max_atomic_size = 512;
   ni_req_limits.max_fetch_atomic_size = 512;
@@ -325,6 +384,8 @@ void pdht_fini(void) {
 
   free(c);
   c = NULL;
+  if (__pdht_config)
+    free(__pdht_config);
 }
 
 

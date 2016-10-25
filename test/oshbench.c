@@ -78,7 +78,7 @@ void f_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, 
   int dest_pe;
   numb k;
   *mbits = *(ptl_match_bits_t *)key; // treat long key same as match bits
-  *ptindex = *(uint64_t *)key % dht->nptes;
+  *ptindex = *(uint64_t *)key % dht->ptl.nptes;
 
   //ptcount[*ptindex]++;
 
