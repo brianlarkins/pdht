@@ -50,3 +50,6 @@ trig: pdhtlibs trig.c
 
 trigmult: pdhtlibs trigmult.c
 	$(CC) $(CFLAGS) -o trigmult trigmult.c $(PDHT_LIBS)
+
+sparse_matrix: pdhtlibs sparse_matrix.c
+	$(CC) $(CFLAGS) -o sparse_matrix sparse_matrix.c $(PDHT_LIBS)
