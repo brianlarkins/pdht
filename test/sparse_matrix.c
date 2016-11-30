@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
     pdht_tune(PDHT_TUNE_ALL, &cfg);
     
     // create hash table
-    ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
+    ht = pdht_create(sizeof(Block_t), elemsize, PdhtModeStrict);
     
     
     pdht_sethash(ht, localhash);
