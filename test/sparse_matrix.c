@@ -9,10 +9,10 @@
 
 // Options
 #define FILL_RATE 1.0  // Pecentage of blocks to be filled with data
-#define MATRIX_SIZE 8 // total number of elements
-#define BLOCK_SIZE 2 // Number of elements in each row/col in block elements
+#define MATRIX_SIZE 8 // total number of elements in a row
+#define BLOCK_SIZE 2 // Number of elements in each row/col in blocks
 
-// Helpful macros
+// Helpful Constants
 #define BLOCKS_PER_ROW (MATRIX_SIZE/BLOCK_SIZE)
 #define TOTAL_BLOCKS (BLOCKS_PER_ROW * BLOCKS_PER_ROW)
 
@@ -22,10 +22,6 @@ int eprintf(const char *format, ...);
 int main(int argc, char **argv);
 
 pdht_t *ht;
-
-#define START_TIMER(TMR) TMR.last = pdht_get_wtime();
-#define STOP_TIMER(TMR) TMR.total += pdht_get_wtime() - TMR.last;
-#define READ_TIMER(TMR) TMR.total
 
 // Debug log
 #if 0
@@ -40,8 +36,8 @@ typedef struct _Block {
 
 
 // No portals test
-//#define test
-#ifdef test
+#define NO_PORTALS
+#ifdef NO_PORTALS
 
 #define pdht_get test_get
 #define pdht_put test_put
@@ -67,6 +63,8 @@ pdht_status_t test_put(pdht_t *dht, void *key, void *value) {
     return PdhtStatusOK;
 }
 
+#endif
+
 int KEY_A(int x) {
     return x;
 }
@@ -91,46 +89,12 @@ int KEY2_OUT(int x, int y) {
     return KEY_OUT(y * BLOCKS_PER_ROW + x);
 }
 
-#else
-
-int KEY_A(int x) {
-    return (x + 1);
-}
-
-int KEY_B(int x) {
-    return (x + 1) << 8;
-}
-
-int KEY_OUT(int x) {
-    return (x + 1) << 16;
-}
-
-int KEY2_A(int x, int y) {
-    return KEY_A(y * BLOCKS_PER_ROW + x);
-}
-
-int KEY2_B(int x, int y) {
-    return KEY_B(y * BLOCKS_PER_ROW + x);
-}
-
-int KEY2_OUT(int x, int y) {
-    return KEY_OUT(y * BLOCKS_PER_ROW + x);
-}
-
-#endif
 
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
     (*rank).rank = 0;
     *mbits = *(unsigned long *)key;
     //*ptindex = *(unsigned long *)key % dht->nptes;
     *ptindex = 0;
-}
-
-void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
-    (*rank).rank = 1;
-    *mbits = *(unsigned long *)key;
-    //*ptindex = *(unsigned long *)key % dht->nptes;
-    *ptindex = 1;
 }
 
 static double rand_double() {
@@ -243,17 +207,18 @@ int main(int argc, char **argv) {
     pdht_tune(PDHT_TUNE_ALL, &cfg);
     
     // create hash table
-    ht = pdht_create(sizeof(Block_t), elemsize, PdhtModeStrict);
+    ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
     
     
     pdht_sethash(ht, localhash);
     
-    printf("Filling blocks\n");
+    pdht_barrier();
     
     // Store rows in hash table
-    for (int row = 0; row < BLOCKS_PER_ROW; row++) {
-        for (int col = 0; col < BLOCKS_PER_ROW; col++) {
-            if (c->rank == 0) {
+    if (c->rank == 0) {
+        printf("Filling blocks\n");
+        for (int row = 0; row < BLOCKS_PER_ROW; row++) {
+            for (int col = 0; col < BLOCKS_PER_ROW; col++) {
                 if (rand_double() < FILL_RATE) {
                     keyA = KEY2_A(row, col);
                     pdht_put(ht, &keyA, filledBlock(row * BLOCKS_PER_ROW + col));
@@ -266,31 +231,42 @@ int main(int argc, char **argv) {
         }
     }
     
-    printf("Matrix A\n");
-    printMatrix(&KEY2_A);
+    pdht_barrier();
     
-    printf("Matrix B\n");
-    printMatrix(&KEY2_B);
+    if (c->rank == 0) {
+        printf("Matrix A\n");
+        printMatrix(&KEY2_A);
+        
+        printf("Matrix B\n");
+        printMatrix(&KEY2_B);
+    }
     
     pdht_barrier();
     
     PDHT_START_ATIMER(total);
     
-    // Not parallel
     for (int row = 0; row < BLOCKS_PER_ROW; row++) {
         for (int col = 0; col < BLOCKS_PER_ROW; col++) {
-            KeyOut = KEY2_OUT(row, col);
-            resultBlock = multiplyBlocks(row, col);
-            pdht_put(ht, &KeyOut, resultBlock);
+            if ((row * BLOCKS_PER_ROW + col) % c->size == c->rank) {
+                KeyOut = KEY2_OUT(row, col);
+                resultBlock = multiplyBlocks(row, col);
+                pdht_put(ht, &KeyOut, resultBlock);
+                printf("Processor: %d calculating block: (%d, %d)\n", c->rank, row, col);
+            }
         }
     }
     
+    
+    
     pdht_barrier();
     
-    printf("Result Matrix\n");
-    printMatrix(&KEY2_OUT);
-    
     PDHT_STOP_ATIMER(total);
+    
+    if (c->rank == 0) {
+        printf("Result Matrix\n");
+        printMatrix(&KEY2_OUT);
+    }
+    
     
     pdht_print_stats(ht);
     
