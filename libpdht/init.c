@@ -380,7 +380,8 @@ void pdht_init(pdht_config_t *cfg) {
   init_only_barrier(); // safe to use pdht_barrier() after this
 
   // allocate global counter PTE (shared PTE amongst all HTs)
-  ret = PtlPTAlloc(ht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_COUNTER_INDEX, &ht->ptl.countindex);
+  ptl_pt_index_t index;
+  ret = PtlPTAlloc(c->ptl.lni, 0, PTL_EQ_NONE, __PDHT_COUNTER_INDEX, &index);
   if ((ret != PTL_OK) || (index != __PDHT_COUNTER_INDEX)) {
     pdht_dprintf("init: counter PTAlloc failed\n");
     exit(1);

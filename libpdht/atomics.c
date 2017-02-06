@@ -36,7 +36,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
     me.match_bits    = cindex;
     me.ignore_bits   = 0;
 
-    ret = PtlMEAppend(ht->ptl.lni, __PDHT_COUNTER_INDEX, &me, PTL_PRIORITY_LIST, NULL, ht->ptl.centries[cindex]);
+    ret = PtlMEAppend(ht->ptl.lni, __PDHT_COUNTER_INDEX, &me, PTL_PRIORITY_LIST, NULL, &ht->ptl.centries[cindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_counter_init: unable to append ME for counter.\n");
       return -1;
@@ -55,7 +55,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
     return -1;
   }
 
-  ret = PTLMDBind((ht->ptl.lni, &md, &ht->ptl.countmds[cindex]));
+  ret = PtlMDBind(ht->ptl.lni, &md, &ht->ptl.countmds[cindex]);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_counter_init: unable to create MD for counter (%d).\n", cindex);
     return -1;
@@ -72,11 +72,11 @@ int pdht_counter_init(pdht_t *ht, int initval) {
  * @param counter - which counter to reset
  */
 void pdht_counter_reset(pdht_t *ht, int counter) {
-  ptl_process_t r0 { .rank = 0 };
+  ptl_process_t r0 = { .rank = 0 };
   ptl_ct_event_t ctevent;
   int ret;
 
-  PtlCTGet(dht->ptl.countcts[counter], &ctevent);
+  PtlCTGet(ht->ptl.countcts[counter], &ctevent);
 
   ht->lcounts[counter] = 0; // set our value to zero
 
@@ -108,13 +108,13 @@ void pdht_counter_reset(pdht_t *ht, int counter) {
  * @returns existing counter value
  */
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val) {
-  ptl_process_t r0 { .rank = 0 };
+  ptl_process_t r0 = { .rank = 0 };
   ptl_ct_event_t ctevent;
   int ret;
 
 
   // get the current counter values
-  PtlCTGet(dht->ptl.countcts[counter], &ctevent);
+  PtlCTGet(ht->ptl.countcts[counter], &ctevent);
 
   // fetch and add to counter on rank zero
   ret = PtlFetchAtomic(ht->ptl.countmds[counter], 0, ht->ptl.countmds[counter], 0,

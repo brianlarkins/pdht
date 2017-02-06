@@ -15,6 +15,7 @@ RANLIB = /usr/bin/ranlib
 HDRS =  pdht.h pdht_impl.h pdht_inline.h
 
 OBJS =  assoc.o      \
+        atomics.o  \
         commsynch.o  \
         hash.o       \
         init.o       \
