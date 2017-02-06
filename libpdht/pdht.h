@@ -29,7 +29,8 @@
 #include <slurm/pmi.h>
 #include <portals4.h>
 
-#define PDHT_MAX_PTES 25
+#define PDHT_MAX_PTES     25
+#define PDHT_MAX_COUNTERS 20
 
 /**********************************************/
 /* statistics/performance data                */
@@ -174,6 +175,9 @@ struct pdht_htportals_s {
   ptl_handle_md_t lmd;                          //!< memory descriptor for any outgoing put/gets
   ptl_handle_eq_t lmdeq;                        //!< event queue for local MD
   ptl_handle_ct_t lmdct;                        //!< counter for local MD
+  ptl_handle_me_t centries[PDHT_MAX_COUNTERS];  //!< ME entries for atomic counters (target, rank 0 only)
+  ptl_handle_md_t countmds[PDHT_MAX_COUNTERS];  //!< MDs for initiator counter ops (initiator, all ranks)
+  ptl_handle_ct_t countcts[PDHT_MAX_COUNTERS];  //!< CTs for initiator counter ops (initiator, all ranks)
   ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
   ptl_size_t      lfail;                        //!< number of strict messages received
 };
@@ -195,6 +199,9 @@ struct pdht_s {
   pdht_mode_t       mode;
   pdht_pmode_t      pmode;
   pdht_stats_t      stats;
+  uint64_t          counters[PDHT_MAX_COUNTERS]; // rank 0 target (master) counters
+  uint64_t          lcounts[PDHT_MAX_COUNTERS];  // initiator side buffers
+  int               countercount; // :)
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
@@ -287,6 +294,10 @@ pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
 void                *pdht_getnext(pdht_iter_t *it);
 
+
+// atomics / counter support atomics.c
+int                  pdht_init_counter(int initval);
+int                  pdht_fetchadd(int counter);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);

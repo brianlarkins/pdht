@@ -17,17 +17,31 @@
 /*
  * create_tree - collective call to create function tree
  */
-gt_tree_t create_tree(gt_context_t *context, int chunksize) {
-  gt_tree_t gtree;
+pdht_t *create_tree(void) {
+  pdht_t *gtree;
+  madkey_t k;
+  node_t n;
+  gtree = pdht_create(sizeof(madkey_t), sizeof(node_t), PdhtModeStrict);
 
-  gtree = gt_tree_create(context, chunksize, sizeof(tree_t), GT_NUM_CHILDREN);
-  gt_placement_localopen(gtree);
+  // maybe set tunable defaults here
+
+  // create root node
+  k.x = 0; k.y = 0; k.z = 0; k.level = 0;
+
+  memset(&n, 0, sizeof(node_t)); // zero everything
+  n.a = k; // set logical address
+
+  pdht_put(gtree, &k, &v);
+
   return gtree;
 }
 
 
-gt_cnp_t *get_root(gt_tree_t ftree) {
-  return gt_get_root(ftree);
+node_t *get_root(pdht_t gtree) {
+  madkey_t k = { 0, 0, 0, 0 };
+  node_t *root = talloc(sizeof(node_t));
+  pdht_get(gtree, k, root);
+  return root;
 }
 
 
@@ -50,48 +64,34 @@ int child_index(gt_tree_t ftree, gt_cnp_t *pnode, gt_cnp_t *cnode) {
 
 
 
-long get_level(gt_tree_t ftree, gt_cnp_t *node) {
-  tree_t *t = gt_get_node(ftree,node);
-  long lvl = t->data.level;
-  gt_finish_node(ftree, t);
-  return lvl;
+long get_level(node_t *node) {
+  return node->a.lvl;
 }
 
 
 
-void get_xyzindex(gt_tree_t ftree, gt_cnp_t *node, long *x, long *y, long *z) {
-  tree_t *t = gt_get_node(ftree,node);
-  *x = t->data.x;
-  *y = t->data.y;
-  *z = t->data.z;
-  gt_finish_node(ftree, t);
+void get_xyzindex(node_t *node, long *x, long *y, long *z) {
+  *x = node->a.x;
+  *y = node->a.y;
+  *z = node->a.z;
 }
 
 
 
-long get_xindex(gt_tree_t ftree, gt_cnp_t *node) {
-  tree_t *t = gt_get_node(ftree,node);
-  long idx = t->data.x;
-  gt_finish_node(ftree, t);
-  return idx;
+long get_xindex(node_t *node) {
+  return node->a.x;
 }
 
 
 
-long get_yindex(gt_tree_t ftree, gt_cnp_t *node) {
-  tree_t *t = gt_get_node(ftree,node);
-  long idx = t->data.y;
-  gt_finish_node(ftree, t);
-  return idx;
+long get_yindex(node_t *node) {
+  return node->a.y;
 }
 
 
 
-long get_zindex(gt_tree_t ftree, gt_cnp_t *node) {
-  tree_t *t = gt_get_node(ftree,node);
-  long idx = t->data.z;
-  gt_finish_node(ftree, t);
-  return idx;
+long get_zindex(node_t *node) {
+  return node->a.z;
 }
 
 
