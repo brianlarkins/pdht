@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <gt.h>
 #include <tensor.h>
 
 // add constructors to take base address

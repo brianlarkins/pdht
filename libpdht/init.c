@@ -64,6 +64,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->pendq_size = cfg.pendq_size;
   dht->mode = mode;
   dht->pmode = cfg.pendmode;
+  dht->countercount = 0;
 
   dht->hashfn = pdht_hash;
 
@@ -146,6 +147,15 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
 
+  // initialize Portals bookkeeping for atomic counters
+  for (int i=0; i<PDHT_MAX_COUNTERS; i++) {
+    // target-side
+    dht->ptl.centries[i] = PTL_INVALID_HANDLE;
+    // initiator-side
+    dht->ptl.countmds[i] = PTL_INVALID_HANDLE;
+    dht->ptl.countcts[i] = PTL_INVALID_HANDLE;
+  }
+
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
     // create PTE for matching gets, will be populated by pending put poller
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
@@ -179,6 +189,7 @@ void pdht_free(pdht_t *dht) {
   // -- also removes all MEs from both put/get PTEs
   pdht_polling_fini(dht);
 
+  
   // free our table entries
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
@@ -190,6 +201,20 @@ void pdht_free(pdht_t *dht) {
   PtlCTFree(dht->ptl.lmdct);
   PtlEQFree(dht->ptl.lmdeq);
 
+  // free Portals bookkeeping for atomic counters
+  for (int i=0; i<PDHT_MAX_COUNTERS; i++) {
+    // target side
+    if (dht->ptl.centries[i] != PTL_INVALID_HANDLE)
+      PtlMEUnlink(dht->ptl.centries[i]);
+
+    // initiator side
+    if (dht->ptl.countcts[i] != PTL_INVALID_HANDLE)
+      PtlCTFree(dht->ptl.countcts[i]);
+    if (dht->ptl.countmds[i] != PTL_INVALID_HANDLE)
+      PtlMDRelease(dht->ptl.countmds[i]);
+  }
+
+  
   // clean up everything if we're last out the door
   if (c->dhtcount <= 0) {
     pdht_fini();
@@ -352,6 +377,15 @@ void pdht_init(pdht_config_t *cfg) {
   pdht_barrier_init(c);
   init_only_barrier(); // safe to use pdht_barrier() after this
 
+  // allocate global counter PTE (shared PTE amongst all HTs)
+  ret = PtlPTAlloc(ht->ptl.lni, 0, PTL_EQ_NONE, __PDHT_COUNTER_INDEX, &ht->ptl.countindex);
+  if ((ret != PTL_OK) || (index != __PDHT_COUNTER_INDEX)) {
+    pdht_dprintf("init: counter PTAlloc failed\n");
+    exit(1);
+  } 
+
+
+  
   return;
 
 error:
@@ -374,6 +408,7 @@ void pdht_fini(void) {
   PtlMEUnlink(c->ptl.barrier_me);
   PtlCTFree(c->ptl.barrier_ct);
   PtlPTFree(c->ptl.lni, __PDHT_BARRIER_INDEX);
+  PtlPTFree(c->ptl.lni, __PDHT_COUNTER_INDEX);
   PtlMDRelease(c->ptl.barrier_md);
 
   PtlNIFini(c->ptl.lni);

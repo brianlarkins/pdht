@@ -44,13 +44,15 @@
 #define PDHT_PTALLOC_OPTIONS 0
 //#define PDHT_PTALLOC_OPTIONS PTL_PT_MATCH_UNORDERED
 
-#define __PDHT_ACTIVE_INDEX 1
+#define __PDHT_ACTIVE_INDEX 2
 #define __PDHT_PENDING_INDEX __PDHT_ACTIVE_INDEX + PDHT_MAX_PTES
 #define __PDHT_PENDING_MATCH 0xcafef00d
 
 
 #define __PDHT_BARRIER_INDEX 0
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
+#define __PDHT_COUNTER_INDEX 1
+#define __PDHT_COUNTER_MATCH 0xdeadbeef
 
 #define offsetof(type, member)  __builtin_offsetof (type, member)
 

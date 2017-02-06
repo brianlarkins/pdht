@@ -21,24 +21,23 @@
 enum coeff_e { madCoeffNone, madCoeffScaling, madCoeffWavelet, madCoeffBoth };
 typedef enum coeff_e coeff_t;
 
-struct treedata_s {
-  long level;
+struct madkey_s {
   long x;
   long y;
   long z;
-  coeff_t valid;
+  long level;
+};
+typedef struct madkey_s madkey_t;
+
+struct node_s {
+  madkey_t     a;  // logical address of node
+  char         children; // boolean flags for the existence of children
+  coeff_t      valid;
   tensor3dk_t  s;  // scaling (sum) coefficients
   tensor3d2k_t d;  // wavelet (difference) coefficients
 };
-typedef struct treedata_s treedata_t;
+typedef struct node_s node_t;
 
-struct tree_s {
-  u_int8_t     flags;
-  gt_cnp_t     parent;
-  gt_cnp_t     children[NUM_CHILDREN];
-  treedata_t   data;
-};
-typedef struct tree_s tree_t;
 
 
 #endif // _treedef_h
