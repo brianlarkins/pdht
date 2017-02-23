@@ -18,6 +18,9 @@ barrier: pdhtlibs barrier.c
 collision: pdhtlibs collision.c
 	$(CC) $(CFLAGS) -o collision collision.c $(PDHT_LIBS)
 
+counter: pdhtlibs counter.c
+	$(CC) $(CFLAGS) -o counter counter.c $(PDHT_LIBS)
+
 csort: pdhtlibs csort.c
 	$(CC) $(CFLAGS) -o csort csort.c $(PDHT_LIBS)
 

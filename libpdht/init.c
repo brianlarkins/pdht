@@ -36,10 +36,12 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   int ret;
 
   if (!__pdht_config) {
-     cfg.nptes      = PDHT_DEFAULT_NUM_PTES;
-     cfg.pendmode   = PDHT_DEFAULT_PMODE;
-     cfg.maxentries = PDHT_DEFAULT_TABLE_SIZE;
-     cfg.pendq_size = PDHT_PENDINGQ_SIZE;
+     cfg.nptes       = PDHT_DEFAULT_NUM_PTES;
+     cfg.pendmode    = PDHT_DEFAULT_PMODE;
+     cfg.maxentries  = PDHT_DEFAULT_TABLE_SIZE;
+     cfg.pendq_size  = PDHT_PENDINGQ_SIZE;
+     cfg.pendq_size  = PDHT_PENDINGQ_SIZE;
+     cfg.ptalloc_opts = PDHT_PTALLOC_OPTIONS;
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
@@ -161,7 +163,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     // create PTE for matching gets, will be populated by pending put poller
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
-      pdht_dprintf("pdht_create: PtlPTAlloc failure [%d]\n", ptindex);
+      pdht_dprintf("pdht_create: PtlPTAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
   }
@@ -279,6 +281,7 @@ void pdht_init(pdht_config_t *cfg) {
   ptl_process_t me;
   int ret;
 
+
   // turn off output buffering for everyone's sanity
   setbuf(stdout, NULL);
 
@@ -328,6 +331,9 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.features = 0;
 #endif
 
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Portals 4\n");
+  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Network Interface\n");
+
   // create matching logical NI
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
       PTL_NI_MATCHING | PTL_NI_LOGICAL,
@@ -336,16 +342,12 @@ void pdht_init(pdht_config_t *cfg) {
       &(c->ptl.ni_limits),
       &(c->ptl.lni));
 
-  init_pmi();
-
-  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Portals 4\n");
-  pdht_eprintf(PDHT_DEBUG_WARN, "Initializing Network Interface\n");
-
   if (ret != PTL_OK) {
-    pdht_eprintf(PDHT_DEBUG_NONE, "Portals logical NI initialization error\n");
+    pdht_eprintf(PDHT_DEBUG_NONE, "Portals logical NI initialization error: (%s)\n", pdht_ptl_error(ret));
     goto error;
   }
 
+  init_pmi();
 
   c->dbglvl = PDHT_DEBUG_WARN;
 
@@ -372,6 +374,7 @@ void pdht_init(pdht_config_t *cfg) {
     pdht_eprintf(PDHT_DEBUG_NONE, "Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
     goto error;
   }
+
   /*
    * have to call one more PMI/MPI barrier to guarantee we have our own counters 
    * ready for our internal barrier operation... 

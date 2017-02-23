@@ -20,9 +20,10 @@ int pdht_counter_init(pdht_t *ht, int initval) {
   ptl_me_t me;
   ptl_md_t md;
 
+  cindex = ht->countercount++;
+
   if (c->rank == 0) {
     // create new counter md in array of counter objects in pdht_t
-    cindex = ht->countercount++;
     
     // create MD for the target side counter array
     ht->counters[cindex] = initval;
@@ -42,18 +43,20 @@ int pdht_counter_init(pdht_t *ht, int initval) {
       return -1;
     }
   }
+ 
+  // get CT ready for local counter MD events
+  ret = PtlCTAlloc(ht->ptl.lni, &ht->ptl.countcts[cindex]);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_counter_init: unable to create CT for counter (%d).\n", cindex);
+    return -1;
+  }
 
   ht->lcounts[cindex] = 0;
   md.start     = &ht->lcounts[cindex];
   md.length    = sizeof(ht->lcounts[cindex]);
   md.options   = PTL_MD_EVENT_CT_REPLY;
   md.eq_handle = PTL_EQ_NONE;
-
-  ret = PtlCTAlloc(ht->ptl.lni, &ht->ptl.countcts[cindex]);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_counter_init: unable to create CT for counter (%d).\n", cindex);
-    return -1;
-  }
+  md.ct_handle = ht->ptl.countcts[cindex];
 
   ret = PtlMDBind(ht->ptl.lni, &md, &ht->ptl.countmds[cindex]);
   if (ret != PTL_OK) {
@@ -115,6 +118,9 @@ uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val) {
 
   // get the current counter values
   PtlCTGet(ht->ptl.countcts[counter], &ctevent);
+
+  // set target value to the parameter
+  ht->lcounts[counter] = val;
 
   // fetch and add to counter on rank zero
   ret = PtlFetchAtomic(ht->ptl.countmds[counter], 0, ht->ptl.countmds[counter], 0,

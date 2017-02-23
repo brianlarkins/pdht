@@ -296,8 +296,9 @@ void                *pdht_getnext(pdht_iter_t *it);
 
 
 // atomics / counter support atomics.c
-int                  pdht_init_counter(int initval);
-int                  pdht_fetchadd(int counter);
+int                  pdht_counter_init(pdht_t *ht, int initval);
+uint64_t             pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
+void                 pdht_counter_reset(pdht_t *ht, int counter);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);
