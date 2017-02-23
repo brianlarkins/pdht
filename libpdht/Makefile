@@ -6,7 +6,7 @@
 
 #PORTALS_INCLUDEDIR=/opt/hpctools/include
 
-CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
+CFLAGS=$(GCFLAGS) -I. -I../include -I../$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-lportals -lpmi
 

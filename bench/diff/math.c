@@ -120,7 +120,7 @@ tensor_t *transform(tensor_t *t, tensor_t *c) {
   
   for (i=1;i<4;i++) {
     if (!temp[i] && (result != temp[i])) 
-      tfree(temp[i]);
+      free(temp[i]);
   }
 
   return result;
@@ -139,7 +139,7 @@ tensor_t *transform3d(tensor_t *t, tensor_t *c) {
   double *tmp, *r_p, *t_p, *c_p, *tmp_p;
   long i;
 
-  tmp   = talloc(d0_cubed*sizeof(double));
+  tmp   = malloc(d0_cubed*sizeof(double));
   r_p   = result->array;
   t_p   = t->array;
   c_p   = c->array;
@@ -164,7 +164,7 @@ tensor_t *transform3d(tensor_t *t, tensor_t *c) {
   // result gets "result"
   mTxm(d0_squared, d0, d0, r_p, tmp_p, c_p);
 
-  tfree(tmp);
+  free(tmp);
   return result;
 }
 

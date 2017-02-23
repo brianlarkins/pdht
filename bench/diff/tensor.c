@@ -16,6 +16,8 @@
 
 #include <tensor.h>
 
+int eprintf(const char *format, ...);
+
 // add constructors to take base address
 // add routine to determine sizeof a later allocation?
 
@@ -59,7 +61,7 @@ tensor_t *tensor_create1d(long d0, int zero) {
   size_t datasize = 0;
 
   datasize = d0 * sizeof(double);
-  t = talloc(sizeof(tensor_t)+datasize);
+  t = malloc(sizeof(tensor_t)+datasize);
   tensor_init1d(t,d0,zero);
   return t;
 }
@@ -71,7 +73,7 @@ tensor_t *tensor_create2d(long d0, long d1, int zero) {
   size_t datasize = 0;
 
   datasize = (d0 * d1) * sizeof(double);
-  t = talloc(sizeof(tensor_t)+datasize);
+  t = malloc(sizeof(tensor_t)+datasize);
   tensor_init2d(t,d0,d1,zero);
 
   return t;
@@ -84,7 +86,7 @@ tensor_t *tensor_create3d(long d0, long d1, long d2, int zero) {
   size_t datasize = 0;
 
   datasize = (d0 * d1 * d2) * sizeof(double);
-  t = talloc(sizeof(tensor_t)+datasize);
+  t = malloc(sizeof(tensor_t)+datasize);
   tensor_init3d(t,d0,d1,d2,zero);
 
   return t;
@@ -143,11 +145,11 @@ tensor_t *tensor_init3d(tensor_t *t, long d0, long d1, long d2,int zero) {
 
 
 void tensor_free(tensor_t *t) {
-  tfree(t);
+  free(t);
 }
 
 slice_t *slice_create(long s, long e) {
-  slice_t *sl = talloc(sizeof(slice_t));
+  slice_t *sl = malloc(sizeof(slice_t));
   sl->start = s;
   sl->end   = e;
   sl->step  = 1;
@@ -157,7 +159,7 @@ slice_t *slice_create(long s, long e) {
 
 
 void slice_free(slice_t *slice) {
-  tfree(slice);
+  free(slice);
 }
 
 
@@ -175,7 +177,7 @@ void slice_reverse(slice_t *slice) {
 tensorhdr_t *tensor_slice(tensor_t *t, slice_t s[]) {
   long nd=0, size=1;
   long i, start, end, step, len;
-  tensorhdr_t *this = talloc(sizeof(tensorhdr_t));
+  tensorhdr_t *this = malloc(sizeof(tensorhdr_t));
 
   for (i=0; i<t->h.ndim; i++) {
     start = s[i].start;
@@ -235,7 +237,7 @@ tensor_t *tensor_transpose(tensor_t *src, tensor_t *dst) {
 
   // swapdim(0,1);
     
-  th = talloc(sizeof(tensorhdr_t));
+  th = malloc(sizeof(tensorhdr_t));
   memcpy(th, &src->h, sizeof(tensorhdr_t));
   
   tmp = th->dim[0];
@@ -289,7 +291,7 @@ tensor_t *tensor_hcopy(tensor_t *src, tensorhdr_t *t, int freeme) {
     result = NULL;
   }
   if (freeme)
-    tfree(t);
+    free(t);
 
   return result;
 }

@@ -93,10 +93,6 @@ extern double g0[9][9];
 extern double quad_points[9];
 extern double quad_weights[9];
 extern double phi_norms[100];
-extern task_handle_t refine_project_handle;
-extern task_handle_t compress_handle;
-extern task_handle_t reconstruct_handle;
-extern task_handle_t diff_handle;
 
 // alloc.c
 void            *talloc(size_t size);
@@ -104,17 +100,20 @@ void            *tcalloc(size_t size);
 void             tfree(void *p);
 
 // operators.c
+#if 0
 void      diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t *dnode);
 double    eval(func_t *f, gt_cnp_t *node, double x, double y, double z);
 void      create_diff_task(tc_t *tc, diffdim_t wrtdim, gt_cnp_t *node, gt_cnp_t *dnode);
 void      diff_wrapper(tc_t *tc, task_t *closure);
 void      recur_down(func_t *f, gt_cnp_t *node, long level, long x, long y, long z, tensor_t *s);
 tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, long x, long y, long z);
+#endif 
 
 
 // tree.c 
 pdht_t        *create_tree(void);
-node_t        *get_root(pdht_t ftree);
+node_t        *get_root(pdht_t *ftree);
+#if 0
 
 gt_cnp_t      *get_parent(gt_tree_t ftree, gt_cnp_t *node);
 gt_cnp_t      *get_child(gt_tree_t ftree, gt_cnp_t *node, int childidx);
@@ -146,6 +145,8 @@ void           set_wavelet(func_t *f, gt_cnp_t *node, tensor_t *dcoeffs);
 #define        set_left( t,p,l,i)	set_child(t, p, l, i, MAD_CHILD_LEFT)
 #define        set_right(t,p,l,i)	set_child(t, p, l, i, MAD_CHILD_RIGHT)
 void	       print_node(gt_tree_t ftree, gt_cnp_t *t);
+#endif
+
 
 
 // init.c

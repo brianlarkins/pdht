@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <gt.h>
 #include <tensor.h>
 
 #define NUM_CHILDREN 8

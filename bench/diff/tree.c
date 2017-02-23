@@ -31,20 +31,20 @@ pdht_t *create_tree(void) {
   memset(&n, 0, sizeof(node_t)); // zero everything
   n.a = k; // set logical address
 
-  pdht_put(gtree, &k, &v);
+  pdht_put(gtree, &k, &n);
 
   return gtree;
 }
 
 
-node_t *get_root(pdht_t gtree) {
+node_t *get_root(pdht_t *gtree) {
   madkey_t k = { 0, 0, 0, 0 };
-  node_t *root = talloc(sizeof(node_t));
-  pdht_get(gtree, k, root);
+  node_t *root = malloc(sizeof(node_t));
+  pdht_get(gtree, &k, root);
   return root;
 }
 
-
+#if 0
 
 gt_cnp_t *get_parent(gt_tree_t ftree, gt_cnp_t *node) {
   return gt_get_parent(ftree, node);
@@ -325,4 +325,4 @@ void set_children(gt_tree_t ftree, gt_cnp_t *node) {
     }
   }
 }
-
+#endif
