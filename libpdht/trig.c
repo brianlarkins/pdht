@@ -165,10 +165,10 @@ void print_count(pdht_t *dht, char *msg) {
     ptl_ct_event_t ce;
     PtlCTGet(hte->tct, &ce);
     printf("%s\n", msg);
-    printf("  counter: %lu %lu\n", ce.success, ce.failure);
+    printf("  counter: %"PRIu64" %"PRIu64"\n", ce.success, ce.failure);
     printf("  start: %p\n", hte->me.start);
-    printf("  length: %lu [elemsize: %d]\n", hte->me.length, dht->elemsize);
-    printf("  match: %lx %lx\n", hte->me.match_bits, hte->me.ignore_bits);
-    printf("  min_free: %lu\n", hte->me.min_free);
+    printf("  length: %"PRIu64" [elemsize: %d]\n", hte->me.length, dht->elemsize);
+    printf("  match: %"PRIx64" %"PRIx64"\n", hte->me.match_bits, hte->me.ignore_bits);
+    printf("  min_free: %"PRIu64"\n", hte->me.min_free);
   }
 }

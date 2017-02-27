@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <time.h>
 #include <pdht.h>

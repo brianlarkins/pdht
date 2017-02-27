@@ -32,7 +32,11 @@ static inline long pdht_get_rank(void) {
  */
 static inline struct timespec pdht_get_wtime() {
   struct timespec ts;
+#if __APPLE__
+  clock_gettime(_CLOCK_MONOTONIC, &ts);
+#else
   clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#endif // clock_gettime
   return ts;
 }
 #define PDHT_START_ATIMER(TMR) TMR.last   = pdht_get_wtime();

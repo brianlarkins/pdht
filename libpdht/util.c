@@ -278,8 +278,8 @@ void pdht_print_stats(pdht_t *dht) {
     u_int64_t total = 0;
     if (p == c->rank) {
       printf("pdht statistics for rank %d\n", p);
-      printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
-      printf("\tcollisions: %12lu \tnotfound: %12lu\n", dht->stats.collisions, dht->stats.notfound);
+      printf("\tputs:       %12"PRIu64" \tgets:     %12"PRIu64"\n", dht->stats.puts, dht->stats.gets);
+      printf("\tcollisions: %12"PRIu64" \tnotfound: %12"PRIu64"\n", dht->stats.collisions, dht->stats.notfound);
       printf("\tputtime:    %10.4f sec\tgettime:  %10.4f sec\n", PDHT_READ_TIMER(dht,ptimer)/(double)1e9, PDHT_READ_TIMER(dht,gtimer)/(double)1e9);
       printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1)/(double)1e9, PDHT_READ_TIMER(dht,t2)/(double)1e9);
       printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3)/(double)1e9, PDHT_READ_TIMER(dht,t4)/(double)1e9);

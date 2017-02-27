@@ -195,7 +195,7 @@ error:
  *   @returns status of operation
  */
 pdht_status_t pdht_add(pdht_t *dht, void *key, void *value) {
-  pdht_do_put(dht,key,value, PdhtPTQPending);
+  return pdht_do_put(dht,key,value, PdhtPTQPending);
 }
 
 
@@ -208,7 +208,7 @@ pdht_status_t pdht_add(pdht_t *dht, void *key, void *value) {
  *   @returns status of operation
  */
 pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
-  pdht_do_put(dht,key,value,PdhtPTQPending);
+  return pdht_do_put(dht,key,value,PdhtPTQPending);
 }
 
 
@@ -221,7 +221,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
  *   @returns status of operation
  */
 pdht_status_t pdht_update(pdht_t *dht, void *key, void *value) {
-  pdht_do_put(dht,key,value,PdhtPTQActive);
+  return pdht_do_put(dht,key,value,PdhtPTQActive);
 }
 
 

@@ -26,7 +26,11 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#ifdef __APPLE__
+#include <portals4/pmi.h>
+#else
 #include <slurm/pmi.h>
+#endif // pmi.h
 #include <portals4.h>
 
 #define PDHT_MAX_PTES     25
