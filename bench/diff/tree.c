@@ -44,6 +44,15 @@ node_t *get_root(pdht_t *gtree) {
   return root;
 }
 
+
+tensor_t *get_scaling(func_t *f, node_t *node) {
+  assert(node);
+  if ((node->valid == madCoeffScaling) || (node->valid == madCoeffBoth)) {
+    return tensor_copy((tensor_t *)&node->s);
+  } else
+    return NULL;
+}
+
 #if 0
 
 gt_cnp_t *get_parent(gt_tree_t ftree, gt_cnp_t *node) {

@@ -15,6 +15,7 @@
 #include <diffconst.h>
 #include <diff3d.h>
 
+int eprintf(const char *format, ...);
 
 static inline double phase(long i);
 

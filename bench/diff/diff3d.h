@@ -63,6 +63,9 @@ struct func_s {
   tensor_t  *rp_left;        // left block for f->rp
   tensor_t  *rp_right;       // right block for f->rp
   pdht_t    *ftree;          // global function tree
+  madkey_t  *subtrees;       // local array of subtrees for parallel tree processing
+  int        stlen;
+  int        counter;
 }; 
 typedef struct func_s func_t;
 
