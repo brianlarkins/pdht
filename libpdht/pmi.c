@@ -9,7 +9,7 @@ static int decode(const char *inval, void *outval, int outvallen);
 void init_pmi() {
 #ifdef __APPLE__
     int initialized;
-#elif
+#else
     PMI_BOOL initialized;
 #endif
     ptl_process_t me;
