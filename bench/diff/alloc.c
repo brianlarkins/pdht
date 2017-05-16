@@ -8,10 +8,10 @@
 /********************************************************/
 
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <gcl.h>
 
-int memalloc;
+int memalloc = 0;
 
 /**
  *  talloc - custom memory allocator (zero-initialized)

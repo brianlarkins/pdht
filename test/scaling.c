@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
   cfg.pendq_size   = 100000;
   cfg.ptalloc_opts = 0;
 
-  //setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
   //setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
   while ((opt = getopt(argc, argv, "hi:s:tuv:")) != -1) {

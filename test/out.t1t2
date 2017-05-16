@@ -1,0 +1,10 @@
+pdht statistics for rank 0
+    puts:             125367     gets:           320000
+    collisions:            0     notfound:       125367
+    puttime:      383.1396     gets:      2751.6413
+    t1:             0.3467     t2:        2751.5550
+pdht statistics for rank 1
+    puts:             127062     gets:           320000
+    collisions:            0     notfound:       127062
+    puttime:      382.9554     gets:      2652.0694
+    t1:             0.3295     t2:        2651.9331

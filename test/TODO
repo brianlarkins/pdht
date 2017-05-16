@@ -1,0 +1,40 @@
+
+latency:
+
+for (i=0; i<1000; i++) {
+  start_timer();
+  pdht_put(i,i);
+
+  while (pdht_get(i) != PdhtStatusOK)
+      ;
+  stop_timer();
+}
+
+
+
+optimes:
+
+local: hash function that makes everything be rank = me
+remote: hash function that makes everything be rank = me + 1 % size
+variable object size
+
+  start_timer();
+  for (i=0; i<1000; i++) {
+     pdht_put(i,i);
+  stop_timer();
+
+  pdht_barrier();
+
+  start_timer();
+  for (i=0; i<1000; i++) {
+    pdht_get(i);
+  stop_timer();
+}
+
+
+large scale put/ barrier / get application
+  - dictionary words to markov models?
+
+
+barnes-hut
+sparse tensor contraction

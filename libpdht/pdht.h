@@ -147,8 +147,8 @@ enum pdht_pmode_e {
   PdhtPendingTrig
 };
 typedef enum pdht_pmode_e pdht_pmode_t;
-//#define PDHT_DEFAULT_PMODE PdhtPendingTrig
-#define PDHT_DEFAULT_PMODE PdhtPendingPoll
+#define PDHT_DEFAULT_PMODE PdhtPendingTrig
+//#define PDHT_DEFAULT_PMODE PdhtPendingPoll
 
 /* DHT operatation status */
 enum pdht_status_e {

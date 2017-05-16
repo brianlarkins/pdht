@@ -124,7 +124,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       if (fault.ni_fail_type == PTL_NI_PT_DISABLED) {
         pdht_dprintf("pdht_put: flow control on remote rank: %d\n", rank);
         goto error;
-      } else {
+      } else if (fault.ni_fail_type != PTL_NI_OK) {
         pdht_dprintf("pdht_put: found fail event: %s\n", pdht_event_to_string(fault.type));   
         pdht_dump_event(&fault);
       }

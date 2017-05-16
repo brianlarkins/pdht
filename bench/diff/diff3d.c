@@ -40,7 +40,6 @@
 /* global shared variables      */
 /********************************/
 int ncounter = 0;
-madkey_t *subtrees = NULL;
 int pdhtcounter = 0;
 
 func_t *f, *fprime;
@@ -65,13 +64,12 @@ void      diff(func_t *f, diffdim_t wrtdim, madkey_t *node, func_t *fprime, madk
 double    eval(func_t *f, madkey_t *node, double x, double y, double z);
 void      summarize(func_t *f);
 void      summarize_subtree(func_t *f, madkey_t *node, int depth, double *sums, double *diffs);
-#if 0
-void      print_tree(gt_tree_t tree);
-void      print_subtree(gt_tree_t tree, gt_cnp_t *t, int indent, int childidx);
-#endif
+void      print_tree(func_t *f);
+void      print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx);
+
 static void print_subtree_keys(madkey_t *keys, int len);
 
-  
+
 static double test1(double x, double y, double z);
 //static double dtest1(double x, double y, double z);
 
@@ -88,7 +86,10 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   madkey_t root = { 0, 0, 0, 0 };
   uint64_t st;
 
+
   fun = malloc(sizeof(func_t));
+  fun->ftree = create_tree(); // safe to call eprintf() after this
+  fun->compressed = 0;
   fun->k         = k;
   fun->npt       = k;
   fun->thresh    = thresh;
@@ -110,8 +111,6 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   init_quadrature(fun);
   make_dc_periodic(fun);
 
-  fun->compressed = 0;
-  fun->ftree = create_tree();
 
   pdht_barrier();
 
@@ -135,19 +134,20 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     pdhtcounter = pdht_counter_init(fun->ftree, 0);
     // initial function projection @ parlvl 
     fine_scale_projection(fun, &root, parlvl+1);  // xxx
-    print_subtree_keys(fun->subtrees, fun->stlen);
+    //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
     pdht_barrier();
+
+    print_tree(fun);
 
     st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     while (st < fun->stlen) {
       refine_fine_scale_project(fun,  &fun->subtrees[st]);
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
-    
 
 
-    //print_tree(fun->ftree);
+
     // XXX this!
     //refine_fine_scale_projection(fun, &root,parlvl);
 
@@ -190,8 +190,10 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
 
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
-  if (c->rank == 0)
+  if (c->rank == 0) {
     pdht_put(f->ftree, nkey, &node); // store new node in PDHT
+    //printf("putting: <%ld,%ld,%ld> @ %ld\n", nkey->x, nkey->y, nkey->z, nkey->level);
+  }
 
 
   // decide whether to create leaves, or keep recursing
@@ -245,7 +247,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
   y = nkey->y * 2;
   z = nkey->z * 2;
 
-  printf("creating scaling: children of <%ld, %ld, %ld> @ %ld\n", nkey->x,nkey->y,nkey->z,nkey->level);
+  //printf("creating scaling: children of <%ld, %ld, %ld> @ %ld\n", nkey->x,nkey->y,nkey->z,nkey->level);
 
   scoeffs = tensor_create3d(f->npt, f->npt, f->npt, TENSOR_NOZERO);
 
@@ -261,21 +263,22 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         ckey.z = z+lz;
         ckey.level = nkey->level+1;	  
 
-	if (c->rank == 0) {
-	  fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
-	  tensor_scale(scoeffs, scale);
-	  tscoeffs = transform3d(scoeffs, f->quad_phiw);
-	  cnode.a = ckey; // copy key
-	  cnode.valid = madCoeffScaling;
-	  memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
+        if (c->rank == 0) {
+          printf("creating  <%ld,%ld,%ld> @ %ld\n", ckey.x,ckey.y,ckey.z,ckey.level);
+          fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
+          tensor_scale(scoeffs, scale);
+          tscoeffs = transform3d(scoeffs, f->quad_phiw);
+          cnode.a = ckey; // copy key
+          cnode.valid = madCoeffScaling;
+          memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
 
-	  // store child node
-	  pdht_put(f->ftree, &ckey, &cnode);
-	  free(tscoeffs);
-	}
-	subtrees[ncounter] = ckey;
+          // store child node
+          pdht_put(f->ftree, &ckey, &cnode);
+          free(tscoeffs);
+        }
+        f->subtrees[ncounter] = ckey;
         ncounter++;
-	
+
       }
     }
   }
@@ -317,18 +320,18 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
     // yes, for each child at n+1, project function to n+2, then refine at n+1
     for (int ix=0;ix<2;ix++) {
       for (int iy=0;iy<2;iy++) {
-	for (int iz=0;iz<2;iz++) {
-	  ckey.x = nkey->x + ix;
-	  ckey.y = nkey->y + iy;
-	  ckey.z = nkey->z + iz;
-	  ckey.level = nkey->level + 1;
+        for (int iz=0;iz<2;iz++) {
+          ckey.x = nkey->x + ix;
+          ckey.y = nkey->y + iy;
+          ckey.z = nkey->z + iz;
+          ckey.level = nkey->level + 1;
 
-	  pdht_get(f->ftree, &ckey, &cnode);
-	  cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
-	  pdht_update(f->ftree, &ckey, &cnode);
-	  fine_scale_project(f, &ckey);
-	  refine_fine_scale_project(f, &ckey);
-	}
+          pdht_get(f->ftree, &ckey, &cnode);
+          cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
+          pdht_update(f->ftree, &ckey, &cnode);
+          fine_scale_project(f, &ckey);
+          refine_fine_scale_project(f, &ckey);
+        }
       }
     }
   }
@@ -371,19 +374,19 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
       for (iz=0;iz<2;iz++) {
         izlo = iz*f->k;
 
-	ckey.x = node->x + ix;
-	ckey.y = node->y + iy;
-	ckey.z = node->z + iz;
-	ckey.level = node->level + 1;
+        ckey.x = node->x + ix;
+        ckey.y = node->y + iy;
+        ckey.z = node->z + iz;
+        ckey.level = node->level + 1;
 
-	if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
-	  printf("gather: pdht_get error\n");
-	}
-	  
-	if ((cnode.valid == madCoeffScaling) || (cnode.valid == madCoeffBoth))
-	  childsc = tensor_copy((tensor_t *)&cnode.s);
-	else
-	  childsc = NULL;
+        if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+          printf("gather: pdht_get error\n");
+        }
+
+        if ((cnode.valid == madCoeffScaling) || (cnode.valid == madCoeffBoth))
+          childsc = tensor_copy((tensor_t *)&cnode.s);
+        else
+          childsc = NULL;
 
         assert(childsc);
         count++;
@@ -960,31 +963,40 @@ void summarize_subtree(func_t *f, gt_cnp_t *node, int depth, double *sums, doubl
   }
 }
 
+#endif
 
-
-void print_tree(gt_tree_t tree) {
-  print_subtree(tree, get_root(tree),2,0);
+void print_tree(func_t *f) {
+  madkey_t k = { 0, 0, 0, 0 };
+  printf("printing octree\n");
+  print_subtree(f, &k, 2, 0);
 }
 
 
 
-void print_subtree(gt_tree_t tree, gt_cnp_t *t, int indent, int childidx) {
+void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
+  pdht_status_t ret;
   char *spaces = NULL;
-  gt_cnp_t *child = NULL;
+  node_t node;
+  madkey_t ckey;
   long x, y, z;
   tensor_t *s, *d;
-  int i;
+  int i=0;
 
   spaces = malloc(indent+1);
   for (i=0;i<indent;i++)
     spaces[i] = '.';
   spaces[indent] = '\0';
 
-  get_xyzindex(tree,t,&x,&y,&z);
-  printf("%snode: %ld  %ld,%ld,%ld", spaces, get_level(tree,t),x,y,z);
+  ret = pdht_get(f->ftree, nkey, &node);
+  if (ret != PdhtStatusOK) {
+    printf("%snode: %ld, %ld,%ld,%ld not found\n", spaces, node.a.level, node.a.x, node.a.y, node.a.z);
+    return;
+  }
 
-  s = get_scaling(f, t);
-  d = get_wavelet(f, t);
+  printf("%snode: %ld  %ld,%ld,%ld", spaces, node.a.level, node.a.x, node.a.y,node.a.z);
+
+  s = get_scaling(f, &node);
+  d = get_wavelet(f, &node);
 
   if (s) {
     printf(" s");
@@ -997,18 +1009,31 @@ void print_subtree(gt_tree_t tree, gt_cnp_t *t, int indent, int childidx) {
   }
 
   printf(" (%d) \n",childidx);
-  for (i=0;i<8;i++) {
-    child = get_child(tree,t,i);
-    if (child) {
-      print_subtree(tree,child,indent+2,i);
-      tfree(child);
-    }
+
+  x = nkey->x * 2;
+  y = nkey->y * 2;
+  z = nkey->z * 2;
+
+  for (int lx=0; lx<2; lx++) {
+    for (int ly=0; ly<2; ly++) {
+      for (int lz=0; lz<2; lz++) {
+        if ((node.children >> i) & 0x01) {
+          ckey.x = x+lx;
+          ckey.y = y+ly;
+          ckey.z = z+lz;
+          ckey.level = nkey->level+1;	  
+          print_subtree(f, &ckey, indent+2, i);
+          i++;
+        }
+      }
+    } 
   }
+
   free(spaces);
   return;
+
 }
 
-#endif
 
 static void print_subtree_keys(madkey_t *keys, int len) {
   if (c->rank == 0) {
@@ -1018,6 +1043,7 @@ static void print_subtree_keys(madkey_t *keys, int len) {
     printf("subtrees contains %d elements.\n", len);
   }
 }
+
 
 // ripped off from madness3/mra/mra.py
 static double test1(double x, double y, double z) {
@@ -1051,8 +1077,6 @@ int main(int argc, char **argv, char **envp) {
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = 2;
-
-  eprintf("initializing global trees.\n");
 
 
   // deal with cli args
@@ -1091,42 +1115,41 @@ int main(int argc, char **argv, char **envp) {
   // parallel tree creation
   //
 
-  eprintf("initializing function tree.\n");
   f = init_function(k, threshold, test1, INITIAL_LEVEL);
-  eprintf("initializing function tree complete.\n");
+  eprintf("function tree initialization complete.\n");
 
   exit(0);
 }
-  // 
-  // check our results
-  //
+// 
+// check our results
+//
 #if 0
-  //print_tree(f->ftree);
-  if (evaluateme) {
-    if (gt_context->mythread == 0) {
-      print_tree(f->ftree);
-      summarize(f);
-      actual = eval(f,get_root(f->ftree), 0.33, 0.44, 0.55);
-      expected = test(0.33,0.44,0.55);
-      printf("expected: %f actual: %f\n", expected, actual);
+//print_tree(f->ftree);
+if (evaluateme) {
+  if (gt_context->mythread == 0) {
+    print_tree(f->ftree);
+    summarize(f);
+    actual = eval(f,get_root(f->ftree), 0.33, 0.44, 0.55);
+    expected = test(0.33,0.44,0.55);
+    printf("expected: %f actual: %f\n", expected, actual);
 
-      //nodecount = 0;
-      //for (i=0;i<THREADS;i++) {
-      //nodecount += nodecounter[i];
-      //printf("   nodes[%ld]: %ld\n", i, nodecounter[i]);
-      //}
-      //printf("nodes in octtree: %ld\n", nodecount);
-    }
+    //nodecount = 0;
+    //for (i=0;i<THREADS;i++) {
+    //nodecount += nodecounter[i];
+    //printf("   nodes[%ld]: %ld\n", i, nodecounter[i]);
+    //}
+    //printf("nodes in octtree: %ld\n", nodecount);
   }
+}
 
-  gt_abort(gt_context);
+gt_abort(gt_context);
 
-  //
-  // compress 
-  //
+//
+// compress 
+//
 
-  if (caching)
-    gt_enable_caching(f->ftree);
+if (caching)
+  gt_enable_caching(f->ftree);
 
   gtc_reset(madtc);
   if (gt_context->mythread == 0) {
@@ -1135,14 +1158,14 @@ int main(int argc, char **argv, char **envp) {
     //    with 2^parlvl subtrees to compress (64 or 512)
     par_compress(f,get_root(f->ftree),defaultparlvl);
   }
-  gtc_process(madtc);
+gtc_process(madtc);
 
-  // let thread 0 finish up top of tree
-  if (gt_context->mythread == 0)
-    compress(f,get_root(f->ftree));
+// let thread 0 finish up top of tree
+if (gt_context->mythread == 0)
+  compress(f,get_root(f->ftree));
 
-  if (caching)
-    gt_disable_caching(f->ftree);
+if (caching)
+  gt_disable_caching(f->ftree);
 
   f->compressed = 1;
   gcl_barrier();
@@ -1154,21 +1177,21 @@ int main(int argc, char **argv, char **envp) {
   // parallel reconstruction
   //  
 
-  if (caching)
-    gt_enable_caching(f->ftree);
+if (caching)
+  gt_enable_caching(f->ftree);
   gtc_reset(madtc);
   eprintf("reconstruct.\n");
   if (gt_context->mythread == 0) {
     create_reconstruct_task(madtc, get_root(f->ftree));
     f->compressed = 0;
   }
-  gtc_process(madtc);
-  t_reconstruct = READ_TIMER(tc_process);
-  gcl_barrier();
-  eprintf("reconstruct complete.\n");
+gtc_process(madtc);
+t_reconstruct = READ_TIMER(tc_process);
+gcl_barrier();
+eprintf("reconstruct complete.\n");
 
-  if (caching)
-    gt_disable_caching(f->ftree);
+if (caching)
+  gt_disable_caching(f->ftree);
 
 #if 0
   //
@@ -1179,17 +1202,17 @@ int main(int argc, char **argv, char **envp) {
     expected = test(0.33,0.44,0.55);
     printf("expected: %f actual: %f\n", expected, actual);
   }
-  gcl_barrier();
+gcl_barrier();
 #endif
 
-  //
-  // differentiation
-  // 
+//
+// differentiation
+// 
 
-  exit(0);
+exit(0);
 
-  if (gt_context->mythread == 0)
-    eprintf("creating output tree.\n");
+if (gt_context->mythread == 0)
+  eprintf("creating output tree.\n");
   fprime = init_function(k, threshold, NULL, INITIAL_LEVEL, chunksize);
 
   gtc_reset(madtc);
@@ -1197,12 +1220,12 @@ int main(int argc, char **argv, char **envp) {
   if (gt_context->mythread == 0) {
     create_diff_task(madtc, Diff_wrtX, get_root(f->ftree), get_root(fprime->ftree));
   }
-  gtc_process(madtc);
-  gcl_barrier();
-  eprintf("diff complete.\n");
-  t_diff = READ_TIMER(tc_process);
+gtc_process(madtc);
+gcl_barrier();
+eprintf("diff complete.\n");
+t_diff = READ_TIMER(tc_process);
 
-  //print_tree(fprime->ftree);
-  return 0;
+//print_tree(fprime->ftree);
+return 0;
 }
 #endif

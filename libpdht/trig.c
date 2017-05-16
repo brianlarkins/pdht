@@ -74,7 +74,7 @@ void pdht_trig_init(pdht_t *dht) {
       // append ME to the pending ME list
       ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex_base+ptindex, &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
-        pdht_dprintf("pdht_trig_init: PtlMEAppend error\n");
+        pdht_dprintf("pdht_trig_init: PtlMEAppend error (%d:%d)\n", i,hte->me.length);
         exit(1);
       }
 
@@ -90,8 +90,8 @@ void pdht_trig_init(pdht_t *dht) {
       // once match bits have been copied, append to active match list
       ret = PtlTriggeredMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX+ptindex, &hte->me, PTL_PRIORITY_LIST,
           hte, &hte->ame, hte->tct, 1);
+      iter += dht->entrysize; // pointer math, danger.
     }
-    iter += dht->entrysize; // pointer math, danger.
   }
 
   dht->nextfree = dht->ptl.nptes * dht->pendq_size; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE

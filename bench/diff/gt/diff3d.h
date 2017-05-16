@@ -10,7 +10,8 @@
 #ifndef _diff_h
 #define _diff_h
 
-#include <pdht.h>
+#include <gt.h>
+#include <tc.h>
 #include <treedef.h>
 
 
@@ -62,10 +63,7 @@ struct func_s {
   tensor_t  *rm_right;       // right block for f->rm
   tensor_t  *rp_left;        // left block for f->rp
   tensor_t  *rp_right;       // right block for f->rp
-  pdht_t    *ftree;          // global function tree
-  madkey_t  *subtrees;       // local array of subtrees for parallel tree processing
-  int        stlen;
-  int        counter;
+  gt_tree_t  ftree;          // global function tree
 }; 
 typedef struct func_s func_t;
 
@@ -74,9 +72,9 @@ typedef struct func_s func_t;
  * MADNESS timers
  */
 struct mtimers_s {
-  pdht_timer_t mvmult;       //!< matrix multiply
-  pdht_timer_t tcreate;      //!< matrix multiply
-  pdht_timer_t tensor;       //!< matrix multiply
+  gcl_timer_t mvmult;       //!< matrix multiply
+  gcl_timer_t tcreate;       //!< matrix multiply
+  gcl_timer_t tensor;       //!< matrix multiply
 };
 typedef struct mtimers_s mtimers_t;
 
@@ -86,6 +84,13 @@ extern mtimers_t mtimers;
 #define MSTART_TIMER(TMR) mtimers.TMR.last   = gcl_wctime();
 #define MSTOP_TIMER(TMR)  mtimers.TMR.total += gcl_wctime() - mtimers.TMR.last;
 #define MREAD_TIMER(TMR)  mtimers.TMR.total
+
+struct mad_task_s {
+  gt_cnp_t node;
+  gt_cnp_t dnode;
+  int wrtdim;
+};
+typedef struct mad_task_s mad_task_t;
 
 enum diffdim_e { Diff_wrtX, Diff_wrtY, Diff_wrtZ };
 typedef enum diffdim_e diffdim_t;
@@ -97,43 +102,23 @@ extern double quad_points[9];
 extern double quad_weights[9];
 extern double phi_norms[100];
 
-// alloc.c
-void            *talloc(size_t size);
-void            *tcalloc(size_t size);
-void             tfree(void *p);
-
-// operators.c
-#if 0
-void      diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t *dnode);
-double    eval(func_t *f, gt_cnp_t *node, double x, double y, double z);
-void      create_diff_task(tc_t *tc, diffdim_t wrtdim, gt_cnp_t *node, gt_cnp_t *dnode);
-void      diff_wrapper(tc_t *tc, task_t *closure);
-void      recur_down(func_t *f, gt_cnp_t *node, long level, long x, long y, long z, tensor_t *s);
-tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, long x, long y, long z);
-#endif 
-
-
 // tree.c 
-pdht_t        *create_tree(void);
-node_t        *get_root(pdht_t *ftree);
-tensor_t      *get_scaling(func_t *f, node_t *node);
-tensor_t      *get_wavelet(func_t *f, node_t *node);
-#if 0
-
+gt_tree_t      create_tree(gt_context_t *context, int chunksize);
+gt_cnp_t      *get_root(gt_tree_t ftree);
 gt_cnp_t      *get_parent(gt_tree_t ftree, gt_cnp_t *node);
 gt_cnp_t      *get_child(gt_tree_t ftree, gt_cnp_t *node, int childidx);
 int            child_index(gt_tree_t ftree, gt_cnp_t *pnode, gt_cnp_t *cnode);
 void          *get_data(gt_tree_t ftree, gt_cnp_t *node);
-
-long           get_level(node_t *node);
-
+long           get_level(gt_tree_t ftree, gt_cnp_t *node);
 int            has_child(gt_tree_t ftree, gt_cnp_t *node, int whichchild);
 int            has_scaling(gt_tree_t ftree, gt_cnp_t *node);
 int            has_wavelet(gt_tree_t ftree, gt_cnp_t *node);
-void           get_xyzindex(node_t *node, long *x, long *y, long *z);
-long           get_xindex(node_t *node);
-long           get_yindex(node_t *node);
-long           get_zindex(node_t *node);
+tensor_t      *get_scaling(func_t *f, gt_cnp_t *node);
+tensor_t      *get_wavelet(func_t *f, gt_cnp_t *node);
+void           get_xyzindex(gt_tree_t ftree, gt_cnp_t *node, long *x, long *y, long *z);
+long           get_xindex(gt_tree_t ftree, gt_cnp_t *node);
+long           get_yindex(gt_tree_t ftree, gt_cnp_t *node);
+long           get_zindex(gt_tree_t ftree, gt_cnp_t *node);
 
 //void           set_root(gt_tree_t ftree, gt_cnp_t *root);
 gt_cnp_t      *set_child(gt_tree_t ftree, gt_cnp_t *parent, long level, long x, long y, long z, int childidx);
@@ -148,8 +133,6 @@ void           set_wavelet(func_t *f, gt_cnp_t *node, tensor_t *dcoeffs);
 #define        set_left( t,p,l,i)	set_child(t, p, l, i, MAD_CHILD_LEFT)
 #define        set_right(t,p,l,i)	set_child(t, p, l, i, MAD_CHILD_RIGHT)
 void	       print_node(gt_tree_t ftree, gt_cnp_t *t);
-#endif
-
 
 
 // init.c
@@ -160,7 +143,7 @@ tensor_t      *two_scale_hg(int k);
 
 // math.c
 void           pn(double x, int order, double *p);
-void	         phi(double x, long k, double *p);
+void	       phi(double x, long k, double *p);
 tensor_t      *filter(func_t *f, tensor_t *s);
 tensor_t      *unfilter(func_t *f, tensor_t *ss, int sonly);
 tensor_t      *transform(tensor_t *t, tensor_t *c);

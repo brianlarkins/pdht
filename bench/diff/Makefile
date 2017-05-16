@@ -8,7 +8,8 @@ PDHT_TOP=../..
 
 include $(PDHT_TOP)/pdht.mk
 
-OBJS =  init.o           \
+OBJS =  alloc.o          \
+				init.o           \
 				math.o           \
 				tensor.o         \
 				tree.o           \

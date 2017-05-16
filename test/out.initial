@@ -1,0 +1,9 @@
+Total time is 3103.250 sec
+pdht statistics for rank 0
+    puts:             124641     gets:           320000
+    collisions:            0     notfound:       124641
+    puttime:      371.9701     gets:      2730.1999
+pdht statistics for rank 1
+    puts:             127820     gets:           320000
+    collisions:            0     notfound:       127820
+    puttime:      352.3710     gets:      2531.3162

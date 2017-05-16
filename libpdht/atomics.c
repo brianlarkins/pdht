@@ -47,7 +47,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
   // get CT ready for local counter MD events
   ret = PtlCTAlloc(ht->ptl.lni, &ht->ptl.countcts[cindex]);
   if (ret != PTL_OK) {
-    pdht_dprintf("pdht_counter_init: unable to create CT for counter (%d).\n", cindex);
+    pdht_dprintf("pdht_counter_init: unable to create CT for counter (%d). -- %s\n", cindex, pdht_ptl_error(ret));
     return -1;
   }
 

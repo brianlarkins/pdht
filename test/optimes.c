@@ -59,6 +59,8 @@ int main(int argc, char **argv) {
 
   val = malloc(elemsize);
   memset(val,0,elemsize);
+
+  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   
 
   // create hash table

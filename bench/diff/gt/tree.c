@@ -6,7 +6,6 @@
 /*    id: $Id: tensor.c 618 2007-03-06 23:53:38Z dinan $  */
 /*                                                        */
 /**********************************************************/
-#define _XOPEN_SOURCE 600
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,99 +14,23 @@
 #include <tensor.h>
 #include <diff3d.h>
 
-
-#define MASK5  0x000000000000001f
-#define MASK19 0x000000000007ffff
-#define MASK20 0x00000000000fffff
-
-/*
- *  hash function for madness tree coordinates
- */
-void treehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
-  madkey_t *kp = (madkey_t *)key;
-  uint64_t temp = 0;
-
-  /*
-   * MADNESS keys are 4 long values: x, y, z, and level in tree (256 bits)
-   * PDHT limits key size to 64-bits, so we grab low-order bits from each key field
-   *   x     = 20 bits from 64-bit long                     [44..63]
-   *   y     = 20 bits from 64-bit long                     [24..43]
-   *   z     = 19 bits from 64-bit long                     [5..23] 
-   *   level =  5 bits from 64-bit long  (max depth is 2^5) [0..4]
-   */ 
-
-  *mbits = 0;
-  temp = (kp->x & MASK20) << 44;
-  *mbits |= temp;
-  temp = (kp->y & MASK20) << 24;
-  *mbits |= temp;
-  temp = (kp->z & MASK19) << 5;
-  *mbits |= temp;
-  temp = (kp->level & MASK5);
-  *mbits |= temp;
-
-
-  (*rank).rank = (*mbits) % c->size;
-  *ptindex = (*mbits) % dht->ptl.nptes;
-  //printf("hashing <%ld,%ld,%ld> @%ld  (%lx @ %d pte: %d)\n", kp->x,kp->y,kp->z,kp->level,
-  //    *mbits, (*rank).rank, *ptindex);
-}
-
-
-
 /*
  * create_tree - collective call to create function tree
  */
-pdht_t *create_tree(void) {
-  pdht_t *gtree;
-  madkey_t k;
-  node_t n;
-  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
-  gtree = pdht_create(sizeof(madkey_t), sizeof(node_t), PdhtModeStrict);
+gt_tree_t create_tree(gt_context_t *context, int chunksize) {
+  gt_tree_t gtree;
 
-  pdht_sethash(gtree, treehash);
-  // maybe set tunable defaults here
-
-  // create root node
-  k.x = 0; k.y = 0; k.z = 0; k.level = 0;
-
-  memset(&n, 0, sizeof(node_t)); // zero everything
-  n.a = k; // set logical address
-  n.children = 0x7f;
-
-  pdht_put(gtree, &k, &n);
-
+  gtree = gt_tree_create(context, chunksize, sizeof(tree_t), GT_NUM_CHILDREN);
+  gt_placement_localopen(gtree);
   return gtree;
 }
 
 
-node_t *get_root(pdht_t *gtree) {
-  madkey_t k = { 0, 0, 0, 0 };
-  node_t *root = malloc(sizeof(node_t));
-  pdht_get(gtree, &k, root);
-  return root;
+gt_cnp_t *get_root(gt_tree_t ftree) {
+  return gt_get_root(ftree);
 }
 
 
-tensor_t *get_scaling(func_t *f, node_t *node) {
-  assert(node);
-  if ((node->valid == madCoeffScaling) || (node->valid == madCoeffBoth)) {
-    return tensor_copy((tensor_t *)&node->s);
-  } else
-    return NULL;
-}
-
-
-tensor_t *get_wavelet(func_t *f, node_t *node) {
-  assert(node);
-  if ((node->valid == madCoeffWavelet) || (node->valid == madCoeffBoth)) {
-    return tensor_copy((tensor_t *)&node->d);
-  } else
-    return NULL;
-}
-
-
-#if 0
 
 gt_cnp_t *get_parent(gt_tree_t ftree, gt_cnp_t *node) {
   return gt_get_parent(ftree, node);
@@ -127,34 +50,48 @@ int child_index(gt_tree_t ftree, gt_cnp_t *pnode, gt_cnp_t *cnode) {
 
 
 
-long get_level(node_t *node) {
-  return node->a.lvl;
+long get_level(gt_tree_t ftree, gt_cnp_t *node) {
+  tree_t *t = gt_get_node(ftree,node);
+  long lvl = t->data.level;
+  gt_finish_node(ftree, t);
+  return lvl;
 }
 
 
 
-void get_xyzindex(node_t *node, long *x, long *y, long *z) {
-  *x = node->a.x;
-  *y = node->a.y;
-  *z = node->a.z;
+void get_xyzindex(gt_tree_t ftree, gt_cnp_t *node, long *x, long *y, long *z) {
+  tree_t *t = gt_get_node(ftree,node);
+  *x = t->data.x;
+  *y = t->data.y;
+  *z = t->data.z;
+  gt_finish_node(ftree, t);
 }
 
 
 
-long get_xindex(node_t *node) {
-  return node->a.x;
+long get_xindex(gt_tree_t ftree, gt_cnp_t *node) {
+  tree_t *t = gt_get_node(ftree,node);
+  long idx = t->data.x;
+  gt_finish_node(ftree, t);
+  return idx;
 }
 
 
 
-long get_yindex(node_t *node) {
-  return node->a.y;
+long get_yindex(gt_tree_t ftree, gt_cnp_t *node) {
+  tree_t *t = gt_get_node(ftree,node);
+  long idx = t->data.y;
+  gt_finish_node(ftree, t);
+  return idx;
 }
 
 
 
-long get_zindex(node_t *node) {
-  return node->a.z;
+long get_zindex(gt_tree_t ftree, gt_cnp_t *node) {
+  tree_t *t = gt_get_node(ftree,node);
+  long idx = t->data.z;
+  gt_finish_node(ftree, t);
+  return idx;
 }
 
 
@@ -388,4 +325,4 @@ void set_children(gt_tree_t ftree, gt_cnp_t *node) {
     }
   }
 }
-#endif
+

@@ -35,6 +35,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   char *iter; // used for pointer math
   int ret;
 
+// setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
+ setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
+// setenv("PTL_LOG_LEVEL","3",1);
+// setenv("PTL_PROGRESS_NOSLEEP","1",1);
+
   if (!__pdht_config) {
      cfg.nptes       = PDHT_DEFAULT_NUM_PTES;
      cfg.pendmode    = PDHT_DEFAULT_PMODE;
@@ -56,8 +61,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   c->dhtcount++; // register ourselves globally on this process
 
   if (keysize > PDHT_MAXKEYSIZE) {
-    pdht_dprintf("pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
-    pdht_dprintf("\t (update value in pdht_impl.h and recompile)\n");
+    pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
+    pdht_eprintf(PDHT_DEBUG_NONE, "\t (update value in pdht_impl.h and recompile)\n");
   }
 
   dht->keysize = keysize;
@@ -139,7 +144,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start  = NULL;
   md.length = PTL_SIZE_MAX; 
-  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY;
+  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY              | PTL_MD_EVENT_SEND_DISABLE;
   md.eq_handle = dht->ptl.lmdeq;
   md.ct_handle = dht->ptl.lmdct;
 
@@ -308,7 +313,7 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
   ni_req_limits.max_eqs = (cfg->nptes)+2;
-  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+2;
+  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS+2;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_pt_index = 64;

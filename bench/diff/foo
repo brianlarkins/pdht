@@ -1,0 +1,33 @@
+	max_entries: 100000
+	max_unexpected_headers: 1024
+	max_mds: 1024
+	max_eqs: 5
+	max_cts: 15002
+	max_pt_index: 7
+	max_iovecs: 1024
+	max_list_size: 100000
+	max_triggered_ops: 15100
+	max_msg_size: 1073741824
+	max_atomic_size: 512
+	max_fetch_atomic_size: 512
+	max_waw_ordered_size: 512
+	max_war_ordered_size: 512
+	max_volatile_size: 512
+pdht_create: hash table entry size: 17792 (40 + 17680)
+	context: 160 bytes ht: 1696 bytes table: 1779200000
+	max table size: 100000 pending q size: 5000
+	PT Entries: 3 initial pending entries: 15000
+	pending PTE mode: triggered
+oof: 2097074176 Cannot allocate memory 1
+oof: [0] : 9125
+oof: [1] : 9125
+oof: [2] : 162353152
+oof: [3] : 0
+oof: [4] : 0
+oof: [5] : 0
+oof: [6] : 161841000
+oof: [7] : 2097074176
+oof: [8] : 0
+oof: [9] : 0
+ouchie: 9125
+0: pdht_trig_init: PtlMEAppend error (4124:17736)
