@@ -117,3 +117,4 @@ test/benchmarks/EQ_LE_rtt_latency
 test/benchmarks/EQ_ME_rtt_latency
 test/benchmarks/P4msgrate
 test/sfw/test
+test/basic/test_unlink_race
