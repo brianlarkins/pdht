@@ -33,8 +33,9 @@
 #endif // pmi.h
 #include <portals4.h>
 
-#define PDHT_MAX_PTES     25
-#define PDHT_MAX_COUNTERS 20
+#define PDHT_MAX_PTES          25
+#define PDHT_MAX_COUNTERS      20
+#define PDHT_MAX_REDUCE_ELEMS 128
 
 /**********************************************/
 /* statistics/performance data                */
@@ -101,15 +102,21 @@ typedef struct pdht_pollq_s pdht_pollq_t;
 
 /* portals specific data for global context */
 struct pdht_portals_s {
-  ptl_handle_ni_t  phy;           //!< physical NI
-  ptl_handle_ni_t  lni;           //!< logical NI
-  ptl_ni_limits_t  ni_limits;     //!< logical NI limits
-  ptl_process_t   *mapping;       //!< physical/logical NI mapping
-  ptl_handle_md_t  barrier_md;    //!< barrier MD handle
-  ptl_handle_me_t  barrier_me;    //!< barrier ME handle
-  ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
-  ptl_size_t       barrier_count; //!< barrier count
-  u_int32_t        pt_entries;     //!< number of portals table entries per hash table
+  ptl_handle_ni_t  phy;                 //!< physical NI
+  ptl_handle_ni_t  lni;                 //!< logical NI
+  ptl_ni_limits_t  ni_limits;           //!< logical NI limits
+  ptl_process_t   *mapping;             //!< physical/logical NI mapping
+  ptl_handle_md_t  collective_md;       //!< collective MD handle
+  ptl_handle_me_t  barrier_me;          //!< barrier ME handle
+  ptl_handle_me_t  reduce_lme;          //!< reduce left ME handle
+  ptl_handle_me_t  reduce_rme;          //!< reduce right ME handle
+  ptl_handle_ct_t  barrier_ct;          //!< barrier CT handle
+  ptl_handle_ct_t  collective_ct;       //!< collective CT handle
+  ptl_size_t       collective_count;    //!< collective count
+  ptl_size_t       barrier_count;       //!< barrier  count
+  void            *collective_lscratch; //!< scratch space for collective ops
+  void            *collective_rscratch; //!< scratch space for collective ops
+  u_int32_t        pt_entries;          //!< number of portals table entries per hash table
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -214,7 +221,6 @@ struct pdht_s {
 };
 typedef struct pdht_s pdht_t;
 
-
 /* application-specified tunable parameters */
 #define PDHT_TUNE_NPTES      0x01
 #define PDHT_TUNE_PMODE      0x02
@@ -240,11 +246,18 @@ typedef enum pdht_oper_e pdht_oper_t;
 /* atomic operation data types */
 enum pdht_datatype_e {
   IntType,
+  LongType,
   DoubleType,
   CharType,
   BoolType
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
+
+enum pdht_reduceop_e {
+  PdhtReduceOpSum
+};
+typedef enum pdht_reduceop_e pdht_reduceop_t;
+
 
 /* DHT iterators (UNSUPPORTED) */
 struct pdht_iter_s {
@@ -272,6 +285,9 @@ pdht_status_t        pdht_wait(pdht_handle_t h);
 pdht_status_t        pdht_waitrank(int rank);
 pdht_status_t        pdht_waitall(void);
 void                 pdht_barrier(void);
+pdht_status_t        pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_broadcast(void *buf, pdht_datatype_t type, int elems);
 
 // Put / Get Operations -- putget.c
 pdht_status_t        pdht_put(pdht_t *dht, void *key, void *value);

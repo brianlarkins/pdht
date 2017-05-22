@@ -260,7 +260,6 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->pendq_size   = config->pendq_size;
   if (opts & PDHT_TUNE_PTOPT)
     __pdht_config->ptalloc_opts = config->ptalloc_opts;
-  printf("%d\n", __pdht_config->ptalloc_opts);
 
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
@@ -313,11 +312,12 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
   ni_req_limits.max_eqs = (cfg->nptes)+2;
-  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS+2;
+  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
+                          + PDHT_COLLECTIVE_CTS + 1;
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_pt_index = 64;
-  ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_BARRIER_PTES + 1;
+  ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_COLLECTIVE_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = cfg->maxentries;
   ni_req_limits.max_triggered_ops = (cfg->nptes*cfg->pendq_size)+100;
@@ -382,9 +382,9 @@ void pdht_init(pdht_config_t *cfg) {
 
   /*
    * have to call one more PMI/MPI barrier to guarantee we have our own counters 
-   * ready for our internal barrier operation... 
+   * ready for our internal collective operations... 
    */
-  pdht_barrier_init(c);
+  pdht_collective_init(c);
   init_only_barrier(); // safe to use pdht_barrier() after this
 
   // allocate global counter PTE (shared PTE amongst all HTs)
@@ -395,8 +395,6 @@ void pdht_init(pdht_config_t *cfg) {
     exit(1);
   } 
 
-
-  
   return;
 
 error:
@@ -411,19 +409,13 @@ error:
  * pdht_fini - initializes PDHT system
  */
 void pdht_fini(void) {
+  // free up counter PTE
+  PtlPTFree(c->ptl.lni, __PDHT_COLLECTIVE_INDEX);
 
-  // free up barrier initialization stuff (PT Entry, MD)
-
-
-  // barrier structures
-  PtlMEUnlink(c->ptl.barrier_me);
-  PtlCTFree(c->ptl.barrier_ct);
-  PtlPTFree(c->ptl.lni, __PDHT_BARRIER_INDEX);
-  PtlPTFree(c->ptl.lni, __PDHT_COUNTER_INDEX);
-  PtlMDRelease(c->ptl.barrier_md);
+  // free up collective initialization stuff (PT Entry, MD)
+  pdht_collective_fini();
 
   PtlNIFini(c->ptl.lni);
-  //PtlNIFini(c->ptl.phy);
   if (c->ptl.mapping)
     free(c->ptl.mapping);
   PtlFini();

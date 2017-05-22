@@ -40,7 +40,8 @@
 
 #define PDHT_DEFAULT_NUM_PTES  1
 #define PDHT_COUNT_PTES 1
-#define PDHT_BARRIER_PTES 1
+#define PDHT_COLLECTIVE_PTES 1
+#define PDHT_COLLECTIVE_CTS 2
 
 #define PDHT_MAXKEYSIZE 32 // size in bytes (32 for MADNESS)
 
@@ -52,8 +53,10 @@
 #define __PDHT_PENDING_MATCH 0xcafef00d
 
 
-#define __PDHT_BARRIER_INDEX 0
+#define __PDHT_COLLECTIVE_INDEX 0
 #define __PDHT_BARRIER_MATCH 0xdeadbeef
+#define __PDHT_REDUCE_LMATCH  0xfa570911
+#define __PDHT_REDUCE_RMATCH  0xfa570991
 #define __PDHT_COUNTER_INDEX 1
 #define __PDHT_COUNTER_MATCH 0xdeadbeef
 
@@ -98,7 +101,8 @@ void                 pdht_fini(void);
 void                 pdht_clearall(void);
 
 // commsynch.c
-void                 pdht_barrier_init(pdht_context_t *c);
+void                 pdht_collective_init(pdht_context_t *c);
+void                 pdht_collective_fini();
 
 // pmi.c
 void init_pmi();
