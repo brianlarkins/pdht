@@ -83,6 +83,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       break;
   }
 
+//#define PDHT_DEBUG_TRACE
 #ifdef PDHT_DEBUG_TRACE
   pdht_dprintf("put: key: %lu val: %lu onto pending queue of %d\n", *(unsigned long *)key, *(unsigned long *)value, rank);
 #endif  
@@ -97,7 +98,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     ptl_pt_index = dht->ptl.getindex[ptindex];  // update to active
 
   // 2. put hash entry on target
-  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_CT_ACK_REQ, rank, ptl_pt_index,
+  ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_ACK_REQ, rank, ptl_pt_index,
 	       mbits, 0, value, 0);
 
   if (ret != PTL_OK) {
@@ -124,7 +125,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       if (fault.ni_fail_type == PTL_NI_PT_DISABLED) {
         pdht_dprintf("pdht_put: flow control on remote rank: %d\n", rank);
         goto error;
-      } else if (fault.ni_fail_type != PTL_NI_OK) {
+      } else { // if (fault.ni_fail_type != PTL_NI_OK) {
         pdht_dprintf("pdht_put: found fail event: %s\n", pdht_event_to_string(fault.type));   
         pdht_dump_event(&fault);
       }
@@ -292,7 +293,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
         dht->stats.notfound++;
         rval = PdhtStatusNotFound;
         goto done;
-      } else {
+      } else if (ev.ni_fail_type != PTL_NI_OK) {
         pdht_dprintf("pdht_get: found fail event: %s\n", pdht_event_to_string(ev.type));   
         pdht_dump_event(&ev);
       }
@@ -302,20 +303,18 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     }
   }
 
-  //pdht_dprintf("collision checking: %lu == %lu (size: %d)\n", *(u_int64_t *)buf, *(u_int64_t *)key, dht->keysize);
-
   // fetched entry has key + value concatenated, validate key
   if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
     dht->stats.collisions++;
-    //pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
+    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
     rval = PdhtStatusCollision;
     goto done;
   }
 
   // looks good, copy value to application buffer
   // skipping over the embedded key data (for collision detection)
-  memcpy(value, buf + dht->keysize, dht->elemsize); // pointer math
+  memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
 
 done:
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event

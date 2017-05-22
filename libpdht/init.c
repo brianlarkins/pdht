@@ -35,10 +35,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   char *iter; // used for pointer math
   int ret;
 
-// setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
- setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
-// setenv("PTL_LOG_LEVEL","3",1);
-// setenv("PTL_PROGRESS_NOSLEEP","1",1);
+  // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
+  setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
+  //setenv("PTL_LOG_LEVEL","3",1);
+  //setenv("PTL_DEBUG","1",1);
+  // setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   if (!__pdht_config) {
      cfg.nptes       = PDHT_DEFAULT_NUM_PTES;
@@ -119,14 +120,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
     iter += dht->entrysize; // pointer math, danger.
   }
-
-  // setup data structures for pending puts
-  if (dht->pmode == PdhtPendingPoll) {
-    pdht_polling_init(dht);
-  } else {
-    pdht_trig_init(dht);
-  }
-
   // allocate event counter
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
@@ -144,7 +137,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start  = NULL;
   md.length = PTL_SIZE_MAX; 
-  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY              | PTL_MD_EVENT_SEND_DISABLE;
+  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY; //| PTL_MD_EVENT_SEND_DISABLE; // disabling send md events makes timers wait forever
   md.eq_handle = dht->ptl.lmdeq;
   md.ct_handle = dht->ptl.lmdct;
 
@@ -171,6 +164,13 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
+  }
+
+  // setup data structures for pending puts
+  if (dht->pmode == PdhtPendingPoll) {
+    pdht_polling_init(dht);
+  } else {
+    pdht_trig_init(dht);
   }
 
   return dht;
@@ -317,7 +317,7 @@ void pdht_init(pdht_config_t *cfg) {
   //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
   //ni_req_limits.max_pt_index = 64;
-  ni_req_limits.max_pt_index = 2*cfg->nptes + 1;
+  ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_BARRIER_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = cfg->maxentries;
   ni_req_limits.max_triggered_ops = (cfg->nptes*cfg->pendq_size)+100;

@@ -47,7 +47,9 @@ void pdht_trig_init(pdht_t *dht) {
       exit(1);
     }
 
+    // iterator = ht[PTE * QSIZE] (i.e. PENDINGQ_SIZE per PTE)
     iter = (char *)dht->ht + ((dht->pendq_size * ptindex) * dht->entrysize);
+    //pdht_dprintf("trig init append: ptindex: %d %d ht[%d] userp: %p\n", ptindex, dht->ptl.putindex[ptindex], pdht_find_bucket(dht, iter), iter);
 
     // append one-time match entres to the put PTE to catch incoming puts
     for (int i=0; i < dht->pendq_size; i++) {
@@ -72,7 +74,7 @@ void pdht_trig_init(pdht_t *dht) {
       hte->me.ct_handle     = hte->tct;
 
       // append ME to the pending ME list
-      ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex_base+ptindex, &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
+      ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_trig_init: PtlMEAppend error (%d:%d)\n", i,hte->me.length);
         exit(1);
@@ -88,7 +90,7 @@ void pdht_trig_init(pdht_t *dht) {
       //PtlEQWait(dht->ptl.eq[ptindex], &ev); // could set PTL_ME_EVENT_LINK_DISABLE on ME
 
       // once match bits have been copied, append to active match list
-      ret = PtlTriggeredMEAppend(dht->ptl.lni, __PDHT_ACTIVE_INDEX+ptindex, &hte->me, PTL_PRIORITY_LIST,
+      ret = PtlTriggeredMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &hte->me, PTL_PRIORITY_LIST,
           hte, &hte->ame, hte->tct, 1);
       iter += dht->entrysize; // pointer math, danger.
     }
