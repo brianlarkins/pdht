@@ -90,7 +90,7 @@ extern char *optarg;
 /* protos                       */
 /********************************/
 func_t   *init_function(int k, double thresh, double (* test)(double x, double y, double z), 
-                        int initial_level, int chunksize);
+    int initial_level, int chunksize);
 void      fine_scale_projection(func_t *f, gt_cnp_t *node, long initial_level);
 void      fine_scale_project(func_t *f, gt_cnp_t *node);
 void      refine_fine_scale_projection(func_t *f, gt_cnp_t *node, int initial_level);
@@ -121,7 +121,7 @@ void      usage(char **argv);
 int       main(int argc, char **argv, char **envp);
 
 func_t *init_function(int k, double thresh, double (* test)(double x, double y, double z), 
-                      int initial_level, int chunksize) {
+    int initial_level, int chunksize) {
   func_t *fun;
   int     i;
   int     parlvl = defaultparlvl;
@@ -142,7 +142,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   fun->work1 = tensor_create3d(fun->vk[0],fun->vk[1],fun->vk[2],TENSOR_ZERO);
   fun->work2 = tensor_create3d(fun->v2k[0], fun->vk[1], fun->vk[2],TENSOR_ZERO);
   fun->workq = tensor_create3d(fun->vq[0], fun->vq[1], fun->vq[2],TENSOR_ZERO);
-  
+
   eprintf("   initializing twoscale, quadrature, dc_periodic\n");
   init_twoscale(fun);
   init_quadrature(fun);
@@ -182,7 +182,7 @@ void fine_scale_projection(func_t *f, gt_cnp_t *node, long initial_level) {
   long level = get_level(f->ftree, node);
   gt_cnp_t *child = NULL;
   long i=0, x, y, z, lx, ly, lz;
-  
+
   if (level == initial_level - 1) {
     // base case
     fine_scale_project(f, node);
@@ -194,11 +194,11 @@ void fine_scale_projection(func_t *f, gt_cnp_t *node, long initial_level) {
 
     for (lx=0;lx<2;lx++) {
       for (ly=0;ly<2;ly++) {
-	for (lz=0;lz<2;lz++) {
-	  child = set_child(f->ftree, node, level+1, x+lx, y+ly, z+lz, i);
-	  fine_scale_projection(f, child, initial_level);
-	  i++;
-	}
+        for (lz=0;lz<2;lz++) {
+          child = set_child(f->ftree, node, level+1, x+lx, y+ly, z+lz, i);
+          fine_scale_projection(f, child, initial_level);
+          i++;
+        }
       }
     }
   }
@@ -237,22 +237,22 @@ void fine_scale_project(func_t *f, gt_cnp_t *node) {
     for (iy=0;iy<2;iy++) {
       ylo = (ly+iy)*h;
       for (iz=0;iz<2;iz++) {
-	zlo = (lz+iz)*h;
-	cnode = get_child(f->ftree,node,count); 
+        zlo = (lz+iz)*h;
+        cnode = get_child(f->ftree,node,count); 
 
-	// create child if needed
-	if (!cnode) {
-	  cnode = set_child(f->ftree, node, level+1, lx+ix, ly+iy, lz+iz, count);
-	  freeflag = 0;
-	}
+        // create child if needed
+        if (!cnode) {
+          cnode = set_child(f->ftree, node, level+1, lx+ix, ly+iy, lz+iz, count);
+          freeflag = 0;
+        }
 
-	fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs); // f->quad_x read through f
-	tensor_scale(scoeffs, scale);
-	tscoeffs = transform3d(scoeffs, f->quad_phiw);
-	set_scaling(f, cnode, tscoeffs);
-	tfree(tscoeffs); 
-	if (freeflag) tfree(cnode);
-	count++;
+        fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs); // f->quad_x read through f
+        tensor_scale(scoeffs, scale);
+        tscoeffs = transform3d(scoeffs, f->quad_phiw);
+        set_scaling(f, cnode, tscoeffs);
+        tfree(tscoeffs); 
+        if (freeflag) tfree(cnode);
+        count++;
       }
     }
   }
@@ -279,8 +279,8 @@ void refine_fine_scale_projection(func_t *f, gt_cnp_t *node, int initial_level) 
     for (i=0;i<8;i++) {
       cnode = get_child(f->ftree, node, i);
       if (cnode) {
-	refine_fine_scale_projection(f, cnode, initial_level);
-	tfree(cnode);
+        refine_fine_scale_projection(f, cnode, initial_level);
+        tfree(cnode);
       }
     }
     return;
@@ -328,7 +328,7 @@ void refine_fine_scale_project(func_t *f, gt_cnp_t *node) {
   for (i=0;i<f->k;i++) {
     for (j=0;j<f->k;j++) {
       for (k=0;k<f->k;k++) {
-	tensor_set3d(sf,i,j,k,0.0);
+        tensor_set3d(sf,i,j,k,0.0);
       }
     }
   }
@@ -379,7 +379,7 @@ tensor_t *gather_scaling_coeffs(func_t *f, gt_cnp_t *node) {
   double t;
 
   ss = tensor_create3d(2*f->k,2*f->k,2*f->k, TENSOR_ZERO);
-  
+
 
   // for each child
   for (ix=0;ix<2;ix++) {
@@ -387,26 +387,26 @@ tensor_t *gather_scaling_coeffs(func_t *f, gt_cnp_t *node) {
     for (iy=0;iy<2;iy++) {
       iylo = iy*f->k;
       for (iz=0;iz<2;iz++) {
-	izlo = iz*f->k;
-	cnode = get_child(f->ftree,node,count);
-	childsc = get_scaling(f,cnode);
-	assert(childsc);
-	count++;
-	//printf("count: %ld %ld %ld %ld\n", count, ixlo,iylo,izlo);
-	// copy child scaling coeffs into ss
-	for (i=0;i<f->k;i++) {
-	  for (j=0;j<f->k;j++) {
-	    //tensor_print(ss);
-	    for (k=0;k<f->k;k++) {
-	      t = tensor_get3d(childsc,i,j,k);
-	      //printf("%ld %ld,%ld,%ld **",(ixlo+i)*ss->h.stride[0]+(iylo+j)*ss->h.stride[1]+(izlo+k)*ss->h.stride[2],ixlo+i,iylo+j,izlo+k);
-	      tensor_set3d(ss, ixlo+i, iylo+j, izlo+k, t);
-	      //printf(":");
-	    }
-	    //printf("\n");
-	  }
-	}
-	tfree(childsc); childsc = NULL; tfree(cnode); cnode = NULL;
+        izlo = iz*f->k;
+        cnode = get_child(f->ftree,node,count);
+        childsc = get_scaling(f,cnode);
+        assert(childsc);
+        count++;
+        //printf("count: %ld %ld %ld %ld\n", count, ixlo,iylo,izlo);
+        // copy child scaling coeffs into ss
+        for (i=0;i<f->k;i++) {
+          for (j=0;j<f->k;j++) {
+            //tensor_print(ss);
+            for (k=0;k<f->k;k++) {
+              t = tensor_get3d(childsc,i,j,k);
+              //printf("%ld %ld,%ld,%ld **",(ixlo+i)*ss->h.stride[0]+(iylo+j)*ss->h.stride[1]+(izlo+k)*ss->h.stride[2],ixlo+i,iylo+j,izlo+k);
+              tensor_set3d(ss, ixlo+i, iylo+j, izlo+k, t);
+              //printf(":");
+            }
+            //printf("\n");
+          }
+        }
+        tfree(childsc); childsc = NULL; tfree(cnode); cnode = NULL;
       }
     }
   }
@@ -430,7 +430,7 @@ void create_compress_task(tc_t *tc, gt_cnp_t *node) {
 
 void compress_wrapper(tc_t *tc, task_t *closure) {
   mad_task_t *madtask;
-  
+
   madtask = (mad_task_t *)gtc_task_body(closure);
   compress(f, &madtask->node);
 }
@@ -455,8 +455,8 @@ void par_compress(func_t *f, gt_cnp_t *node, int parlvl) {
     for (i=0;i<8;i++) {
       cnode = get_child(f->ftree,node,i);
       if (cnode) {
-	par_compress(f,cnode,parlvl);
-	tfree(cnode); 
+        par_compress(f,cnode,parlvl);
+        tfree(cnode); 
       }
     }
   }
@@ -479,7 +479,7 @@ void compress(func_t *f, gt_cnp_t *node) {
     return;
 
   MSTART_TIMER(mvmult);
-  
+
   // recursive case: (parallelize here)
   // find leaf nodes with scaling coeffs
 
@@ -518,11 +518,11 @@ void compress(func_t *f, gt_cnp_t *node) {
   for (i=0;i<f->k;i++) {
     for (j=0;j<f->k;j++) {
       for (k=0;k<f->k;k++) {
-	tensor_set3d(s,i,j,k,tensor_get3d(sf,i,j,k));
+        tensor_set3d(s,i,j,k,tensor_get3d(sf,i,j,k));
       }
     }
   }
-  
+
   MSTOP_TIMER(mvmult);
 
   // check mra.py (existing scaling coeffs are accumulated into via gaxpy)
@@ -533,7 +533,7 @@ void compress(func_t *f, gt_cnp_t *node) {
   for (i=0;i<f->k;i++) {
     for (j=0;j<f->k;j++) {
       for (k=0;k<f->k;k++) {
-	tensor_set3d(sf,i,j,k,0.0);
+        tensor_set3d(sf,i,j,k,0.0);
       }
     }
   }
@@ -577,7 +577,7 @@ void reconstruct_wrapper(tc_t *tc, task_t *closure) {
   //long x,y,z; 
   //get_xyzindex(f->ftree, &node, &x,&y,&z);
   //printf("%d reconstruct task: %ld : %ld %ld %ld\n", MYTHREAD, get_level(f->ftree, &node), x,y,z);
-    
+
   madtask = (mad_task_t *)gtc_task_body(closure);
   reconstruct(f, &madtask->node);
 }
@@ -603,14 +603,14 @@ void reconstruct(func_t *f, gt_cnp_t *node) {
     s = get_scaling(f, node);
 
     assert(s);
-    
+
     MSTART_TIMER(mvmult);
     // d(0:k,0:k,0:k) = s;
     for (i=0;i<f->k;i++) {
       for (j=0;j<f->k;j++) {
-	for (k=0;k<f->k;k++) {
-	  tensor_set3d(d,i,j,k,tensor_get3d(s,i,j,k));
-	}
+        for (k=0;k<f->k;k++) {
+          tensor_set3d(d,i,j,k,tensor_get3d(s,i,j,k));
+        }
       }
     }
 
@@ -636,45 +636,45 @@ void reconstruct(func_t *f, gt_cnp_t *node) {
     // for each child of node
     for (ix=0;ix<2;ix++) {
       for (iy=0;iy<2;iy++) {
-	for (iz=0;iz<2;iz++) {
-	  cnode = get_child(f->ftree, node, count);
-	  count++;
-	  MSTART_TIMER(mvmult);
-	  // for each octant of d[2*k,2*k,2*k]
-	  for (i=0;i<f->k;i++) {
-	    for (j=0;j<f->k;j++) {
-	      for (k=0;k<f->k;k++) {
-		iix = ix*f->k; iiy = iy*f->k; iiz = iz*f->k;
-		tensor_set3d(tmp,i,j,k,tensor_get3d(du,iix+i,iiy+j,iiz+k));
-	      }
-	    }
-	  }
-	  MSTOP_TIMER(mvmult);
-	  // update child's scaling coeffs
-	  set_scaling(f, cnode, tmp); 
-	  tfree(cnode); cnode = NULL;
-	}
+        for (iz=0;iz<2;iz++) {
+          cnode = get_child(f->ftree, node, count);
+          count++;
+          MSTART_TIMER(mvmult);
+          // for each octant of d[2*k,2*k,2*k]
+          for (i=0;i<f->k;i++) {
+            for (j=0;j<f->k;j++) {
+              for (k=0;k<f->k;k++) {
+                iix = ix*f->k; iiy = iy*f->k; iiz = iz*f->k;
+                tensor_set3d(tmp,i,j,k,tensor_get3d(du,iix+i,iiy+j,iiz+k));
+              }
+            }
+          }
+          MSTOP_TIMER(mvmult);
+          // update child's scaling coeffs
+          set_scaling(f, cnode, tmp); 
+          tfree(cnode); cnode = NULL;
+        }
       }
     }
     // parallelize me. recursive call to next lower level
-    
+
     // DO NOT spawn tasks that may overlap lower in the tree.
     for (i=0;i<8;i++) {
       cnode = get_child(f->ftree, node, i);
-      
+
       //if (cnode) {
       get_xyzindex(f->ftree,cnode,&x,&y,&z);
-	//printf("  %d: get_child: %ld :: %ld %ld,%ld,%ld\n", MYTHREAD, i, get_level(f->ftree,cnode),x,y,z);
+      //printf("  %d: get_child: %ld :: %ld %ld,%ld,%ld\n", MYTHREAD, i, get_level(f->ftree,cnode),x,y,z);
       //} else {
       //printf("node: %p cnode: %p : %ld,%ld :: %ld,%ld\n", node, cnode, node->ci, node->ni, cnode->ci, cnode->ni);
       //}
 
       if (level < PAR_LEVEL) {
-	MSTART_TIMER(tcreate);
-	create_reconstruct_task(madtc,cnode);
-	MSTOP_TIMER(tcreate);
+        MSTART_TIMER(tcreate);
+        create_reconstruct_task(madtc,cnode);
+        MSTOP_TIMER(tcreate);
       } else 
-	reconstruct(f,cnode);
+        reconstruct(f,cnode);
       tfree(cnode); cnode = NULL;
     }
   }
@@ -702,8 +702,8 @@ void recur_down(func_t *f, gt_cnp_t *node, long level, long x, long y, long z, t
   long count = 0;
 
   //printf("recur_down: %ld %ld,%ld,%ld\n", level,x,y,z);
-  
-  
+
+
   // two-scale gives us child scaling coeffs at n+1
   STOP_TIMER(gcoeff);
   MSTART_TIMER(mvmult);
@@ -721,22 +721,22 @@ void recur_down(func_t *f, gt_cnp_t *node, long level, long x, long y, long z, t
     for (iy=0;iy<2;iy++) {
       for (iz=0;iz<2;iz++) {
 
-	START_TIMER(alloc);
-	cnode = set_child(f->ftree, node, level+1, 2*x+ix, 2*y+iy, 2*z+iz, count);
-	STOP_TIMER(alloc);
-	count++;
+        START_TIMER(alloc);
+        cnode = set_child(f->ftree, node, level+1, 2*x+ix, 2*y+iy, 2*z+iz, count);
+        STOP_TIMER(alloc);
+        count++;
 
-	// for each octant of su[2*k,2*k,2*k]
-	for (i=0;i<f->k;i++) {
-	  for (j=0;j<f->k;j++) {
-	    for (k=0;k<f->k;k++) {
-	      iix = ix*f->k; iiy = iy*f->k; iiz = iz*f->k;
-	      tensor_set3d(tmp,i,j,k,tensor_get3d(su,iix+i,iiy+j,iiz+k));
-	    }
-	  }
-	}
-	// update child's scaling coeffs
-	set_scaling(f, cnode, tmp); 
+        // for each octant of su[2*k,2*k,2*k]
+        for (i=0;i<f->k;i++) {
+          for (j=0;j<f->k;j++) {
+            for (k=0;k<f->k;k++) {
+              iix = ix*f->k; iiy = iy*f->k; iiz = iz*f->k;
+              tensor_set3d(tmp,i,j,k,tensor_get3d(su,iix+i,iiy+j,iiz+k));
+            }
+          }
+        }
+        // update child's scaling coeffs
+        set_scaling(f, cnode, tmp); 
       }
     }
   }
@@ -775,8 +775,8 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, lo
   get_xyzindex(f->ftree, node, &myx, &myy, &myz);
 
   //printf("get_coeffs: %ld %ld,%ld,%ld from %ld %ld,%ld,%ld\n",level,x,y,z, mylevel, myx, myy,myz);
-  
-  
+
+
   // check right region boundaries
   twon = pow(2.0,level);
   if ((x >= twon) || (y >= twon) || (z >= twon))
@@ -801,24 +801,24 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, lo
   } 
 
   // index difference at common ancestor
-  
+
   // ONLY HANDLING DIFF WRT X RIGHT NOW. Y&Z MAY NOT BE CORRECT
   switch (wrtdim) {
-  case Diff_wrtX:
-    xdiff = 4;
-    break;
-  case Diff_wrtY:
-    ydiff = 2;
-    break;
-  case Diff_wrtZ:
-    zdiff = 1;
-    break;
+    case Diff_wrtX:
+      xdiff = 4;
+      break;
+    case Diff_wrtY:
+      ydiff = 2;
+      break;
+    case Diff_wrtZ:
+      zdiff = 1;
+      break;
   }
 
   // direction difference at common ancestor
   if (nextx < myx)
     xdir = -1;
-  
+
   if (nexty < myy)
     ydir = -1;
 
@@ -855,7 +855,7 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, lo
 
     if (2*nx[i] != nx[i+1])
       whichchild += 4;
-    
+
     if (2*ny[i] != ny[i+1])
       whichchild += 2;
 
@@ -863,7 +863,7 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, lo
       whichchild += 1;
 
     // printf("    %d %ld,%ld,%ld : %d\n",i,nx[i],ny[i],nz[i], whichchild);
- 
+
     // path may not actually exist. recur down where needed.
     if (!(has_child(f->ftree,cnode,whichchild))) {
       s = get_scaling(f,cnode);
@@ -871,7 +871,7 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, long level, lo
       recur_down(f,cnode,i,nx[i],ny[i],nz[i],s);
       tfree(s);
     }
-    
+
     // child must now exist
     tmp = cnode;
     cnode = get_child(f->ftree, tmp, whichchild);
@@ -924,22 +924,22 @@ void diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t 
   if (!has_scaling(f->ftree, node)) {
     for (i=0;i<2;i++) {
       for (j=0;j<2;j++) {
-	for (k=0;k<2;k++) {
-	  cnode = get_child(f->ftree, node, count);
-	  if (!cnode)
-	    print_tree(f->ftree);
-	  START_TIMER(alloc);
-	  cdnode = set_child(fprime->ftree, dnode, level+1,2*x+i,2*y+j,2*z+k,count);
-	  STOP_TIMER(alloc);
-	  
-	  if (level < PAR_LEVEL) {
-	    create_diff_task(madtc, wrtdim, cnode, cdnode);
-	  } else
-	    diff(f,wrtdim,cnode,fprime,cdnode);
+        for (k=0;k<2;k++) {
+          cnode = get_child(f->ftree, node, count);
+          if (!cnode)
+            print_tree(f->ftree);
+          START_TIMER(alloc);
+          cdnode = set_child(fprime->ftree, dnode, level+1,2*x+i,2*y+j,2*z+k,count);
+          STOP_TIMER(alloc);
 
-	  tfree(cnode);
-	  count++;
-	}
+          if (level < PAR_LEVEL) {
+            create_diff_task(madtc, wrtdim, cnode, cdnode);
+          } else
+            diff(f,wrtdim,cnode,fprime,cdnode);
+
+          tfree(cnode);
+          count++;
+        }
       }
 
     }
@@ -949,18 +949,18 @@ void diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t 
     py = my = y;
     pz = mz = z;
     switch (wrtdim) {
-    case Diff_wrtX:
-      px += 1;
-      mx -= 1;
-      break;
-    case Diff_wrtY:
-      py += 1;
-      my -= 1;
-      break;
-    case Diff_wrtZ:
-      pz += 1;
-      mz -= 1;
-      break;
+      case Diff_wrtX:
+        px += 1;
+        mx -= 1;
+        break;
+      case Diff_wrtY:
+        py += 1;
+        my -= 1;
+        break;
+      case Diff_wrtZ:
+        pz += 1;
+        mz -= 1;
+        break;
     }
 
     // chase down coeffs
@@ -990,8 +990,8 @@ void diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t 
 
       //mvmult_scale(r,twon); // XXX THIS NEEDS FIXED.
       set_scaling(f,dnode,r);
-      
-    // these are not the coeffs you are looking for.  
+
+      // these are not the coeffs you are looking for.  
     } else {
 
       // project ourselves down to the next level...
@@ -1000,17 +1000,17 @@ void diff(func_t *f, diffdim_t wrtdim, gt_cnp_t *node, func_t *fprime, gt_cnp_t 
       count = 0;
       // and then differentiate from there.
       for (i=0;i<2;i++) {
-	for (j=0;j<2;j++) {
-	  for (k=0;k<2;k++) {
-	    cnode = get_child(f->ftree, node, count);
-	    START_TIMER(alloc);
-	    cdnode = set_child(fprime->ftree, dnode, level+1,2*x+i,2*y+j,2*z+k,count);
-	    STOP_TIMER(alloc);
-	    diff(f,wrtdim,cnode,fprime,cdnode); // parallelize here?
-	    tfree(cnode);
-	    count++;
-	  }
-	}
+        for (j=0;j<2;j++) {
+          for (k=0;k<2;k++) {
+            cnode = get_child(f->ftree, node, count);
+            START_TIMER(alloc);
+            cdnode = set_child(fprime->ftree, dnode, level+1,2*x+i,2*y+j,2*z+k,count);
+            STOP_TIMER(alloc);
+            diff(f,wrtdim,cnode,fprime,cdnode); // parallelize here?
+            tfree(cnode);
+            count++;
+          }
+        }
       }
     }
   }
@@ -1033,7 +1033,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
   double *ptr;
   double twon, twoinv;
   double aa,bb,cc;
-  
+
   // only work on uncompressed functions
   // code for compressed is in mra.py:1172
   if (f->compressed)
@@ -1048,7 +1048,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
     // find the child containing the spatial box with x,y,z
     get_xyzindex(f->ftree,curnode,&ix,&iy,&iz);
     level = get_level(f->ftree, curnode);
-    
+
     if (level > f->max_level)
       return 0.0;
 
@@ -1061,7 +1061,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
     twoinv = 1.0/twon;
 
     ix *= 2; iy *= 2; iz *= 2;
-    
+
     aa = ((double) ix)*twoinv;
     bb = ((double) iy)*twoinv;
     cc = ((double) iz)*twoinv;
@@ -1080,7 +1080,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
       index += 4; 
       ix +=1;
     }
-    
+
     tnode = get_child(f->ftree, curnode, index);
     tfree(curnode);
     curnode = tnode;
@@ -1096,7 +1096,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
   // hoodoo magic
   xx = x * twon; yy = y * twon; zz = z * twon;
   xx = xx - ix; yy = yy - iy; zz = zz - iz;
-   
+
   phi(xx,f->k,px);
   phi(yy,f->k,py);
   phi(zz,f->k,pz);
@@ -1104,7 +1104,7 @@ double eval(func_t *f, gt_cnp_t *node, double x, double y, double z) {
   for (p=0;p<f->k;p++) {
     for (q=0;q<f->k;q++) {
       for (r=0;r<f->k;r++) {
-	sum = sum + *ptr++ * px[p]*py[q]*pz[r];
+        sum = sum + *ptr++ * px[p]*py[q]*pz[r];
       }
     }
   }
@@ -1149,8 +1149,8 @@ void summarize(func_t *f) {
     count = sums[30+i];
     if (count > 0) {
       if (printscale == 0) {
-	printf("sum coefficients\n");
-	printscale++;
+        printf("sum coefficients\n");
+        printscale++;
       }
       printf("  level %3d #boxes=%6d norm=%.8e\n", i, count, sqrt(sums[i]));
     }
@@ -1160,8 +1160,8 @@ void summarize(func_t *f) {
     count = diffs[30+i];
     if (count > 0) {
       if (printdiff == 0) {
-	printf("difference coefficients\n");
-	printdiff++;
+        printf("difference coefficients\n");
+        printdiff++;
       }
       printf("  level %3d #boxes=%6d norm=%.8e\n", i, count, sqrt(diffs[i]));
     }
@@ -1222,10 +1222,10 @@ void print_subtree(gt_tree_t tree, gt_cnp_t *t, int indent, int childidx) {
   for (i=0;i<indent;i++)
     spaces[i] = '.';
   spaces[indent] = '\0';
-  
+
   get_xyzindex(tree,t,&x,&y,&z);
   printf("%snode: %ld  %ld,%ld,%ld", spaces, get_level(tree,t),x,y,z);
-  
+
   s = get_scaling(f, t);
   d = get_wavelet(f, t);
 
@@ -1233,7 +1233,7 @@ void print_subtree(gt_tree_t tree, gt_cnp_t *t, int indent, int childidx) {
     printf(" s");
     free(s);
   }
-  
+
   if (d) {
     printf(" d");
     free(d);
@@ -1283,34 +1283,34 @@ int main(int argc, char **argv, char **envp) {
   // deal with cli args
   while ((arg = getopt(argc, argv, "ehsmlt:C:c")) != -1) {
     switch (arg) {
-    case 'c':
-      caching = 1;
-      break;
-    case 'C':
-      chunksize = atoi(optarg);
-      break;
-    case 'e':
-      evaluateme = 1;
-      break;
-    case 's':
-      threshold = THRESHOLD_SMALL;
-      break;
-    case 'm':
-      threshold = THRESHOLD_MEDIUM;
-      break;
-    case 'l':
-      threshold = THRESHOLD_LARGE;
-      //defaultparlvl = 3;
-      break;
-    case 'h':
-      usage(argv);
-    default:
-      printf("%s: unknown option: -%c\n\n", argv[0], arg);
-      usage(argv);
-      exit(1);
+      case 'c':
+        caching = 1;
+        break;
+      case 'C':
+        chunksize = atoi(optarg);
+        break;
+      case 'e':
+        evaluateme = 1;
+        break;
+      case 's':
+        threshold = THRESHOLD_SMALL;
+        break;
+      case 'm':
+        threshold = THRESHOLD_MEDIUM;
+        break;
+      case 'l':
+        threshold = THRESHOLD_LARGE;
+        //defaultparlvl = 3;
+        break;
+      case 'h':
+        usage(argv);
+      default:
+        printf("%s: unknown option: -%c\n\n", argv[0], arg);
+        usage(argv);
+        exit(1);
     }
   }
-  
+
   test  = test1;
   madtc = gtc_create(sizeof(mad_task_t), 1, 1024, MPI_COMM_WORLD);
   refine_project_handle = gtc_register(madtc, refine_fine_scale_project_wrapper);
@@ -1395,7 +1395,7 @@ int main(int argc, char **argv, char **envp) {
   t_reconstruct = READ_TIMER(tc_process);
   gcl_barrier();
   eprintf("reconstruct complete.\n");
-  
+
   if (caching)
     gt_disable_caching(f->ftree);
 
@@ -1414,7 +1414,7 @@ int main(int argc, char **argv, char **envp) {
   //
   // differentiation
   // 
-  
+
   exit(0);
 
   if (gt_context->mythread == 0)

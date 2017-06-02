@@ -92,10 +92,12 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
 
 
   // find out which ME queue we're off too...
-  if (which == PdhtPTQPending)
+  if (which == PdhtPTQPending) {
     ptl_pt_index = dht->ptl.putindex[ptindex];  // put/add to pending
-  else
+    dht->stats.pendputs++;
+  } else {
     ptl_pt_index = dht->ptl.getindex[ptindex];  // update to active
+  }
 
   // 2. put hash entry on target
   ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_ACK_REQ, rank, ptl_pt_index,

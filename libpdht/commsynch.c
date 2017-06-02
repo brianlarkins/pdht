@@ -351,46 +351,62 @@ pdht_status_t pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datat
 
 
 /**
- * pdht_fence - ensures completion of put/get operations to destination rank
- * @param rank rank of process to ensure completion
+ * pdht_fence - ensures completion of put/get operations
+ * @param dht hash table
  */
-void pdht_fence(int rank) {
-  // Q: this is only important for NB ops, put/get are blocking/synch, no?
-  // Q: full events or counting? (more vs. less accounting data)
-  // Q: what happens to pdht_handles for outstanding nb xfers after fence?
-  //   - would be nice to invalidate them all after fencing (done!)
-  //   - otherwise, need to mandate explicit call to a wait() op
+void pdht_fence(pdht_t *dht) {
+  int ret;
+  int sbuf[2], rbuf[2];
 
-  // requires: bookeeping on pending put/get/atomics
-  //  - use an array of pending to each rank (100 for each process * 1K * size + status <= 1MB)
-  //    - pending queues should self-flush when full (with call to this routine)
-  //  - put needs to match all outstanding puts with PTL_EVENT_ACKs at Initiator
-  //  - get needs to match all outstanding gets with PTL_EVENT_REPLYs at Initiator
-  //  - fetchatomic matches PTL_EVENT_REPLY too (distinguishing?) (use atomic_op/type in event)
 
-  // for i in pending[rank]:
-  //   sum count or bytes transferred
-  // call update bookkeeping from EQ
-  //   - once EQ entry is retrieved, it's gone from the EQ
-  //   - do all processing on EQ somewhere else, then use most
-  //     recent metadata to perform fence
+  do {
+    // count up link events from appending things to the active queue
+    pthread_mutex_lock(&dht->completion_mutex);
+    pdht_finalize_puts(dht);
+    pthread_mutex_unlock(&dht->completion_mutex);
 
-  // check global accounting state for outstanding communication counts/sizes
-  // if pending > completed
-  //   call handler which calls PtlEQWait and handles a single event (may not be one we're looking for)
+    sbuf[0] = dht->stats.pendputs;
+    sbuf[1] = dht->stats.appends;
+
+    pdht_allreduce(sbuf, rbuf, PdhtReduceOpSum, IntType, 2);
+    pdht_eprintf(PDHT_DEBUG_NONE, "expected: %d actual: %d\n", rbuf[0], rbuf[1]);
+  } while (rbuf[0] > rbuf[1]);
+
+  // reset all the pending counters
+  dht->stats.pendputs = 0;
+  dht->stats.appends = 0;
 }
 
 
 
 /**
- * pdht_allfence - ensures completion of all pending put/get operations
- *    
+ * pdht_finalize_puts - tally completion of put operations for fence
+ * @param dht a hash table
+ * @returns status of operation
  */
-void pdht_allfence(void) {
-  // same as above, but handle all ranks
-  // only deal with EQ once for all ranks
-}
+pdht_status_t pdht_finalize_puts(pdht_t *dht) {
+  int ret;
+  ptl_event_t ev;
+  unsigned int ptindex;
+  ptl_time_t timeout;
 
+  // NOTE: this function may be called by the polling/trigger progress threads 
+  // _or_ during the fence operation. it should be protected by a mutex in the 
+  // caller
+
+  timeout = 10; // only block the polling progress thread or fence operation for up to 10 ms
+     
+  while ((ret = PtlEQPoll(dht->ptl.aeq,dht->ptl.nptes, timeout, &ev, &ptindex)) == PTL_OK) {
+    //pdht_dump_event(&ev);
+    if (ev.type == PTL_EVENT_LINK) {
+      dht->stats.appends++;
+      dht->stats.tappends[ptindex]++;
+    }
+  }
+  if ((ret != PTL_EQ_EMPTY) && (ret != PTL_INTERRUPTED)) {
+    pdht_dprintf("pdht_finalize_puts: PtlEQPoll error %s\n", pdht_ptl_error(ret));
+  }
+}
 
 
 /**

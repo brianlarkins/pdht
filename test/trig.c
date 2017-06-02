@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
     //print_count(ht, "after barrier:");
   }
 
+  pdht_fence(ht);
   pdht_barrier();
 
 done:

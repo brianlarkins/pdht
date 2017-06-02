@@ -26,6 +26,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#include <pthread.h>
+
 #ifdef __APPLE__
 #include <portals4/pmi.h>
 #else
@@ -33,6 +35,7 @@
 #endif // pmi.h
 #include <portals4.h>
 
+#define PDHT_MAX_TABLES        20
 #define PDHT_MAX_PTES          25
 #define PDHT_MAX_COUNTERS      20
 #define PDHT_MAX_REDUCE_ELEMS 128
@@ -53,6 +56,9 @@ typedef struct pdht_timer_s pdht_timer_t;
 
 struct pdht_stats_s {
   u_int64_t    puts;
+  u_int64_t    pendputs;      // track PtlPuts to pending q for fence
+  u_int64_t    appends;       // track complete appends to active q
+  u_int64_t    tappends[PDHT_MAX_PTES];      // track complete appends to active q
   u_int64_t    gets;
   u_int64_t    collisions;
   u_int64_t    notfound;
@@ -72,6 +78,7 @@ typedef struct pdht_stats_s pdht_stats_t;
 /**********************************************/
 /* sub structures contained in global context */
 /**********************************************/
+struct pdht_s; // forward ref
 
 // polling queue - ME append list entry
 struct pdht_append_s {
@@ -125,10 +132,12 @@ typedef struct pdht_portals_s pdht_portals_t;
 /**********************************************/
 struct pdht_context_s {
   int              dhtcount;     //!< DHTs that have been created
+  struct pdht_s   *hts[PDHT_MAX_TABLES]; //!< array of active hash tables
   int              rank;         //!< process rank
   int              size;         //!< process count
   int              dbglvl;       //!< debug level for error printing
   pdht_portals_t   ptl;          //!< Portals 4 ADTs
+  pthread_t       progress_tid; //!< progress thread id
 };
 typedef struct pdht_context_s pdht_context_t;
 
@@ -169,7 +178,6 @@ typedef enum pdht_status_e pdht_status_t;
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
-struct pdht_s;
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
 
@@ -182,6 +190,7 @@ struct pdht_htportals_s {
   ptl_pt_index_t  getindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_pt_index_t  putindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
+  ptl_handle_eq_t aeq[PDHT_MAX_PTES];           //!< event queue for get PT entry (fence/triggered)
   ptl_me_t        me;                           //!< default match entry for ht
   ptl_handle_md_t lmd;                          //!< memory descriptor for any outgoing put/gets
   ptl_handle_eq_t lmdeq;                        //!< event queue for local MD
@@ -213,6 +222,7 @@ struct pdht_s {
   uint64_t          counters[PDHT_MAX_COUNTERS]; // rank 0 target (master) counters
   uint64_t          lcounts[PDHT_MAX_COUNTERS];  // initiator side buffers
   int               countercount; // :)
+  pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
@@ -278,16 +288,16 @@ void                 pdht_tune(unsigned opts, pdht_config_t *config);
 
 
 // Communication Completion Operations -- commsynch.c
-void                 pdht_fence(int rank);
-void                 pdht_allfence(void);
+void                 pdht_barrier(void);
+void                 pdht_fence(pdht_t *dht);
+pdht_status_t        pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_broadcast(void *buf, pdht_datatype_t type, int elems);
+
 pdht_status_t        pdht_test(pdht_handle_t h);
 pdht_status_t        pdht_wait(pdht_handle_t h);
 pdht_status_t        pdht_waitrank(int rank);
 pdht_status_t        pdht_waitall(void);
-void                 pdht_barrier(void);
-pdht_status_t        pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
-pdht_status_t        pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
-pdht_status_t        pdht_broadcast(void *buf, pdht_datatype_t type, int elems);
 
 // Put / Get Operations -- putget.c
 pdht_status_t        pdht_put(pdht_t *dht, void *key, void *value);

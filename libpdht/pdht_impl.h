@@ -40,6 +40,7 @@
 
 #define PDHT_DEFAULT_NUM_PTES  1
 #define PDHT_COUNT_PTES 1
+#define PDHT_COMPLETION_CTS 1
 #define PDHT_COLLECTIVE_PTES 1
 #define PDHT_COLLECTIVE_CTS 2
 
@@ -103,6 +104,7 @@ void                 pdht_clearall(void);
 // commsynch.c
 void                 pdht_collective_init(pdht_context_t *c);
 void                 pdht_collective_fini();
+pdht_status_t        pdht_finalize_puts(pdht_t *dht);
 
 // pmi.c
 void init_pmi();

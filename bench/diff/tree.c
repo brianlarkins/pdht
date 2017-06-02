@@ -47,10 +47,10 @@ void treehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex
   *mbits |= temp;
 
 
-  (*rank).rank = (*mbits) % c->size;
+  (*rank).rank = 1;
+  //(*rank).rank = (*mbits) % c->size;
   *ptindex = (*mbits) % dht->ptl.nptes;
-  //printf("hashing <%ld,%ld,%ld> @%ld  (%lx @ %d pte: %d)\n", kp->x,kp->y,kp->z,kp->level,
-  //    *mbits, (*rank).rank, *ptindex);
+  //printf("%d: hashing <%ld,%ld,%ld> @%ld  (%lx @ %d pte: %d)\n", c->rank, kp->x,kp->y,kp->z,kp->level, *mbits, (*rank).rank, *ptindex);
 }
 
 
@@ -62,20 +62,21 @@ pdht_t *create_tree(void) {
   pdht_t *gtree;
   madkey_t k;
   node_t n;
-  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   gtree = pdht_create(sizeof(madkey_t), sizeof(node_t), PdhtModeStrict);
 
   pdht_sethash(gtree, treehash);
   // maybe set tunable defaults here
 
-  // create root node
-  k.x = 0; k.y = 0; k.z = 0; k.level = 0;
+  if (c->rank == 0) {
+    // create root node
+    k.x = 0; k.y = 0; k.z = 0; k.level = 0;
 
-  memset(&n, 0, sizeof(node_t)); // zero everything
-  n.a = k; // set logical address
-  n.children = 0x7f;
+    memset(&n, 0, sizeof(node_t)); // zero everything
+    n.a = k; // set logical address
+    n.children = 0xff;
 
-  pdht_put(gtree, &k, &n);
+    pdht_put(gtree, &k, &n);
+  }
 
   return gtree;
 }
@@ -223,10 +224,10 @@ gt_cnp_t *set_child(gt_tree_t ftree, gt_cnp_t *parent, long level, long x, long 
   tree_t *pnode, *cnode;
 
   pnode = gt_get_node(ftree, parent);
-  
+
   child = gt_node_alloc(ftree, &pnode->children[childidx], parent);
   cnode = gt_get_node(ftree, child);
-  
+
   gt_cnp_copy(ftree, parent,&(cnode->parent)); // XXX - can be fixed up
 
   gt_clear_children(ftree, cnode);
@@ -383,7 +384,7 @@ void set_children(gt_tree_t ftree, gt_cnp_t *node) {
   for (i=0;i<2;i++) {
     for (j=0;j<2;j++) {
       for (k=0;k<2;k++) {
-	set_child(ftree, node, level+1, x+i, y+j, z+k, child++);
+        set_child(ftree, node, level+1, x+i, y+j, z+k, child++);
       }
     }
   }

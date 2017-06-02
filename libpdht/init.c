@@ -59,6 +59,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
 
+  c->hts[c->dhtcount] = dht;
   c->dhtcount++; // register ourselves globally on this process
 
   if (keysize > PDHT_MAXKEYSIZE) {
@@ -120,10 +121,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
     iter += dht->entrysize; // pointer math, danger.
   }
-  // allocate event counter
+
+  // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
-    pdht_dprintf("pdht_create: PtlCTAlloc failure\n");
+    pdht_dprintf("pdht_create: PtlCTAlloc failure (put/get)\n");
     exit(1);
   }
 
@@ -148,6 +150,9 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
 
+  // initialize mutex for synch between progress thread and fence calls
+  pthread_mutex_init(&dht->completion_mutex, NULL);
+
   // initialize Portals bookkeeping for atomic counters
   for (int i=0; i<PDHT_MAX_COUNTERS; i++) {
     // target-side
@@ -159,7 +164,15 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
     // create PTE for matching gets, will be populated by pending put poller
-    ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, PTL_EQ_NONE, __PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
+
+    // need to create an event queue for PTL_EVENT_LINK events for triggered appends and fence op
+    ret = PtlEQAlloc(dht->ptl.lni, dht->pendq_size, &dht->ptl.aeq[ptindex]);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_create: PtlEQAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
+      exit(1);
+    }
+
+    ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],__PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
@@ -186,6 +199,15 @@ void pdht_free(pdht_t *dht) {
   assert(dht);
   struct timespec ts;
   int ret;
+  int i = 0;
+
+  // remove hash table from progress thread's list of tables to look after
+  for (i=0; (i < c->dhtcount) && (c->hts[i] != dht); i++) 
+    ; // find this ht
+  while (i < c->dhtcount) {
+    c->hts[i] = c->hts[i+1]; // shuffle everybody down
+    i++;
+  }
 
   c->dhtcount--;
 
@@ -199,8 +221,10 @@ void pdht_free(pdht_t *dht) {
 
   
   // free our table entries
-  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
+  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++)  {
     PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
+    PtlEQFree(dht->ptl.aeq[ptindex]); // yes, after PTFree
+  }
 
   // free our memory descriptor
   PtlMDRelease(dht->ptl.lmd);
@@ -311,12 +335,9 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.max_entries = cfg->maxentries;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = (cfg->nptes)+2;
+  ni_req_limits.max_eqs = (2*cfg->nptes)+2;
   ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
-                          + PDHT_COLLECTIVE_CTS + 1;
-  //ni_req_limits.max_eqs = PDHT_DEFAULT_TABLE_SIZE;
-  //ni_req_limits.max_cts = PDHT_DEFAULT_TABLE_SIZE;
-  //ni_req_limits.max_pt_index = 64;
+                          + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + 1;
   ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_COLLECTIVE_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = cfg->maxentries;

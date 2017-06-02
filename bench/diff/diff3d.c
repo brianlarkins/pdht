@@ -106,13 +106,13 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   fun->work2 = tensor_create3d(fun->v2k[0], fun->vk[1], fun->vk[2],TENSOR_ZERO);
   fun->workq = tensor_create3d(fun->vq[0], fun->vq[1], fun->vq[2],TENSOR_ZERO);
 
-  eprintf("   initializing twoscale, quadrature, dc_periodic\n");
+  eprintf("   initializing twoscale, quadrature, dc_periodic");
   init_twoscale(fun);
   init_quadrature(fun);
   make_dc_periodic(fun);
+  eprintf("...complete\n");
 
 
-  pdht_barrier();
 
   /*
    * create an array for all nodes at level k
@@ -136,7 +136,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     fine_scale_projection(fun, &root, parlvl+1);  // xxx
     //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
-    pdht_barrier();
+    pdht_fence(fun->ftree);
 
     print_tree(fun);
 
@@ -190,9 +190,9 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
 
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
-  if (c->rank == 0) {
+  if ((c->rank == 0) && (nkey->level != 0)) {
+    printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
     pdht_put(f->ftree, nkey, &node); // store new node in PDHT
-    //printf("putting: <%ld,%ld,%ld> @ %ld\n", nkey->x, nkey->y, nkey->z, nkey->level);
   }
 
 
@@ -247,7 +247,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
   y = nkey->y * 2;
   z = nkey->z * 2;
 
-  //printf("creating scaling: children of <%ld, %ld, %ld> @ %ld\n", nkey->x,nkey->y,nkey->z,nkey->level);
+  eprintf("creating scaling: children of <%ld, %ld, %ld> @ %ld\n", nkey->x,nkey->y,nkey->z,nkey->level);
 
   scoeffs = tensor_create3d(f->npt, f->npt, f->npt, TENSOR_NOZERO);
 
@@ -282,6 +282,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
       }
     }
   }
+  //printf("rank %d done\n", c->rank);
 }
 
 
@@ -294,7 +295,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
   long    x,y,z;
 
 
-  //printf("refine_fine_scale_project: %ld : %ld %ld %ld\n", get_level(f->ftree, node), nkey.x,nkey.y,nkey.z);
+  printf("%d: refine_fine_scale_project: %ld : %ld %ld %ld\n", c->rank, nkey->level, nkey->x,nkey->y,nkey->z);
 
   // scaling coeffs _must_ exist at level n+1
   ss = gather_scaling_coeffs(f,nkey);
@@ -967,8 +968,11 @@ void summarize_subtree(func_t *f, gt_cnp_t *node, int depth, double *sums, doubl
 
 void print_tree(func_t *f) {
   madkey_t k = { 0, 0, 0, 0 };
-  printf("printing octree\n");
-  print_subtree(f, &k, 2, 0);
+  if (c->rank == 0) {
+    printf("printing octree\n");
+    print_subtree(f, &k, 2, 0);
+  }
+  pdht_barrier();
 }
 
 
@@ -989,7 +993,7 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
 
   ret = pdht_get(f->ftree, nkey, &node);
   if (ret != PdhtStatusOK) {
-    printf("%snode: %ld, %ld,%ld,%ld not found\n", spaces, node.a.level, node.a.x, node.a.y, node.a.z);
+    printf("%snode: %ld, %ld,%ld,%ld not found\n", spaces, nkey->level, nkey->x, nkey->y, nkey->z);
     return;
   }
 
@@ -1023,8 +1027,8 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
           ckey.z = z+lz;
           ckey.level = nkey->level+1;	  
           print_subtree(f, &ckey, indent+2, i);
-          i++;
         }
+        i++;
       }
     } 
   }
