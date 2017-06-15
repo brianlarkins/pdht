@@ -369,7 +369,7 @@ void pdht_fence(pdht_t *dht) {
     sbuf[1] = dht->stats.appends;
 
     pdht_allreduce(sbuf, rbuf, PdhtReduceOpSum, IntType, 2);
-    pdht_eprintf(PDHT_DEBUG_NONE, "expected: %d actual: %d\n", rbuf[0], rbuf[1]);
+    //pdht_eprintf(PDHT_DEBUG_NONE, "expected: %d actual: %d\n", rbuf[0], rbuf[1]);
   } while (rbuf[0] > rbuf[1]);
 
   // reset all the pending counters

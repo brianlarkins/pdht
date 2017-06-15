@@ -187,6 +187,7 @@ void *pdht_poll(void *arg) {
   me.uid           = PTL_UID_ANY;
   // disable auto-unlink events, we just check for PUT completion
   me.options       = PTL_ME_OP_GET 
+                   | PTL_ME_OP_PUT
                    | PTL_ME_IS_ACCESSIBLE 
                    | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;

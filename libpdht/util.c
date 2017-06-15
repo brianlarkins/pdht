@@ -269,6 +269,36 @@ void pdht_dump_event(ptl_event_t *ev) {
 }
 
 
+
+/**
+ * pdht_print_active
+ */
+void pdht_print_active(pdht_t *dht, void nprinter(void *node)) {
+  char *iter;
+  int pending = 0;
+  _pdht_ht_trigentry_t *hte;
+  long *key;
+
+  iter = (char *)dht->ht;
+
+  for (int i=0; i < dht->maxentries; i++) {
+    hte = (_pdht_ht_trigentry_t *)iter;
+    key = (long *)hte->key;
+    if (hte->ame != PTL_INVALID_HANDLE) {
+      pdht_dprintf("elem %d: mbits: %12"PRIx64" ptr: %p", i, hte->me.match_bits, &hte->key);
+      pdht_dprintf(" pkey: [%ld,%ld,%ld@%ld] ", key[0],key[1],key[2],key[3]);
+      nprinter(&hte->data);
+      printf("\n");
+    } else {
+      pending++;
+    }
+    iter += dht->entrysize;
+  }
+  pdht_dprintf("pending: %d\n", pending);
+}
+
+
+
 /**
  * pdht_print_stats - prints out runtime statistics
  */

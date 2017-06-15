@@ -14,6 +14,7 @@
 pdht_context_t *c = NULL;       // a global variable. for shame.
 pdht_config_t   *__pdht_config = NULL; // another one. i'm over it. (used only during init)
 
+static void pdht_exit_handler(void);
 static void print_fucking_mapping(void);
 
 /**
@@ -94,7 +95,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   // print runtime settings
   pdht_eprintf(PDHT_DEBUG_WARN, "pdht_create: hash table entry size: %lu (%d + %d)\n", 
-         dht->entrysize, sizeof(_pdht_ht_entry_t), dht->elemsize);
+         dht->entrysize, dht->pmode == PdhtPendingPoll ? sizeof(_pdht_ht_entry_t) : sizeof(_pdht_ht_trigentry_t), dht->elemsize);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tcontext: %lu bytes ht: %lu bytes table: %lu\n", 
         sizeof(pdht_context_t), sizeof(pdht_t), dht->maxentries * dht->entrysize);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax table size: %d pending q size: %d\n", dht->maxentries, dht->pendq_size);
@@ -139,7 +140,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start  = NULL;
   md.length = PTL_SIZE_MAX; 
-  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY; //| PTL_MD_EVENT_SEND_DISABLE; // disabling send md events makes timers wait forever
+  md.options = PTL_MD_EVENT_SUCCESS_DISABLE | PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_CT_REPLY | PTL_MD_EVENT_SEND_DISABLE;
   md.eq_handle = dht->ptl.lmdeq;
   md.ct_handle = dht->ptl.lmdct;
 
@@ -316,6 +317,8 @@ void pdht_init(pdht_config_t *cfg) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
+  atexit(pdht_exit_handler);
+
   ret = PtlInit();
   if (ret != PTL_OK) {
     pdht_dprintf("portals initialization error\n");
@@ -447,6 +450,11 @@ void pdht_fini(void) {
     free(__pdht_config);
 }
 
+//extern void print_madnode(void *node);
+static void pdht_exit_handler(void) {
+   //pdht_print_active(c->hts[0], print_madnode);
+   ;
+}
 
 static void print_fucking_mapping() {
   int i;

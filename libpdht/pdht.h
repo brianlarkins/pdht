@@ -336,5 +336,6 @@ void print_count(pdht_t *dht, char *msg);
 
 //util.c
 void   pdht_print_stats(pdht_t *dht);
+void   pdht_print_active(pdht_t *dht, void nprinter(void *node));
 
 #include <pdht_inline.h>

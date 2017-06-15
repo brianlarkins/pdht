@@ -20,6 +20,7 @@
 // local-only discriminator for add/update/put operations
 typedef enum { PdhtPTQPending, PdhtPTQActive } pdht_ptq_t;
 static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdht_ptq_t which);
+static void pdht_keystr(void *key, char* str);
 
 /**
  * pdht_put - puts or overwrites an entry in the global hash table
@@ -56,19 +57,32 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
   //     match bits for triggered-only updates
   switch (dht->pmode) {
     case PdhtPendingTrig:
-      // XXX - THIS CODE IS HIGHLY DEPENDENDENT ON PORTALS ME DATA DEFINITION - XXX
-      // to workaround, could issue two puts, one for match_bits, one for data
-      //  trigger on +2 event counts
-      mep = alloca(sizeof(ptl_me_t) + PDHT_MAXKEYSIZE + dht->elemsize); // no need to free later.
-      valp = (char *)mep + sizeof(ptl_me_t);
-      memcpy(valp, key, PDHT_MAXKEYSIZE); // ugh. copying. copy key into element.
-      memcpy(valp + PDHT_MAXKEYSIZE, value, dht->elemsize); // double ugh. -- pointer math
-      mep->match_bits = mbits;
-      mep->ignore_bits = 0;
-      mep->min_free = 0;
 
-      loffset = (ptl_size_t)&mep->match_bits; // only send from match_bits field and beyond
-      lsize = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + PDHT_MAXKEYSIZE + dht->elemsize; 
+      // need to setup different ME start/lengths for pending/active puts
+      if (which == PdhtPTQPending) {
+
+        // XXX - THIS CODE IS HIGHLY DEPENDENDENT ON PORTALS ME DATA DEFINITION - XXX
+        // to workaround, could issue two puts, one for match_bits, one for data
+        //  trigger on +2 event counts
+        mep = alloca(sizeof(ptl_me_t) + PDHT_MAXKEYSIZE + dht->elemsize); // no need to free later.
+        valp = (char *)mep + sizeof(ptl_me_t);
+        memcpy(valp, key, PDHT_MAXKEYSIZE); // ugh. copying. copy key into element.
+        memcpy(valp + PDHT_MAXKEYSIZE, value, dht->elemsize); // double ugh. -- pointer math
+        mep->match_bits = mbits;
+        mep->ignore_bits = 0;
+        mep->min_free = 0;
+
+        loffset = (ptl_size_t)&mep->match_bits; // only send from match_bits field and beyond
+        lsize = (sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits)) + PDHT_MAXKEYSIZE + dht->elemsize; 
+
+      } else {
+        // if putting to active queue, don't worry about match bits madness
+        kval = alloca(PDHT_MAXKEYSIZE + dht->elemsize); // no need to free later.
+        memcpy(kval,key,PDHT_MAXKEYSIZE);
+        memcpy(kval + PDHT_MAXKEYSIZE,value,dht->elemsize);
+        loffset = (ptl_size_t)kval;
+        lsize = PDHT_MAXKEYSIZE + dht->elemsize;
+      }
       break;
 
     case PdhtPendingPoll:
@@ -83,7 +97,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       break;
   }
 
-//#define PDHT_DEBUG_TRACE
+  //#define PDHT_DEBUG_TRACE
 #ifdef PDHT_DEBUG_TRACE
   pdht_dprintf("put: key: %lu val: %lu onto pending queue of %d\n", *(unsigned long *)key, *(unsigned long *)value, rank);
 #endif  
@@ -101,11 +115,11 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
 
   // 2. put hash entry on target
   ret = PtlPut(dht->ptl.lmd, loffset, lsize, PTL_ACK_REQ, rank, ptl_pt_index,
-	       mbits, 0, value, 0);
+               mbits, 0, value, 0);
 
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_put: PtlPut(key: %lu, rank: %d, ptindex: %d) failed: %s\n",
-		 *(long *)key, rank.rank, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
+                 *(long *)key, rank.rank, dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
     goto error;
   }
 
@@ -132,60 +146,17 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
         pdht_dump_event(&fault);
       }
     } else {
-      pdht_dprintf("pdht_put: PtlEQWait() error: %s\n", pdht_ptl_error(ret));
+        pdht_dprintf("pdht_put: PtlEQWait() error: %s\n", pdht_ptl_error(ret));
     }
   }
-
-#if 0
-  // 3. need to check for fail event or success count (200ms timeout)
-  ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.curcounts, 1, 200, &ctevent, &which);
-  pdht_dprintf("pdht_put: success: %lu failure: %lu lcount: %lu\n", ctevent.success, ctevent.failure, dht->ptl.lcount);
-  if (ret == PTL_OK) {
-    pdht_dprintf("returning\n");
-    goto done;
-
-  } else if (ret == PTL_CT_NONE_REACHED) {
-    pdht_dprintf("going again\n");
-    // timed out, repeatdly check for fault or success
-    while (1) {
-      // check failure EQ for flow control
-      ret = PtlEQPoll(&dht->ptl.lmdeq, 1, 100, &fault, &which);
-      // XXX which is not legal, now a formal param for which PTE
-      assert(0);
-      if (ret == PTL_OK) {
-        // flow control on remote NI
-        if (fault.ni_fail_type == PTL_NI_PT_DISABLED) {
-          pdht_dprintf("pdht_put: flow control on remote rank: %d\n", rank);
-          goto error;
-        }
-
-      } else if (ret != PTL_EQ_EMPTY) {
-        pdht_dprintf("pdht_put: PtlEQPoll() error: %s\n", pdht_ptl_error(ret));
-      }
-
-      // check for success again
-      ret = PtlCTPoll(&dht->ptl.lmdct, &dht->ptl.lcount, 1, 200, &ctevent, &which);
-      // XXX which is not legal, now a formal param for which PTE
-      assert(0);
-      if (ret == PTL_OK) {
-        goto done;
-      }
-    }
-    goto done;
-
-  } else {
-    pdht_dprintf("pdht_put: PtlCTPoll() error\n");
-    goto error;
-  }
-#endif
 
 done:
-  PDHT_STOP_TIMER(dht, ptimer);
-  return rval;
+    PDHT_STOP_TIMER(dht, ptimer);
+    return rval;
 
 error:
-  PDHT_STOP_TIMER(dht, ptimer);
-  return PdhtStatusError;
+    PDHT_STOP_TIMER(dht, ptimer);
+    return PdhtStatusError;
 }
 
 
@@ -309,7 +280,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
     dht->stats.collisions++;
-    pdht_dprintf("get: found collision between: %lu and %lu\n", *(u_int64_t *)key, *(u_int64_t *)buf);
+    pdht_dprintf("get: found collision.\n");
     rval = PdhtStatusCollision;
     goto done;
   }
@@ -361,7 +332,7 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   me.match_id.rank = PTL_RANK_ANY;
   me.match_bits    = bits;
   me.ignore_bits   = 0;
- 
+
   memcpy(&hte->key, key, PDHT_MAXKEYSIZE); // fucking shoot me.
   memcpy(&hte->data, value, dht->elemsize);
 
@@ -383,3 +354,7 @@ error:
 
 
 
+static void pdht_keystr(void *key, char* str) {
+  long *k = (long *)key;
+  sprintf(str, "<%ld,%ld,%ld> @ %ld", k[0], k[1], k[2], k[3]);
+}

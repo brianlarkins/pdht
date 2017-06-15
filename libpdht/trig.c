@@ -94,6 +94,7 @@ void pdht_trig_init(pdht_t *dht) {
       hte->me.start         = &hte->key;
       hte->me.length        = PDHT_MAXKEYSIZE + dht->elemsize;
       hte->me.options       = PTL_ME_OP_GET 
+                            | PTL_ME_OP_PUT
                             | PTL_ME_IS_ACCESSIBLE 
                             | PTL_ME_EVENT_COMM_DISABLE
                             | PTL_ME_EVENT_UNLINK_DISABLE;
@@ -221,7 +222,7 @@ void *pdht_trig_progress(void *arg) {
 
         // check to see if we've exhausted pending ME entries
         if (dht->stats.tappends[ptindex] >= dht->pendq_size) {
-          
+
           // if so, refill the pending queue
           for (int i=0; i < dht->pendq_size; i++) {
             hte = (_pdht_ht_trigentry_t *)index;
