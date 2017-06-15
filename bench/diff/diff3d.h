@@ -173,5 +173,6 @@ double         normf(tensor_t *t);
 void           mTxm(long dimi, long dimj, long dimk, double *c, double *a, double *b);
 void           fcube(func_t *f, long n, double lx, double ly, double lz, double h, double (*fn)(double p ,double q, double r), tensor_t *fcube);
 void           math_test(void);
+void           print_madnode(void *node);
 
 #endif // _diff_h

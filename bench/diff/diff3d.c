@@ -129,27 +129,25 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     // cheating. set global func_t *f for || task
     f = fun;
 
-    fun->stlen    = (int)pow(8,parlvl+1);
+    fun->stlen    = (int)pow(8,parlvl);
     fun->subtrees = calloc(fun->stlen, sizeof(madkey_t));
     pdhtcounter = pdht_counter_init(fun->ftree, 0);
     // initial function projection @ parlvl 
+    // XXX this is a problem rank 0 needs to create tree top, but everybody else needs subtrees
     fine_scale_projection(fun, &root, parlvl+1);  // xxx
-    //print_subtree_keys(fun->subtrees, fun->stlen);
+    print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
     pdht_fence(fun->ftree);
 
-    print_tree(fun);
+    //print_tree(fun);
 
     st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     while (st < fun->stlen) {
+      printf("%d: taking subtree %ld: <%ld,%ld,%ld> @ %ld\n", c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
+          fun->subtrees[st].z, fun->subtrees[st].level);
       refine_fine_scale_project(fun,  &fun->subtrees[st]);
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
-
-
-
-    // XXX this!
-    //refine_fine_scale_projection(fun, &root,parlvl);
 
     // timing!
     printf("   refinement done.\n");
@@ -171,7 +169,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 
 
 /*
- * fine_scale_projection - recursive wrapper for fine_scale_project 
+ * fine_scale_projection - creates octree top
  * projects function f->f to scaling basis on all nodes 
  * at initial_level
  * @param f the function
@@ -191,7 +189,7 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
   if ((c->rank == 0) && (nkey->level != 0)) {
-    printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
+    //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
     pdht_put(f->ftree, nkey, &node); // store new node in PDHT
   }
 
@@ -199,7 +197,11 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
   // decide whether to create leaves, or keep recursing
   if (nkey->level == (initial_level-1)) {
     // stop, create leaves with scaling coefficients
-    fine_scale_project(f,nkey);
+    f->subtrees[ncounter++] = *nkey; // save key at this level for parallel tree creation next
+
+    // only rank 0 creates tree top
+    if (c->rank == 0)
+      fine_scale_project(f,nkey);
 
   } else {
     // keep recursing...
@@ -247,7 +249,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
   y = nkey->y * 2;
   z = nkey->z * 2;
 
-  eprintf("creating scaling: children of <%ld, %ld, %ld> @ %ld\n", nkey->x,nkey->y,nkey->z,nkey->level);
+  printf("%d: creating scaling: children of <%ld, %ld, %ld> @ %ld\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level);
 
   scoeffs = tensor_create3d(f->npt, f->npt, f->npt, TENSOR_NOZERO);
 
@@ -263,25 +265,21 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         ckey.z = z+lz;
         ckey.level = nkey->level+1;	  
 
-        if (c->rank == 0) {
-          printf("creating  <%ld,%ld,%ld> @ %ld\n", ckey.x,ckey.y,ckey.z,ckey.level);
-          fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
-          tensor_scale(scoeffs, scale);
-          tscoeffs = transform3d(scoeffs, f->quad_phiw);
-          cnode.a = ckey; // copy key
-          cnode.valid = madCoeffScaling;
-          memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
+        printf("%d: creating  <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
+        fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
+        tensor_scale(scoeffs, scale);
+        tscoeffs = transform3d(scoeffs, f->quad_phiw);
+        cnode.a = ckey; // copy key
+        cnode.valid = madCoeffScaling;
+        memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
 
-          // store child node
-          pdht_put(f->ftree, &ckey, &cnode);
-          free(tscoeffs);
-        }
-        f->subtrees[ncounter] = ckey;
-        ncounter++;
-
+        // store child node
+        pdht_put(f->ftree, &ckey, &cnode);
+        free(tscoeffs);
       }
     }
   }
+  pdht_fence(f->ftree);
   //printf("rank %d done\n", c->rank);
 }
 
@@ -322,11 +320,12 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
     for (int ix=0;ix<2;ix++) {
       for (int iy=0;iy<2;iy++) {
         for (int iz=0;iz<2;iz++) {
-          ckey.x = nkey->x + ix;
-          ckey.y = nkey->y + iy;
-          ckey.z = nkey->z + iz;
+          ckey.x = 2 * nkey->x + ix;
+          ckey.y = 2 * nkey->y + iy;
+          ckey.z = 2 * nkey->z + iz;
           ckey.level = nkey->level + 1;
 
+          printf("%d: refining further: <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x, ckey.y, ckey.z, ckey.level);
           pdht_get(f->ftree, &ckey, &cnode);
           cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
           pdht_update(f->ftree, &ckey, &cnode);
@@ -366,7 +365,6 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
 
   ss = tensor_create3d(2*f->k,2*f->k,2*f->k, TENSOR_ZERO);
 
-
   // for each child
   for (ix=0;ix<2;ix++) {
     ixlo = ix*f->k;
@@ -375,10 +373,12 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
       for (iz=0;iz<2;iz++) {
         izlo = iz*f->k;
 
-        ckey.x = node->x + ix;
-        ckey.y = node->y + iy;
-        ckey.z = node->z + iz;
+        ckey.x = 2 * node->x + ix;
+        ckey.y = 2 * node->y + iy;
+        ckey.z = 2 * node->z + iz;
         ckey.level = node->level + 1;
+
+        //printf("%d: asking for <%ld,%ld,%ld>@%ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
 
         if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
           printf("gather: pdht_get error\n");
@@ -450,7 +450,6 @@ void fine_scale_project(func_t *f, node_t *node) {
         cnode = get_child(f->ftree,node,count); 
 
         // create child if needed
-        if (!cnode) {
           cnode = set_child(f->ftree, node, level+1, lx+ix, ly+iy, lz+iz, count);
           freeflag = 0;
         }
@@ -1118,12 +1117,38 @@ int main(int argc, char **argv, char **envp) {
   //
   // parallel tree creation
   //
+  //
 
   f = init_function(k, threshold, test1, INITIAL_LEVEL);
   eprintf("function tree initialization complete.\n");
 
   exit(0);
 }
+
+
+
+void print_madnode(void *node) {
+  node_t *n = (node_t *)node;
+  tensor_t *s, *d;
+
+  printf(" node: <%ld,%ld,%ld>@ %ld", n->a.x, n->a.y,n->a.z, n->a.level);
+
+  s = get_scaling(f, n);
+  d = get_wavelet(f, n);
+
+  if (s) {
+    printf(" s");
+    free(s);
+  }
+
+  if (d) {
+    printf(" d");
+    free(d);
+  }
+}
+ 
+
+
 // 
 // check our results
 //
