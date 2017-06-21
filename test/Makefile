@@ -24,6 +24,9 @@ counter: pdhtlibs counter.c
 csort: pdhtlibs csort.c
 	$(CC) $(CFLAGS) -o csort csort.c $(PDHT_LIBS)
 
+ibmemcheck: ibmemcheck.c
+	$(CC) $(CFLAGS) -o ibmemcheck ibmemcheck.c -libverbs
+
 insert: pdhtlibs insert.c
 	$(CC) $(CFLAGS) -o insert insert.c $(PDHT_LIBS)
 
