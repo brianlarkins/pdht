@@ -12,6 +12,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <city.h>
+
 #include <tensor.h>
 #include <diff3d.h>
 
@@ -26,7 +28,7 @@
 void treehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   madkey_t *kp = (madkey_t *)key;
   uint64_t temp = 0;
-
+#if 0
   /*
    * MADNESS keys are 4 long values: x, y, z, and level in tree (256 bits)
    * PDHT limits key size to 64-bits, so we grab low-order bits from each key field
@@ -46,9 +48,12 @@ void treehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex
   temp = (kp->level & MASK5);
   *mbits |= temp;
 
-
-  (*rank).rank = 1;
-  //(*rank).rank = (*mbits) % c->size;
+  //(*rank).rank = 1;
+  (*rank).rank = (*mbits) % c->size;
+  *ptindex = (*mbits) % dht->ptl.nptes;
+#endif
+  *mbits = CityHash64((char *)kp, sizeof(madkey_t));
+  (*rank).rank = (*mbits) % c->size;
   *ptindex = (*mbits) % dht->ptl.nptes;
   //printf("%d: hashing <%ld,%ld,%ld> @%ld  (%lx @ %d pte: %d)\n", c->rank, kp->x,kp->y,kp->z,kp->level, *mbits, (*rank).rank, *ptindex);
 }

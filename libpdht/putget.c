@@ -51,6 +51,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
   // 1. hash key -> rank + match bits + element
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
+  dht->stats.rankputs[rank.rank]++;
 
   // 1.5 figure out what we need to send to far end
   //   - send just HT element usually, need to also send

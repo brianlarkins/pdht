@@ -39,6 +39,7 @@
 #define PDHT_MAX_PTES          25
 #define PDHT_MAX_COUNTERS      20
 #define PDHT_MAX_REDUCE_ELEMS 128
+#define PDHT_MAX_RANKS       1024
 
 /**********************************************/
 /* statistics/performance data                */
@@ -56,6 +57,7 @@ typedef struct pdht_timer_s pdht_timer_t;
 
 struct pdht_stats_s {
   u_int64_t    puts;
+  u_int64_t    rankputs[PDHT_MAX_RANKS]; // keep per-target stats
   u_int64_t    pendputs;      // track PtlPuts to pending q for fence
   u_int64_t    appends;       // track complete appends to active q
   u_int64_t    tappends[PDHT_MAX_PTES];      // track complete appends to active q
@@ -264,7 +266,9 @@ enum pdht_datatype_e {
 typedef enum pdht_datatype_e pdht_datatype_t;
 
 enum pdht_reduceop_e {
-  PdhtReduceOpSum
+  PdhtReduceOpSum,
+  PdhtReduceOpMin,
+  PdhtReduceOpMax
 };
 typedef enum pdht_reduceop_e pdht_reduceop_t;
 

@@ -15,7 +15,10 @@
  * portals distributed hash table synchronization ops
  */
 
-static void reduce_zip(void *dest, void *src, pdht_datatype_t ty, int s);
+static void reduce_zip(void *dest, void *src, pdht_reduceop_t op, pdht_datatype_t ty, int s);
+static void reduce_sum(void *dest, void *src, pdht_datatype_t ty, int s);
+static void reduce_min(void *dest, void *src, pdht_datatype_t ty, int s);
+static void reduce_max(void *dest, void *src, pdht_datatype_t ty, int s);
 static int pdht_collective_size(pdht_datatype_t type);
 
 /**
@@ -222,7 +225,12 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
 
   tysize = pdht_collective_size(type);
 
-  if (op != PdhtReduceOpSum) {
+  switch (op) {
+  case PdhtReduceOpSum:
+  case PdhtReduceOpMin:
+  case PdhtReduceOpMax:
+    break;
+  default:
     pdht_dprintf("pdht_reduce: unsupported reduction operation\n");
     exit(1);
   }
@@ -252,9 +260,9 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
   }
 
   if (kids > 0) {
-    reduce_zip(in, c->ptl.collective_lscratch, type, elems);
+    reduce_zip(in, c->ptl.collective_lscratch, op, type, elems);
     if (kids == 2) 
-      reduce_zip(in, c->ptl.collective_rscratch, type, elems);
+      reduce_zip(in, c->ptl.collective_rscratch, op, type, elems);
   }
 
   // send our reduced buffer to our parent
@@ -467,7 +475,31 @@ pdht_status_t pdht_waitall(void) {
  * @param ty data type
  * @param s number of elements
  */
-static void reduce_zip(void *dest, void *src, pdht_datatype_t ty, int s) {
+static void reduce_zip(void *dest, void *src, pdht_reduceop_t op, pdht_datatype_t ty, int s) {
+
+  switch(op) {
+  case PdhtReduceOpSum:
+    reduce_sum(dest, src, ty, s);
+    break;
+  case PdhtReduceOpMin:
+    reduce_min(dest, src, ty, s);
+    break;
+  case PdhtReduceOpMax:
+    reduce_max(dest, src, ty, s);
+    break;
+  }
+}
+
+
+
+/**
+ * reduce_sum - helper function to accumulate (sum-only) reduced data
+ * @param dest  accumulation buffer
+ * @param src source data
+ * @param ty data type
+ * @param s number of elements
+ */
+static void reduce_sum(void *dest, void *src, pdht_datatype_t ty, int s) {
   int    *is, *id;
   long   *ls, *ld;
   double *ds, *dd;
@@ -501,6 +533,91 @@ static void reduce_zip(void *dest, void *src, pdht_datatype_t ty, int s) {
   }
 }
 
+
+
+/**
+ * reduce_min - helper function to accumulate reduced data
+ * @param dest  accumulation buffer
+ * @param src source data
+ * @param ty data type
+ * @param s number of elements
+ */
+static void reduce_min(void *dest, void *src, pdht_datatype_t ty, int s) {
+  int    *is, *id;
+  long   *ls, *ld;
+  double *ds, *dd;
+  char   *cs, *cd;
+
+  switch(ty) {
+    case IntType:
+      is = src;
+      id = dest;
+      for (int i=0;i<s;i++) id[i] = id[i] < is[i] ? id[i] : is[i];
+      break;
+    case LongType:
+      ls = src;
+      ld = dest;
+      for (int i=0;i<s;i++) ld[i] = ld[i] < ls[i] ? ld[i] : ls[i];
+      break;
+    case DoubleType:
+      ds = src;
+      dd = dest;
+      for (int i=0;i<s;i++) dd[i] = dd[i] < ds[i] ? dd[i] : ds[i];
+      break;
+    case CharType:
+    case BoolType:
+      cs = src;
+      cd = dest;
+      for (int i=0;i<s;i++) cd[i] = cd[i] < cs[i] ? cd[i] : cs[i];
+      break;
+    default:
+      pdht_dprintf("pdht_reduce: unsupported reduction datatype\n");
+      exit(1);
+  }
+}
+
+
+
+/**
+ * reduce_max - helper function to accumulate reduced data
+ * @param dest  accumulation buffer
+ * @param src source data
+ * @param ty data type
+ * @param s number of elements
+ */
+static void reduce_max(void *dest, void *src, pdht_datatype_t ty, int s) {
+  int    *is, *id;
+  long   *ls, *ld;
+  double *ds, *dd;
+  char   *cs, *cd;
+
+  switch(ty) {
+    case IntType:
+      is = src;
+      id = dest;
+      for (int i=0;i<s;i++) id[i] = id[i] > is[i] ? id[i] : is[i];
+      break;
+    case LongType:
+      ls = src;
+      ld = dest;
+      for (int i=0;i<s;i++) ld[i] = ld[i] > ls[i] ? ld[i] : ls[i];
+      break;
+    case DoubleType:
+      ds = src;
+      dd = dest;
+      for (int i=0;i<s;i++) dd[i] = dd[i] > ds[i] ? dd[i] : ds[i];
+      break;
+    case CharType:
+    case BoolType:
+      cs = src;
+      cd = dest;
+      for (int i=0;i<s;i++) cd[i] = cd[i] > cs[i] ? cd[i] : cs[i];
+      break;
+    default:
+      pdht_dprintf("pdht_reduce: unsupported reduction datatype\n");
+      exit(1);
+  }
+}
 
 
 /**

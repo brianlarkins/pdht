@@ -193,12 +193,10 @@ void *pdht_trig_progress(void *arg) {
   _pdht_ht_trigentry_t *hte;
   char *index; // used for pointer math
   ptl_me_t me;
+  ptl_event_t ev;
   unsigned hdrsize;
-  int ret;
-
-  // XXX TODO
-  //   - this may vomit due to limits max CTs is pending q size
-  //     not local table size
+  int ret, which, lothresh;
+  
 
   while (1) {
 
@@ -220,11 +218,22 @@ void *pdht_trig_progress(void *arg) {
       // for each active PTE in this table,
       for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
 
+        // clean out any events on the pending event queue
+        while (PtlEQPoll(dht->ptl.eq, dht->ptl.nptes, 10, &ev, &which) == PTL_OK) {
+           if (ev.type != PTL_EVENT_PUT) {
+             pdht_dprintf("pdht_trig_progress: found event on queue from PTE %d\n", which);
+             pdht_dump_event(&ev);
+           }
+        }
+
+        lothresh = dht->pendq_size / 2;
+        
         // check to see if we've exhausted pending ME entries
-        if (dht->stats.tappends[ptindex] >= dht->pendq_size) {
+        if (dht->stats.tappends[ptindex] >= lothresh) {
+          pdht_lprintf(PDHT_DEBUG_VERBOSE, "refilling pending queue\n", c->rank);
 
           // if so, refill the pending queue
-          for (int i=0; i < dht->pendq_size; i++) {
+          for (int i=0; i < lothresh; i++) {
             hte = (_pdht_ht_trigentry_t *)index;
 
             // allocate per-pending elem trigger event counter
@@ -277,7 +286,7 @@ void *pdht_trig_progress(void *arg) {
             dht->nextfree++;
           } // refill
 
-          dht->stats.tappends[ptindex] = 0; // reset the number of consumed pending entries
+          dht->stats.tappends[ptindex] -= lothresh; // reset the number of consumed pending entries
 
         } // if exhausted
       } // PTE loop

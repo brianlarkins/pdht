@@ -339,8 +339,8 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
   ni_req_limits.max_eqs = (2*cfg->nptes)+2;
-  ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
-                          + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + 1;
+  //ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
+  ni_req_limits.max_cts = (cfg->maxentries)+PDHT_MAX_COUNTERS + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + 1;
   ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_COLLECTIVE_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = cfg->maxentries;
@@ -453,7 +453,8 @@ void pdht_fini(void) {
 //extern void print_madnode(void *node);
 static void pdht_exit_handler(void) {
    //pdht_print_active(c->hts[0], print_madnode);
-   ;
+   pdht_print_stats(c->hts[0]);
+   //;
 }
 
 static void print_fucking_mapping() {

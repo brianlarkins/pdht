@@ -25,6 +25,7 @@
 // small:    73
 // med  :  2633
 // large: 37449
+#define THRESHOLD_TEST  .05
 #define THRESHOLD_SMALL  1e-6
 #define THRESHOLD_MEDIUM 1e-10
 #define THRESHOLD_LARGE  1e-14
@@ -41,6 +42,8 @@
 /********************************/
 int ncounter = 0;
 int pdhtcounter = 0;
+int stcount = 0;
+int totcount = 0;
 
 func_t *f, *fprime;
 int     defaultparlvl;
@@ -135,22 +138,26 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     // initial function projection @ parlvl 
     // XXX this is a problem rank 0 needs to create tree top, but everybody else needs subtrees
     fine_scale_projection(fun, &root, parlvl+1);  // xxx
-    print_subtree_keys(fun->subtrees, fun->stlen);
+    //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
     pdht_fence(fun->ftree);
 
+    pdht_barrier();
     //print_tree(fun);
 
     st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     while (st < fun->stlen) {
-      printf("%d: taking subtree %ld: <%ld,%ld,%ld> @ %ld\n", c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
+      stcount = 0;
+      printf("%d: taking subtree %ld: <%ld,%ld,%ld> @ %ld ", c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
           fun->subtrees[st].z, fun->subtrees[st].level);
       refine_fine_scale_project(fun,  &fun->subtrees[st]);
+      printf("%d nodes\n", stcount);
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
 
+    pdht_barrier();
     // timing!
-    printf("   refinement done.\n");
+    printf("   refinement done: %d nodes\n", totcount);
   }
   return fun;
 }
@@ -249,7 +256,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
   y = nkey->y * 2;
   z = nkey->z * 2;
 
-  printf("%d: creating scaling: children of <%ld, %ld, %ld> @ %ld\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level);
+  //printf("%d: creating scaling: children of <%ld, %ld, %ld> @ %ld\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level);
 
   scoeffs = tensor_create3d(f->npt, f->npt, f->npt, TENSOR_NOZERO);
 
@@ -265,7 +272,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         ckey.z = z+lz;
         ckey.level = nkey->level+1;	  
 
-        printf("%d: creating  <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
+        //printf("%d: creating  <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
         fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
         tensor_scale(scoeffs, scale);
         tscoeffs = transform3d(scoeffs, f->quad_phiw);
@@ -275,11 +282,11 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
 
         // store child node
         pdht_put(f->ftree, &ckey, &cnode);
+        stcount++; totcount++;
         free(tscoeffs);
       }
     }
   }
-  pdht_fence(f->ftree);
   //printf("rank %d done\n", c->rank);
 }
 
@@ -293,7 +300,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
   long    x,y,z;
 
 
-  printf("%d: refine_fine_scale_project: %ld : %ld %ld %ld\n", c->rank, nkey->level, nkey->x,nkey->y,nkey->z);
+  //printf("%d: refine_fine_scale_project: %ld : %ld %ld %ld\n", c->rank, nkey->level, nkey->x,nkey->y,nkey->z);
 
   // scaling coeffs _must_ exist at level n+1
   ss = gather_scaling_coeffs(f,nkey);
@@ -315,6 +322,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
   tfree(sf); sf = NULL;
 
   // do we need to refine further?
+  //printf("%d: %12.7f > %12.7f\n", c->rank, dnorm, f->thresh);
   if (dnorm > f->thresh) {
     // yes, for each child at n+1, project function to n+2, then refine at n+1
     for (int ix=0;ix<2;ix++) {
@@ -325,7 +333,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
           ckey.z = 2 * nkey->z + iz;
           ckey.level = nkey->level + 1;
 
-          printf("%d: refining further: <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x, ckey.y, ckey.z, ckey.level);
+          //printf("%d: refining further: <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x, ckey.y, ckey.z, ckey.level);
           pdht_get(f->ftree, &ckey, &cnode);
           cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
           pdht_update(f->ftree, &ckey, &cnode);
@@ -1064,7 +1072,6 @@ void usage(char **argv) {
   printf("  Usage: %s [args]\n\n", argv[0]);
   printf("Options:\n");
   printf("  -[s,m,l]        Problem Size: Small, Medium, or Large\n");
-  printf("  -C <chunksize>  GT Chunksize\n");
 }
 
 
@@ -1074,9 +1081,10 @@ int main(int argc, char **argv, char **envp) {
   int k = DEFAULT_K; // == 
   double (* test)(double x, double y, double z);
   int chunksize, caching, evaluateme = 0;
-  double threshold = THRESHOLD_SMALL;
+  double threshold = THRESHOLD_TEST;
   double t_compress = 0.0, t_reconstruct = 0.0, t_diff = 0.0;
   double expected, actual;
+  pdht_config_t cfg;
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = 2;
@@ -1117,7 +1125,12 @@ int main(int argc, char **argv, char **envp) {
   //
   // parallel tree creation
   //
-  //
+  cfg.nptes = 1;
+  cfg.pendmode = PdhtPendingTrig;
+  cfg.maxentries = 100000;
+  cfg.pendq_size = 5000;
+  cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+  pdht_tune(PDHT_TUNE_ALL, &cfg);
 
   f = init_function(k, threshold, test1, INITIAL_LEVEL);
   eprintf("function tree initialization complete.\n");
