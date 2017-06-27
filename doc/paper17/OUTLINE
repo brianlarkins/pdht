@@ -1,0 +1,38 @@
+
+- intro
+
+- background / related work
+
+- approach / PGLAS
+  - PGLAS -> portals
+
+- implementation
+
+- challenges
+
+- empirical results
+
+ 1. operation costs - puts
+    - default portals
+    - multiple PTEs
+    - unordered matches in portals
+ 
+ 2. operation costs - gets
+    - default portals
+    - multiple PTEs
+    - unordered matches in portals
+
+ 3. scalability
+    - show bench performance up to 1K cores
+
+ 4. sparse matrix comptutation
+    - PDHT vs UPC
+
+ 5. MADNESS - compression
+   - PDHT vs UPC
+
+ 6. MADNESS - reconstruction
+   - PDHT vs UPC
+
+ 7. MADNESS - differentiation
+   - PDHT vs UPC
