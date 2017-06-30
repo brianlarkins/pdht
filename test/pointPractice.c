@@ -39,7 +39,7 @@ int main(int argc, char **agrv[]){
   cfg.pendmode = PdhtPendingTrig; //setting to triggered mode
   cfg.nptes = 1;
   cfg.maxentries = 250000;
-  cfg.pendq_size = 10000;
+  cfg.pendq_size = 10000; //if you change this to 500 it will not be happy but will work,it you change it to <500 it will not finish
   cfg.ptalloc_opts = 0;
   setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
@@ -58,22 +58,22 @@ int main(int argc, char **agrv[]){
 
   //int simRank = 1; //used to tell if the math would allow this to run on 2 processes
   
-	if (c->rank == 0){
+  if (c->rank == 0){
     
-  	PDHT_START_ATIMER(ptimer); //starting put timer
-		for (int i = fAdd; i < ASIZE ;i++){
+    PDHT_START_ATIMER(ptimer); //starting put timer
+    for (int i = fAdd; i < ASIZE ;i++){
       //setting key x and y vals
       value.x = i;
       value.y = i;
-    	
+      
       pdht_put(ht,&key,&value);//putting into the pdht
       
       key += 1;
     } //for
-		
-		PDHT_STOP_ATIMER(ptimer); //stopping put timer
-		printf("Put Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(ptimer));
-	}
+    
+    PDHT_STOP_ATIMER(ptimer); //stopping put timer
+    printf("Put Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(ptimer));
+  }
   
 
   pdht_fence(ht);
@@ -84,52 +84,52 @@ int main(int argc, char **agrv[]){
   
 
 
- key = 1;
+  key = 1;
   
 
-	if (c->rank == 1){
-		PDHT_START_ATIMER(gtimer); //starting get/update timer
-		
-		
-  	for(int i = fAdd; i<ASIZE;i++){
-  
-    	pdht_get(ht,&key,&value); //getting pt from hash table
-  		
-
-  		value.y++;
-			
-    	//printf("x: %d, y:%d\n",value.x,value.y);
-			pdht_update(ht,&key,&value);
+  if (c->rank == 1){
+    PDHT_START_ATIMER(gtimer); //starting get/update timer
     
-   	 	key += 1;
-  	}//for
-  	PDHT_STOP_ATIMER(gtimer);//stopping get timer
-  	printf("Get Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(gtimer));
-	
+    
+    for(int i = fAdd; i<ASIZE;i++){
   
-	}
+      pdht_get(ht,&key,&value); //getting pt from hash table
+      
+
+      value.y++;
+      
+      //printf("x: %d, y:%d\n",value.x,value.y);
+      pdht_update(ht,&key,&value);
+    
+      key += 1;
+    }//for
+    PDHT_STOP_ATIMER(gtimer);//stopping get timer
+    printf("Get Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(gtimer));
+  
+  
+  }
 
 
   pdht_fence(ht);
   key = 1;
   if (c->rank == 0){
-		
-		PDHT_START_ATIMER(utimer);
-  	for(int i = fAdd;i<ASIZE;i++){
-			pdht_get(ht,&key,&value);
-			if (i != value.x || i +1 != value.y){
-				printf("Did not match\n");
-				printf("i : %d, x : %d, y : %d\n",i,value.x,value.y);
+    
+    PDHT_START_ATIMER(utimer);
+    for(int i = fAdd;i<ASIZE;i++){
+      pdht_get(ht,&key,&value);
+      if (i != value.x || i +1 != value.y){
+        printf("Did not match\n");
+        printf("i : %d, x : %d, y : %d\n",i,value.x,value.y);
 
-			}
-			key += 1;
-		}
-		
-	
-		PDHT_STOP_ATIMER(utimer);
-		printf("Update Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(utimer));
-	}
-	pdht_fence(ht);
+      }
+      key += 1;
+    }
+    
+  
+    PDHT_STOP_ATIMER(utimer);
+    printf("Update Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(utimer));
+  }
+  pdht_fence(ht);
 
   PDHT_STOP_ATIMER(total);//stopping timer
  
