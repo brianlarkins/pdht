@@ -45,6 +45,11 @@ optimes: pdhtlibs optimes.c
 oshbench: pdhtlibs oshbench.c
 	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)
 
+
+pointPractice: pdhtlibs pointPractice.c
+	$(CC) $(CFLAGS) -o pointPractice pointPractice.c $(PDHT_LIBS)
+
+
 scaling: pdhtlibs scaling.c
 	$(CC) $(CFLAGS) -o scaling scaling.c $(PDHT_LIBS)
 
