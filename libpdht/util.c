@@ -318,6 +318,11 @@ void pdht_print_stats(pdht_t *dht) {
   ilocal[1] = dht->stats.gets;
   ilocal[2] = dht->stats.collisions;
   ilocal[3] = dht->stats.notfound;
+ 
+
+
+
+
 
   dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
   dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
@@ -327,17 +332,51 @@ void pdht_print_stats(pdht_t *dht) {
   dlocal[5] = PDHT_READ_TIMER(dht, t4);
   dlocal[6] = PDHT_READ_TIMER(dht, t5);
   dlocal[7] = PDHT_READ_TIMER(dht, t6);
-  
+ 
   pdht_allreduce(ilocal, isum, PdhtReduceOpSum, LongType, 4);
+  //have to reset ilocal after every reduce call b/c ilocal gets modified in pdht_allreduce()
+  ilocal[0] = dht->stats.puts;
+  ilocal[1] = dht->stats.gets;
+  ilocal[2] = dht->stats.collisions;
+  ilocal[3] = dht->stats.notfound;
+ 
   pdht_allreduce(ilocal, imin, PdhtReduceOpMin, LongType, 4);
+  
+
+  ilocal[0] = dht->stats.puts;
+  ilocal[1] = dht->stats.gets;
+  ilocal[2] = dht->stats.collisions;
+  ilocal[3] = dht->stats.notfound;
+ 
   pdht_allreduce(ilocal, imax, PdhtReduceOpMax, LongType, 4);
 
+  
+
+
   pdht_allreduce(dlocal, dsum, PdhtReduceOpSum, DoubleType, 8);
+  
+  dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
+  dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
+  dlocal[2] = PDHT_READ_TIMER(dht, t1);
+  dlocal[3] = PDHT_READ_TIMER(dht, t2);
+  dlocal[4] = PDHT_READ_TIMER(dht, t3);
+  dlocal[5] = PDHT_READ_TIMER(dht, t4);
+  dlocal[6] = PDHT_READ_TIMER(dht, t5);
+  dlocal[7] = PDHT_READ_TIMER(dht, t6);
   pdht_allreduce(dlocal, dmin, PdhtReduceOpMin, DoubleType, 8);
+  
+  dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
+  dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
+  dlocal[2] = PDHT_READ_TIMER(dht, t1);
+  dlocal[3] = PDHT_READ_TIMER(dht, t2);
+  dlocal[4] = PDHT_READ_TIMER(dht, t3);
+  dlocal[5] = PDHT_READ_TIMER(dht, t4);
+  dlocal[6] = PDHT_READ_TIMER(dht, t5);
+  dlocal[7] = PDHT_READ_TIMER(dht, t6);
   pdht_allreduce(dlocal, dmax, PdhtReduceOpMax, DoubleType, 8);
 
   if (c->rank == 0) {
-    printf("pdht global stats: \n");
+
     printf("\tputs:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[0], imax[0], (double)isum[0]/(double)c->size);
     printf("\tgets:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[1], imax[1], (double)isum[1]/(double)c->size);
     printf("\tcollisions: min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[2], imax[2], (double)isum[2]/(double)c->size);
