@@ -376,6 +376,7 @@ void pdht_print_stats(pdht_t *dht) {
   pdht_allreduce(dlocal, dmax, PdhtReduceOpMax, DoubleType, 8);
 
   if (c->rank == 0) {
+    printf("pdht global stats: \n");    
 
     printf("\tputs:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[0], imax[0], (double)isum[0]/(double)c->size);
     printf("\tgets:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[1], imax[1], (double)isum[1]/(double)c->size);
