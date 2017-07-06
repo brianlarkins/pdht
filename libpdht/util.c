@@ -305,6 +305,7 @@ void pdht_print_active(pdht_t *dht, void nprinter(void *node)) {
 void pdht_print_stats(pdht_t *dht) {
   u_int64_t iglobal[PDHT_MAX_RANKS];
   u_int64_t ilocal[4];
+  u_int64_t tilocal[4];
   u_int64_t isum[4];
   u_int64_t imin[4];
   u_int64_t imax[4];
@@ -312,14 +313,15 @@ void pdht_print_stats(pdht_t *dht) {
   double    dsum[8];
   double    dmin[8];
   double    dmax[8];
-  
+  double    tdlocal[8];
+ 
 
   ilocal[0] = dht->stats.puts;
   ilocal[1] = dht->stats.gets;
   ilocal[2] = dht->stats.collisions;
   ilocal[3] = dht->stats.notfound;
  
-
+  memcpy(tilocal,ilocal,sizeof(ilocal));
 
 
 
@@ -332,48 +334,23 @@ void pdht_print_stats(pdht_t *dht) {
   dlocal[5] = PDHT_READ_TIMER(dht, t4);
   dlocal[6] = PDHT_READ_TIMER(dht, t5);
   dlocal[7] = PDHT_READ_TIMER(dht, t6);
- 
-  pdht_allreduce(ilocal, isum, PdhtReduceOpSum, LongType, 4);
-  //have to reset ilocal after every reduce call b/c ilocal gets modified in pdht_allreduce()
-  ilocal[0] = dht->stats.puts;
-  ilocal[1] = dht->stats.gets;
-  ilocal[2] = dht->stats.collisions;
-  ilocal[3] = dht->stats.notfound;
- 
-  pdht_allreduce(ilocal, imin, PdhtReduceOpMin, LongType, 4);
-  
 
-  ilocal[0] = dht->stats.puts;
-  ilocal[1] = dht->stats.gets;
-  ilocal[2] = dht->stats.collisions;
-  ilocal[3] = dht->stats.notfound;
- 
-  pdht_allreduce(ilocal, imax, PdhtReduceOpMax, LongType, 4);
+  memcpy(tdlocal,dlocal,sizeof(dlocal));//have to set temp locals because they are manipulated for pdht_allreduce
+  
+  pdht_allreduce(tilocal, isum, PdhtReduceOpSum, LongType, 4);
+  memcpy(tilocal,ilocal,sizeof(ilocal));
+  pdht_allreduce(tilocal, imin, PdhtReduceOpMin, LongType, 4);
+  memcpy(tilocal,ilocal,sizeof(ilocal));
+  pdht_allreduce(tilocal, imax, PdhtReduceOpMax, LongType, 4);
 
   
 
 
-  pdht_allreduce(dlocal, dsum, PdhtReduceOpSum, DoubleType, 8);
-  
-  dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
-  dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
-  dlocal[2] = PDHT_READ_TIMER(dht, t1);
-  dlocal[3] = PDHT_READ_TIMER(dht, t2);
-  dlocal[4] = PDHT_READ_TIMER(dht, t3);
-  dlocal[5] = PDHT_READ_TIMER(dht, t4);
-  dlocal[6] = PDHT_READ_TIMER(dht, t5);
-  dlocal[7] = PDHT_READ_TIMER(dht, t6);
-  pdht_allreduce(dlocal, dmin, PdhtReduceOpMin, DoubleType, 8);
-  
-  dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
-  dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
-  dlocal[2] = PDHT_READ_TIMER(dht, t1);
-  dlocal[3] = PDHT_READ_TIMER(dht, t2);
-  dlocal[4] = PDHT_READ_TIMER(dht, t3);
-  dlocal[5] = PDHT_READ_TIMER(dht, t4);
-  dlocal[6] = PDHT_READ_TIMER(dht, t5);
-  dlocal[7] = PDHT_READ_TIMER(dht, t6);
-  pdht_allreduce(dlocal, dmax, PdhtReduceOpMax, DoubleType, 8);
+  pdht_allreduce(tdlocal, dsum, PdhtReduceOpSum, DoubleType, 8);
+  memcpy(tdlocal,dlocal,sizeof(dlocal));
+  pdht_allreduce(tdlocal, dmin, PdhtReduceOpMin, DoubleType, 8);
+  memcpy(tdlocal,dlocal,sizeof(dlocal));
+  pdht_allreduce(tdlocal, dmax, PdhtReduceOpMax, DoubleType, 8);
 
   if (c->rank == 0) {
     printf("pdht global stats: \n");    
