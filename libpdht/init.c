@@ -59,10 +59,10 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
-
+  
   c->hts[c->dhtcount] = dht;
   c->dhtcount++; // register ourselves globally on this process
-
+   
   if (keysize > PDHT_MAXKEYSIZE) {
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
     pdht_eprintf(PDHT_DEBUG_NONE, "\t (update value in pdht_impl.h and recompile)\n");
@@ -212,15 +212,22 @@ void pdht_free(pdht_t *dht) {
 
   c->dhtcount--;
 
+  
   // disable incoming gets
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTDisable(dht->ptl.lni, dht->ptl.getindex[ptindex]);
-
+  
   // cleans up from pending put MEs 
   // -- also removes all MEs from both put/get PTEs
-  pdht_polling_fini(dht);
+  switch(dht->pmode){
+    case PdhtPendingTrig:
+      pdht_trig_fini(dht);
+    case PdhtPendingPoll:
+      pdht_polling_fini(dht);
+    default:
+      pdht_dprintf("invalid pmode\n");
 
-  
+  }
   // free our table entries
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++)  {
     PtlPTFree(dht->ptl.lni, dht->ptl.getindex[ptindex]);
@@ -247,7 +254,6 @@ void pdht_free(pdht_t *dht) {
       PtlMDRelease(dht->ptl.countmds[i]);
   }
 
-  
   // clean up everything if we're last out the door
   if (c->dhtcount <= 0) {
     pdht_fini();
