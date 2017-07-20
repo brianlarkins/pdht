@@ -5,6 +5,7 @@
 #include <sys/resource.h>
 
 #include <pdht.h>
+#include <city.h>
 
 #define ASIZE 1000
 
@@ -16,12 +17,14 @@ struct point{
 };
 typedef struct point pt;
 
+static void kprint(void *key);
+static void vprint(void *val);
+
 void ahash(pdht_t *dht,void *key,ptl_match_bits_t *mbits, uint32_t *ptindex,ptl_process_t *rank){
-  *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
-  (*rank).rank = *(unsigned long *)key % c->size;
-
-
+   *mbits = CityHash64((char *)key, dht->keysize);
+   *ptindex = *mbits % dht->ptl.nptes;
+   (*rank).rank  = 0; // for testing only
+   //(*rank).rank  = *mbits % c->size;
 }
 
 
@@ -39,7 +42,7 @@ int main(int argc, char **agrv[]){
   cfg.pendmode = PdhtPendingTrig; //setting to triggered mode
   cfg.nptes = 1;
   cfg.maxentries = 250000;
-  cfg.pendq_size = 10000; //if you change this to 500 it will not be happy but will work,it you change it to <500 it will not finish
+  cfg.pendq_size = 500; //if you change this to 500 it will not be happy but will work,it you change it to <500 it will not finish
   cfg.ptalloc_opts = 0;
   setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
@@ -47,6 +50,8 @@ int main(int argc, char **agrv[]){
   pdht_tune(PDHT_TUNE_ALL,&cfg); //setting rest of cfg with pdht_tune?
   //printf("creating ht\n");
   ht = pdht_create(sizeof(unsigned long),elemsize,PdhtModeStrict);//creating pdht with key size of int and a value size of a point
+
+  pdht_sethash(ht, ahash);
 
   pdht_barrier();
 
@@ -59,7 +64,7 @@ int main(int argc, char **agrv[]){
   //int simRank = 1; //used to tell if the math would allow this to run on 2 processes
   
   if (c->rank == 0){
-    
+    printf("putting \n");
     PDHT_START_ATIMER(ptimer); //starting put timer
     for (int i = fAdd; i < ASIZE ;i++){
       //setting key x and y vals
@@ -68,6 +73,7 @@ int main(int argc, char **agrv[]){
       
       pdht_put(ht,&key,&value);//putting into the pdht
       
+      printf("%ld ", key);
       key += 1;
     } //for
     
@@ -77,7 +83,6 @@ int main(int argc, char **agrv[]){
   
 
   pdht_fence(ht);
-
   
   
   //goto done;
@@ -86,8 +91,10 @@ int main(int argc, char **agrv[]){
 
   key = 1;
   
+  pdht_print_active(ht, kprint, vprint);
 
-  if (c->rank == 1){
+  if (c->rank == 0){
+    printf("updating\n");
     PDHT_START_ATIMER(gtimer); //starting get/update timer
     
     
@@ -106,18 +113,19 @@ int main(int argc, char **agrv[]){
     PDHT_STOP_ATIMER(gtimer);//stopping get timer
     printf("Get Timer: %d, %12.7f ms\n",c->rank,PDHT_READ_ATIMER_MSEC(gtimer));
   
-  
   }
 
 
   pdht_fence(ht);
+  pdht_print_active(ht, kprint, vprint);
   key = 1;
   if (c->rank == 0){
-    
+    printf("validating\n");
+
     PDHT_START_ATIMER(utimer);
     for(int i = fAdd;i<ASIZE;i++){
       pdht_get(ht,&key,&value);
-      if (i != value.x || i +1 != value.y){
+      if ((i != value.x) || ((i+1) != value.y)){
         printf("Did not match\n");
         printf("i : %d, x : %d, y : %d\n",i,value.x,value.y);
 
@@ -138,5 +146,16 @@ done:
   pdht_print_stats(ht);//print ht stats
   printf("freeing hash table\n");
   pdht_free(ht);//freeing hash table
-  return 1;
+  return 0;
+}
+
+
+static void kprint(void *key) {
+  unsigned long *kp = key;
+  printf(" key: %ld ", *kp);
+}
+
+static void vprint(void *val) {
+  pt *p = val;
+  printf(" x: %d y: %d", p->x, p->y);
 }

@@ -9,7 +9,7 @@ PDHT_TOP=..
 include $(PDHT_TOP)/pdht.mk
 
 .PHONY: all
-all: scaling
+all: pointPractice
 
 
 barrier: pdhtlibs barrier.c
