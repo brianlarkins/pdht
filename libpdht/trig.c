@@ -101,6 +101,7 @@ void pdht_trig_init(pdht_t *dht) {
       hte->me.ignore_bits   = 0;
 
       // once match bits have been copied, append to active match list
+      //printf("%d: trigger set i: %d ptr: %p\n", c->rank, i, hte->me.start);
       ret = PtlTriggeredMEAppend(dht->ptl.lni, dht->ptl.getindex[ptindex], &hte->me, PTL_PRIORITY_LIST,
           hte, &hte->ame, hte->tct, 1);
       if (ret != PTL_OK) {
@@ -135,7 +136,7 @@ void pdht_trig_fini(pdht_t *dht) {
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
-  if (c->dhtcount == 1) 
+  if (c->dhtcount == 0) 
     pthread_cancel(c->progress_tid);
 
   // remove all match entries from the table
@@ -195,8 +196,8 @@ void *pdht_trig_progress(void *arg) {
   ptl_me_t me;
   ptl_event_t ev;
   unsigned hdrsize;
+  int disabled_pts[PDHT_MAX_PTES];
   int ret, which, lothresh;
-  
 
   while (1) {
 
@@ -214,18 +215,28 @@ void *pdht_trig_progress(void *arg) {
 
       // only xfer latter half of ME entry in put to pending ME
       hdrsize = sizeof(ptl_me_t) - offsetof(ptl_me_t, match_bits); 
+ 
+      // reset our flow control tracking array
+      memset(disabled_pts,0,sizeof(disabled_pts));
+
+      // clean out any events on the pending event queue
+      while (PtlEQPoll(dht->ptl.eq, dht->ptl.nptes, 10, &ev, &which) == PTL_OK) {
+         switch (ev.type) {
+         case PTL_EVENT_PUT:
+           break;
+         case PTL_EVENT_PT_DISABLED:
+           assert(which < dht->ptl.nptes);
+           disabled_pts[which] = 1; // remember disabled PTs for later
+           break;
+         default:
+           pdht_dprintf("pdht_trig_progress: found event on queue from PTE %d\n", which);
+           pdht_dump_event(&ev);
+           break;
+         }
+      }
 
       // for each active PTE in this table,
       for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
-
-        // clean out any events on the pending event queue
-        while (PtlEQPoll(dht->ptl.eq, dht->ptl.nptes, 10, &ev, &which) == PTL_OK) {
-           if (ev.type != PTL_EVENT_PUT) {
-             pdht_dprintf("pdht_trig_progress: found event on queue from PTE %d\n", which);
-             pdht_dump_event(&ev);
-           }
-        }
-
         lothresh = dht->pendq_size / 2;
         
         // check to see if we've exhausted pending ME entries
@@ -268,6 +279,7 @@ void *pdht_trig_progress(void *arg) {
             hte->me.start         = &hte->key;
             hte->me.length        = PDHT_MAXKEYSIZE + dht->elemsize;
             hte->me.options       = PTL_ME_OP_GET 
+                                  | PTL_ME_OP_PUT
                                   | PTL_ME_IS_ACCESSIBLE 
                                   | PTL_ME_EVENT_COMM_DISABLE
                                   | PTL_ME_EVENT_UNLINK_DISABLE;
@@ -289,6 +301,13 @@ void *pdht_trig_progress(void *arg) {
           dht->stats.tappends[ptindex] -= lothresh; // reset the number of consumed pending entries
 
         } // if exhausted
+
+        // turn on pending queue if it was disabled from flow control
+        if (disabled_pts[ptindex]) {
+          pdht_dprintf("pdht_trig_progress: re-enabling PTE: %d\n", ptindex);
+          PtlPTEnable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
+        }
+
       } // PTE loop
     } // HT loop
   } // forever loop

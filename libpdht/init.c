@@ -218,7 +218,11 @@ void pdht_free(pdht_t *dht) {
 
   // cleans up from pending put MEs 
   // -- also removes all MEs from both put/get PTEs
-  pdht_polling_fini(dht);
+  if (dht->pmode == PdhtPendingPoll) {
+    pdht_polling_fini(dht);
+  } else {
+    pdht_trig_fini(dht);
+  }
 
   
   // free our table entries
@@ -453,7 +457,7 @@ void pdht_fini(void) {
 //extern void print_madnode(void *node);
 static void pdht_exit_handler(void) {
    //pdht_print_active(c->hts[0], print_madnode);
-   pdht_print_stats(c->hts[0]);
+   //pdht_print_stats(c->hts[0]);
    //;
 }
 

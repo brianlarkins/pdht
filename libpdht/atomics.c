@@ -24,7 +24,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
 
   if (c->rank == 0) {
     // create new counter md in array of counter objects in pdht_t
-    
+
     // create MD for the target side counter array
     ht->counters[cindex] = initval;
 
@@ -43,7 +43,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
       return -1;
     }
   }
- 
+
   // get CT ready for local counter MD events
   ret = PtlCTAlloc(ht->ptl.lni, &ht->ptl.countcts[cindex]);
   if (ret != PTL_OK) {
@@ -70,7 +70,7 @@ int pdht_counter_init(pdht_t *ht, int initval) {
 
 
 /**
- * pdht_counter_reset - reset an HT atomic counter
+ * pdht_counter_reset - collectively reset an HT atomic counter
  * @param ht - a hash table
  * @param counter - which counter to reset
  */
@@ -84,20 +84,30 @@ void pdht_counter_reset(pdht_t *ht, int counter) {
   ht->lcounts[counter] = 0; // set our value to zero
 
   // swap with rank 0's value.
-  ret = PtlAtomic(ht->ptl.countmds[counter], 0, sizeof(uint64_t),
-		  PTL_CT_ACK_REQ, r0, __PDHT_COUNTER_INDEX, counter, 0,
-		  NULL, 0, PTL_SWAP, PTL_UINT64_T);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_counter_reset: swap error\n");
-    return;
-  }
+  if (c->rank == 0) {
 
-  ret = PtlCTWait(ht->ptl.countcts[counter], ctevent.success+1, &ctevent);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_counter_reset: PtlCTWait failed\n");
-    return;
-  }
+  // use PtlSwap if we want one-sided reset/set (add parameter to initialize value)
+#if 0
+  if (c->rank == 1)
+    ret = PtlSwap(ht->ptl.countmds[counter], 0, 
+                  ht->ptl.countmds[counter], 0, 
+                  sizeof(uint64_t), r0, __PDHT_COUNTER_INDEX,
+                  counter, 0, NULL, 0, PTL_SWAP, PTL_UINT64_T);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_counter_reset: swap error\n");
+      return;
+    }
 
+    printf("rank 0 waiting\n");
+    ret = PtlCTWait(ht->ptl.countcts[counter], ctevent.success+1, &ctevent);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_counter_reset: PtlCTWait failed\n");
+      return;
+    }
+#endif
+    ht->counters[counter] = 0;
+  } 
+  pdht_barrier();
   // not handling atomic failure (ctevent.failure)
 }
 
@@ -124,8 +134,8 @@ uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val) {
 
   // fetch and add to counter on rank zero
   ret = PtlFetchAtomic(ht->ptl.countmds[counter], 0, ht->ptl.countmds[counter], 0,
-		       sizeof(ht->lcounts[counter]), r0, __PDHT_COUNTER_INDEX,
-		       counter, 0, NULL, 0, PTL_SUM, PTL_UINT64_T);
+      sizeof(ht->lcounts[counter]), r0, __PDHT_COUNTER_INDEX,
+      counter, 0, NULL, 0, PTL_SUM, PTL_UINT64_T);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_counter_inc: fetch add error\n");
     return -1;

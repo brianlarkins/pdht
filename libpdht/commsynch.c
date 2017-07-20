@@ -412,7 +412,7 @@ pdht_status_t pdht_finalize_puts(pdht_t *dht) {
     }
   }
   if ((ret != PTL_EQ_EMPTY) && (ret != PTL_INTERRUPTED)) {
-    pdht_dprintf("pdht_finalize_puts: PtlEQPoll error %s\n", pdht_ptl_error(ret));
+    printf("pdht_finalize_puts: PtlEQPoll error %s\n", pdht_ptl_error(ret));
   }
 }
 

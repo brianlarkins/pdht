@@ -273,7 +273,7 @@ void pdht_dump_event(ptl_event_t *ev) {
 /**
  * pdht_print_active
  */
-void pdht_print_active(pdht_t *dht, void nprinter(void *node)) {
+void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val)) {
   char *iter;
   int pending = 0;
   _pdht_ht_trigentry_t *hte;
@@ -286,8 +286,10 @@ void pdht_print_active(pdht_t *dht, void nprinter(void *node)) {
     key = (long *)hte->key;
     if (hte->ame != PTL_INVALID_HANDLE) {
       pdht_dprintf("elem %d: mbits: %12"PRIx64" ptr: %p", i, hte->me.match_bits, &hte->key);
-      pdht_dprintf(" pkey: [%ld,%ld,%ld@%ld] ", key[0],key[1],key[2],key[3]);
-      nprinter(&hte->data);
+      //pdht_dprintf(" pkey: %ld ", key[0]);
+      //pdht_dprintf(" pkey: [%ld,%ld,%ld@%ld] ", key[0],key[1],key[2],key[3]); // MADNESS
+      kprinter(hte->key);
+      vprinter(&hte->data);
       printf("\n");
     } else {
       pending++;
