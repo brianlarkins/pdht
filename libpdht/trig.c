@@ -137,7 +137,7 @@ void pdht_trig_fini(pdht_t *dht) {
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
   if (c->dhtcount == 0) 
-    pthread_cancel(c->progress_tid);
+    pthread_join(c->progress_tid, NULL);
 
   // remove all match entries from the table
   iter = (char *)dht->ht;
@@ -199,7 +199,7 @@ void *pdht_trig_progress(void *arg) {
   int disabled_pts[PDHT_MAX_PTES];
   int ret, which, lothresh;
 
-  while (1) {
+  while (c->dhtcount > 0) {
 
     /* iterate over all active tables */
     for (int cur=0; cur < c->dhtcount; cur++) {

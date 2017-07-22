@@ -75,6 +75,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->mode = mode;
   dht->pmode = cfg.pendmode;
   dht->countercount = 0;
+  dht->gameover = 0;
 
   dht->hashfn = pdht_hash;
 
@@ -212,6 +213,7 @@ void pdht_free(pdht_t *dht) {
 
   c->dhtcount--;
 
+  dht->gameover = 1; // signal progress thread that we're outta here
   
   // disable incoming gets
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
@@ -222,8 +224,10 @@ void pdht_free(pdht_t *dht) {
   switch(dht->pmode){
     case PdhtPendingTrig:
       pdht_trig_fini(dht);
+      break;
     case PdhtPendingPoll:
       pdht_polling_fini(dht);
+      break;
     default:
       pdht_dprintf("invalid pmode\n");
   }

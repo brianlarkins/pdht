@@ -224,6 +224,7 @@ struct pdht_s {
   uint64_t          counters[PDHT_MAX_COUNTERS]; // rank 0 target (master) counters
   uint64_t          lcounts[PDHT_MAX_COUNTERS];  // initiator side buffers
   int               countercount; // :)
+  int               gameover; // signal for progress thread to die
   pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);

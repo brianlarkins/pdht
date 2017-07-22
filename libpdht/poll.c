@@ -111,8 +111,8 @@ void pdht_polling_fini(pdht_t *dht) {
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++)
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
-  // kill polling thread
-  pthread_cancel(_pdht_poll_tid);
+  // wait for polling progress thread to exit
+  pthread_join(_pdht_poll_tid, NULL);
 
   // kill off event queues
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
@@ -196,7 +196,7 @@ void *pdht_poll(void *arg) {
 
 
   // need to run through the event queue for the putindex
-  while (1) {
+  while (!dht->gameover) {
  
     if ((ret = PtlEQPoll(dht->ptl.eq,dht->ptl.nptes, PTL_TIME_FOREVER, &ev, &ptindex)) == PTL_OK)  {
       PDHT_START_TIMER(dht,t5);
