@@ -60,13 +60,13 @@ typedef struct tensor1d2k_s tensor1d2k_t;
 
 struct tensor2d2k_s {
   tensorhdr_t h;
-  double      array[2*TENSOR_DEFAULT_K*TENSOR_DEFAULT_K];
+  double      array[2*TENSOR_DEFAULT_K*2*TENSOR_DEFAULT_K];
 };
 typedef struct tensor2d2k_s tensor2d2k_t;
 
 struct tensor3d2k_s {
   tensorhdr_t h;
-  double      array[2*TENSOR_DEFAULT_K*TENSOR_DEFAULT_K*TENSOR_DEFAULT_K];
+  double      array[2*TENSOR_DEFAULT_K*2*TENSOR_DEFAULT_K*2*TENSOR_DEFAULT_K];
 };
 typedef struct tensor3d2k_s tensor3d2k_t;
 

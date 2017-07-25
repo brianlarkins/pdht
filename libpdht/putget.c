@@ -177,10 +177,9 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     if (again && (ctevent.success == dht->ptl.curcounts.success)) {
         pdht_dprintf("pdht_put: (again) flow control on remote rank: %d : %d\n", rank, dht->stats.puts);
         PtlCTGet(dht->ptl.lmdct, &current);
-        //pdht_dprintf("pdht_put: post (again): success: %lu fail: %lu\n", ctevent.success, ctevent.failure);
+        //pdht_dprintf("pdht_put: post (again): success: %lu fail: %lu\n", current.success, current.failure);
         nanosleep(&ts, NULL);
         toobusy = 1; // reset loop sentinel
-        //PtlCTInc(dht->ptl.lmdct, reset); // reset failure count
       }
 
     } while (toobusy);

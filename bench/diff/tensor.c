@@ -330,8 +330,11 @@ tensor_t *tensor_copy(tensor_t *src) {
   p1 = src->array;
   assert(p0);
   assert(p1);
+  memcpy(result->array, src->array, src->h.size*sizeof(double));
+  #if 0
   for (i=0; i<src->h.size; i++,p0++,p1++)
     *p0 = *p1;
+  #endif
 
   return result;
 }

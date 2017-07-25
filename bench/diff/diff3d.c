@@ -25,11 +25,11 @@
 // small:    73
 // med  :  2633
 // large: 37449
-#define THRESHOLD_TEST  .05
+#define THRESHOLD_TEST  .1
 #define THRESHOLD_SMALL  1e-6
 #define THRESHOLD_MEDIUM 1e-10
 #define THRESHOLD_LARGE  1e-14
-#define INITIAL_LEVEL    3
+#define INITIAL_LEVEL    2
 
 #define PAR_LEVEL        3
 
@@ -61,8 +61,10 @@ void      fine_scale_project(func_t *f, madkey_t *node);
 void      refine_fine_scale_projection(func_t *f, madkey_t *node, int initial_level);
 void      refine_fine_scale_project(func_t *f, madkey_t *node);
 tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node);
-void      compress(func_t *f, madkey_t *node);
-void      reconstruct(func_t *f, madkey_t *node);
+tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep);
+void      reconstruct(func_t *f, node_t *node, int limit);
+void      par_compress(func_t *f, int parlvl);
+void      par_reconstruct(func_t *f, int parlvl);
 void      diff(func_t *f, diffdim_t wrtdim, madkey_t *node, func_t *fprime, madkey_t *dnode);
 double    eval(func_t *f, madkey_t *node, double x, double y, double z);
 void      summarize(func_t *f);
@@ -85,7 +87,7 @@ int       main(int argc, char **argv, char **envp);
 func_t *init_function(int k, double thresh, double (* test)(double x, double y, double z), int initial_level) {
   func_t *fun;
   int     i;
-  int     parlvl = defaultparlvl;
+  int     parlvl = initial_level; // for now, parallel traversals are same as initial projection
   madkey_t root = { 0, 0, 0, 0 };
   uint64_t st;
 
@@ -115,8 +117,6 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   make_dc_periodic(fun);
   eprintf("...complete\n");
 
-
-
   /*
    * create an array for all nodes at level k
    * asize = 8^k, madkey_t cindices[8^k];
@@ -135,9 +135,10 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     fun->stlen    = (int)pow(8,parlvl);
     fun->subtrees = calloc(fun->stlen, sizeof(madkey_t));
     pdhtcounter = pdht_counter_init(fun->ftree, 0);
+    eprintf("  creating octree with initial projection depth of %d : %d nodes\n", parlvl, fun->stlen);
     // initial function projection @ parlvl 
-    // XXX this is a problem rank 0 needs to create tree top, but everybody else needs subtrees
-    fine_scale_projection(fun, &root, parlvl+1);  // xxx
+    // - need to project to subtrees[] level + 1, because refine requires children
+    fine_scale_projection(fun, &root, parlvl+1);  
     //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
     pdht_fence(fun->ftree);
@@ -148,14 +149,14 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     while (st < fun->stlen) {
       stcount = 0;
-      printf("%d: taking subtree %ld: <%ld,%ld,%ld> @ %ld ", c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
-          fun->subtrees[st].z, fun->subtrees[st].level);
       refine_fine_scale_project(fun,  &fun->subtrees[st]);
-      printf("%d nodes\n", stcount);
+      printf("%d: completed subtree %ld: <%ld,%ld,%ld> @ %ld - %d nodes\n", 
+          c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
+          fun->subtrees[st].z, fun->subtrees[st].level, stcount);
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
 
-    pdht_barrier();
+    pdht_fence(fun->ftree);
     // timing!
     printf("   refinement done: %d nodes\n", totcount);
   }
@@ -171,7 +172,6 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
    - update child pointers on all nodes that were added
    - either mswap or cswap?
    */
-
 
 
 
@@ -191,13 +191,16 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
   // create a new tree node at this level (always)
   node.a = *nkey; // copy current node key into node (coords)
   node.valid = madCoeffNone;
-  node.children = 0xff; // turn on all 8-bits == 8 children.
+  node.children = 1; // true if have children
 
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
   if ((c->rank == 0) && (nkey->level != 0)) {
     //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
-    pdht_put(f->ftree, nkey, &node); // store new node in PDHT
+    if (pdht_put(f->ftree, nkey, &node) != PdhtStatusOK) { // store new node in PDHT
+      printf("%d: fine_scale_projection: put error\n", c->rank);
+      exit(1);
+    }
   }
 
 
@@ -278,10 +281,14 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         tscoeffs = transform3d(scoeffs, f->quad_phiw);
         cnode.a = ckey; // copy key
         cnode.valid = madCoeffScaling;
+        cnode.children = 0;
         memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
 
         // store child node
-        pdht_put(f->ftree, &ckey, &cnode);
+        if (pdht_put(f->ftree, &ckey, &cnode) != PdhtStatusOK) { // store new node in PDHT
+          printf("%d: fine_scale_project: put error\n", c->rank);
+          exit(1);
+        }
         stcount++; totcount++;
         free(tscoeffs);
       }
@@ -303,7 +310,10 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
   //printf("%d: refine_fine_scale_project: %ld : %ld %ld %ld\n", c->rank, nkey->level, nkey->x,nkey->y,nkey->z);
 
   // scaling coeffs _must_ exist at level n+1
-  ss = gather_scaling_coeffs(f,nkey);
+  if (!(ss = gather_scaling_coeffs(f,nkey))) {
+    printf("%d: fatal error getting scaling coeffs\n", c->rank);
+    exit(1);
+  }
 
   sf = filter(f,ss);
 
@@ -336,6 +346,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
           //printf("%d: refining further: <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x, ckey.y, ckey.z, ckey.level);
           pdht_get(f->ftree, &ckey, &cnode);
           cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
+          cnode.children = 1;
           pdht_update(f->ftree, &ckey, &cnode);
           fine_scale_project(f, &ckey);
           refine_fine_scale_project(f, &ckey);
@@ -389,7 +400,8 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
         //printf("%d: asking for <%ld,%ld,%ld>@%ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
 
         if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
-          printf("gather: pdht_get error\n");
+          printf("%d: gather: pdht_get error\n", c->rank);
+          return NULL;
         }
 
         if ((cnode.valid == madCoeffScaling) || (cnode.valid == madCoeffBoth))
@@ -403,7 +415,7 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
         // copy child scaling coeffs into ss
         for (i=0;i<f->k;i++) {
           for (j=0;j<f->k;j++) {
-            //tensor_print(ss);n
+            //tensor_print(ss);
             for (k=0;k<f->k;k++) {
               t = tensor_get3d(childsc,i,j,k);
               //printf("%ld %ld,%ld,%ld **",(ixlo+i)*ss->h.stride[0]+(iylo+j)*ss->h.stride[1]+(izlo+k)*ss->h.stride[2],ixlo+i,iylo+j,izlo+k);
@@ -422,356 +434,220 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
 
 
 
-#if 0
-/*
- * projects function f->f to all children of node
- */
-void fine_scale_project(func_t *f, node_t *node) {
-  long      level   = get_level(f->ftree, node);
-  tensor_t *scoeffs = NULL, *tscoeffs = NULL;
-  double    h       = 1.0/pow(2.0,level+1);
-  double    scale   = sqrt(h);
-  gt_cnp_t *cnode;
-  long      lx,ly,lz,ix,iy,iz;
-  double    xlo,ylo,zlo;
-  //long      twoton = pow(2.0,level);
-  long      count = 0;
-  int       freeflag = 1;
-
-  scale = scale*scale*scale;
-
-  get_xyzindex(f->ftree,node,&lx,&ly,&lz);
-
-  printf("creating scaling: %ld %ld,%ld,%ld\n", level,lx,ly,lz);
-
-  lx *= 2; ly *= 2; lz *= 2;
-
-  scoeffs = tensor_create3d(f->npt,f->npt,f->npt,TENSOR_NOZERO);
-
-  // for each child of node
-  for (ix=0;ix<2;ix++) {
-    xlo = (lx+ix)*h;
-    for (iy=0;iy<2;iy++) {
-      ylo = (ly+iy)*h;
-      for (iz=0;iz<2;iz++) {
-        zlo = (lz+iz)*h;
-        cnode = get_child(f->ftree,node,count); 
-
-        // create child if needed
-          cnode = set_child(f->ftree, node, level+1, lx+ix, ly+iy, lz+iz, count);
-          freeflag = 0;
-        }
-
-        fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs); // f->quad_x read through f
-        tensor_scale(scoeffs, scale);
-        tscoeffs = transform3d(scoeffs, f->quad_phiw);
-        set_scaling(f, cnode, tscoeffs);
-        tfree(tscoeffs); 
-        if (freeflag)
-          tfree(cnode);
-        count++;
-      }
-    }
-  }
-  tfree(scoeffs);
-}
-
-
-void refine_fine_scale_projection(funct_t *f, madkey_t *nkey, int initial_level) {
-  long level;
-  madkey_t ckey;
-  node_t cnode;
-  pdht_status_t ret;
-
-  if (nkey.level > f->max_level)
-    return;
-  if (nkey.level < initial_level) {
-    // recur down to initial level
-    for (int i=0;i<8;i++) {
-      // get child
-      ckey.x = nkey.x+lx;
-      ckey.y = nkey.y+ly;
-      ckey.z = nkey.z+lz;
-      ckey.level = nkey.level+1;	  
-
-      ret = pdht_get(f->ftree, &ckey, &cnode);
-      if (ret == PdhtStatusOK) {
-        refine_fine_scale_projection(f, &ckey, initial_level);
-      }
-    }
-    return;
-  }
-
-  // create tasks
-
-}
-
-
-void refine_fine_scale_projection(func_t *f, gt_cnp_t *node, int initial_level) {
-  long level = get_level(f->ftree, node);
-  gt_cnp_t *cnode = NULL;
-  task_t *task;
-  mad_task_t *madtask;
-  long    i;
-  long x,y,z;
-
-  get_xyzindex(f->ftree,node,&x,&y,&z);
-  //printf("%d refine_fine_scale_projection %ld %ld %ld %ld \n", MYTHREAD, level, x,y,z);
-
-  if (level > f->max_level) 
-    return;
-  if (level < initial_level) {
-    // simply recur down to where the initial coeffs live
-    for (i=0;i<8;i++) {
-      cnode = get_child(f->ftree, node, i);
-      if (cnode) {
-        refine_fine_scale_projection(f, cnode, initial_level);
-        tfree(cnode);
-      }
-    }
-    return;
-  }
-
-  get_xyzindex(f->ftree,node,&x,&y,&z);
-  //printf("added tree creation task @ %ld %ld,%ld,%ld\n", get_level(f->ftree,node),x,y,z);
-
-  task = gtc_task_create(sizeof(mad_task_t), refine_project_handle);
-  madtask = (mad_task_t *)gtc_task_body(task);
-  // create tasks at initial_level
-  gt_cnp_copy(f->ftree, node, &madtask->node);
-  gtc_add(madtc, madtc->mythread, task, TASK_PRIORITY, TASK_AFFINITY_HIGH);
-  gtc_task_destroy(task);
-}
-
-
-
-void refine_fine_scale_project_wrapper(tc_t *tc, task_t *closure) {
-  mad_task_t *madtask;
-
-  madtask = (mad_task_t *)gtc_task_body(closure);
-  refine_fine_scale_project(f, &madtask->node);
-}
-#endif
-
-#if 0 
-// PDHT
-void refine_fine_scale_project(func_t *f, madkey_t *node) {
-  madkey_t *cnode = NULL;
-  tensor_t *ss = NULL, *sf;
-  double  dnorm;
-  long    i,j,k;
-  long    x,y,z;
-
-
-  get_xyzindex(f->ftree, node, &x,&y,&z);
-  //printf("refine_fine_scale_project: %ld : %ld %ld %ld\n", get_level(f->ftree, node), x,y,z);
-
-  // scaling coeffs _must_ exist at level n+1
-  ss = gather_scaling_coeffs(f,node);
-
-  sf = filter(f,ss);
-
-  // fill(ss, 0.0);
-  for (i=0;i<f->k;i++) {
-    for (j=0;j<f->k;j++) {
-      for (k=0;k<f->k;k++) {
-        tensor_set3d(sf,i,j,k,0.0);
-      }
-    }
-  }
-
-  dnorm = normf(sf);
-
-  tfree(ss); ss = NULL;
-  tfree(sf); sf = NULL;
-
-  // do we need to refine further?
-  if (dnorm > f->thresh) {
-    // yes, for each child at n+1, project function to n+2, then refine at n+1
-    for (i=0;i<8;i++) {
-      cnode = get_child(f->ftree, node, i);
-      set_scaling(f,cnode,NULL); // delete scaling coeffs from children
-      fine_scale_project(f, cnode); // creates nodes at n+2
-
-      // don't create tasks here, should have all been done higher up
-
-      refine_fine_scale_project(f, cnode);
-      tfree(cnode); cnode = NULL;
-    }
-  }
-}
-
-
-
-#endif
-
-
-#if 0
-void create_compress_task(tc_t *tc, gt_cnp_t *node) {
-  mad_task_t *madtask;
-  task_t     *task;
-
-  task = gtc_task_create(sizeof(mad_task_t), compress_handle);
-  madtask = (mad_task_t *)gtc_task_body(task);
-  gt_cnp_copy(f->ftree, node, &madtask->node);
-  gtc_add(madtc, madtc->mythread, task, TASK_PRIORITY, TASK_AFFINITY_HIGH);
-  gtc_task_destroy(task);
-}
-
-
-
-void compress_wrapper(tc_t *tc, task_t *closure) {
-  mad_task_t *madtask;
-
-  madtask = (mad_task_t *)gtc_task_body(closure);
-  compress(f, &madtask->node);
-}
-
-
 /*
  * create compression tasks at parlvl
  *   - must call tc_process() collectively later
  *   - call compress(f,get_root(f->tree)); in thread 0 to finish
  */
-void par_compress(func_t *f, gt_cnp_t *node, int parlvl) {
-  long level = get_level(f->ftree, node);
-  gt_cnp_t *cnode = NULL;
-  long i;
+void par_compress(func_t *f, int parlvl) {
+  madkey_t rootkey = { 0, 0, 0, 0};
+  uint64_t st;
 
   if (f->compressed)
     return;
 
-  if (level >= parlvl)
-    create_compress_task(madtc, node);
-  else {
-    for (i=0;i<8;i++) {
-      cnode = get_child(f->ftree,node,i);
-      if (cnode) {
-        par_compress(f,cnode,parlvl);
-        tfree(cnode); 
-      }
-    }
+  // bottom up parallel compression, seeding
+  //   parallel tasks using subtrees setup in tree creation
+  pdht_counter_reset(f->ftree, f->counter);
+
+  st = pdht_counter_inc(f->ftree, f->counter, 1);
+  while (st < f->stlen) {
+    compress(f,  &f->subtrees[st], MAX_TREE_DEPTH+1, 1); // recur to leaf nodes
+    //printf("%d: completed compress %ld: <%ld,%ld,%ld> @ %ld\n", 
+    //   c->rank, st, f->subtrees[st].x, f->subtrees[st].y,
+    //    f->subtrees[st].z, f->subtrees[st].level);
+    st = pdht_counter_inc(f->ftree, f->counter, 1);
   }
+
+  pdht_fence(f->ftree);
+
+  // rank 0 finishes up tree top
+  if (c->rank == 0) {
+    compress(f, &rootkey, parlvl, 1);
+  }
+  pdht_fence(f->ftree);
+  f->compressed = 1;
 }
 
 
 
+/**
+ * compress - convert a MADNESS function tree to use difference coeffs
+ * @param f function tree
+ * @param nkey node address of subtree to start at 
+ * @param limit recursion limit
+ * @param keep true if tree/subtree root and want to keep scaling coeffs
+ * @returns tensor containing scaling coeffs of current node
+ */
+tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
+  tensor_t *ss = NULL, *sf = NULL, *sc = NULL;
+  node_t node;
+  node_t cnode;
+  madkey_t ckey;
+  long ix,iy,iz, ixlo,iylo,izlo;
+  int i, j, k;
+  double t;
 
-void compress(func_t *f, gt_cnp_t *node) {
-  tensor_t *ss = NULL, *sf = NULL, *s = NULL;
-  gt_cnp_t *cnode = NULL;
-  long    i,j,k;
-  //long    x,y,z;
+  //printf("%d: compress of <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level);
 
+  // get the current node
+  if (pdht_get(f->ftree, nkey, &node) != PdhtStatusOK) {
+    printf("%d: compress: pdht_get error\n", c->rank);
+    exit(1);
+  } 
 
-  //get_xyzindex(f->ftree, node, &x,&y,&z);
-  //printf("compress: %ld : %ld %ld %ld\n", get_level(f->ftree, node), x,y,z);
+  // check to see if we're a leaf 
+  // or interior node is at the limit depth
+  if ((!node.children) || (nkey->level == limit)) {
+    // base case, leaf node in octree 
 
-  if (f->compressed)
-    return;
+    //print_madnode(&node); printf("\n");
 
-  MSTART_TIMER(mvmult);
+    // copy our scaling coeffs for our caller
+    sc = tensor_copy((tensor_t *)&node.s); // cast from tensor3dk_t
+    node.valid = madCoeffNone; // mark scaling coeffs as invalid 
 
-  // recursive case: (parallelize here)
-  // find leaf nodes with scaling coeffs
+  } else {
+    // landing spot for children scaling coeffs
+    ss = tensor_create3d(2*f->k,2*f->k,2*f->k, TENSOR_ZERO);
 
-  // check first child, all or no children will have scaling coeffs
-  cnode = get_child(f->ftree,node,0);
+    // interior node, recur down to bottom of octree
 
-  // sometimes we seg fault here... 
-  //if (!cnode) 
-  //print_tree(f->ftree);
+    // for each child of ours
+    for (int ix=0;ix<2;ix++) {
+      ixlo = ix*f->k;
+      for (iy=0;iy<2;iy++) {
+        iylo = iy*f->k;
+        for (iz=0;iz<2;iz++) {
+          izlo = iz*f->k;
 
-  MSTOP_TIMER(mvmult);
-  if (!has_scaling(f->ftree, cnode)) {
-    tfree(cnode);
-    for (i=0;i<8;i++) {
-      cnode = get_child(f->ftree,node,i);
-      compress(f, cnode);
-      tfree(cnode);
-    }
-  } else if (cnode)
-    tfree(cnode);
+          // compute child coords
+          ckey.x = 2 * nkey->x + ix;
+          ckey.y = 2 * nkey->y + iy;
+          ckey.z = 2 * nkey->z + iz;
+          ckey.level = nkey->level + 1;
 
-  // base case: (and bottom-up continuation)
+          // compress each child subtree and collect the scaling coeffs
+          // on the way back up
+          sc = compress(f, &ckey, limit, 0); // nokeep scaling
 
-  // at parent of leaf nodes - gather scaling @n+1 to n
-  ss = gather_scaling_coeffs(f,node);
-
-  MSTART_TIMER(mvmult);
-
-  sf = filter(f,ss); // two-scale
-  tfree(ss); ss = NULL;
-
-  s = tensor_create3d(f->k,f->k,f->k,TENSOR_NOZERO);
-
-  // s = sf(0:k,0:k,0:k);
-  // d = sf(k:2k,k:2k,k:2k);
-  for (i=0;i<f->k;i++) {
-    for (j=0;j<f->k;j++) {
-      for (k=0;k<f->k;k++) {
-        tensor_set3d(s,i,j,k,tensor_get3d(sf,i,j,k));
+          // put them in their rightful place
+          for (i=0;i<f->k;i++) {
+            for (j=0;j<f->k;j++) {
+              for (k=0;k<f->k;k++) {
+                t = tensor_get3d(sc,i,j,k);
+                tensor_set3d(ss,ixlo+i,iylo+j,izlo+k, t);
+              }
+            }
+          }
+          tfree(sc);
+        }
       }
     }
-  }
 
-  MSTOP_TIMER(mvmult);
+    // now we have all of the scaling coeffs, filter them
+    sf = filter(f,ss); // two-scale op
 
-  // check mra.py (existing scaling coeffs are accumulated into via gaxpy)
-  set_scaling(f,node,s);
-
-  MSTART_TIMER(mvmult);
-  // fill(ss, 0.0)
-  for (i=0;i<f->k;i++) {
-    for (j=0;j<f->k;j++) {
-      for (k=0;k<f->k;k++) {
-        tensor_set3d(sf,i,j,k,0.0);
+    // copy our scaling coeffs into sc for our parent
+    // fix up difference coeffs (no scaling coeffs in diff)
+    // s = sf(0:k,0:k,0:k);    -- zero out these
+    // d = sf(k:2k,k:2k,k:2k); -- these are valid
+    sc = tensor_create3d(f->k,f->k,f->k,TENSOR_NOZERO);
+    for (i=0;i<f->k;i++) {
+      for (j=0;j<f->k;j++) {
+        for (k=0;k<f->k;k++) {
+          tensor_set3d(sc,i,j,k,tensor_get3d(sf,i,j,k)); // copy for parent
+          tensor_set3d(sf,i,j,k,0.0); // fix up wavelet coeffs
+        }
       }
     }
+    // copy difference coeffs into current node
+    memcpy(&node.d, sf, sizeof(tensor3d2k_t));
+
+    // handle tree/subtree root nodes as special case
+    if (keep) {
+      // avoids cluttering loop above... sigh.
+      memcpy(&node.s, sc, sizeof(tensor3dk_t)); // copy back scaling coeffs
+      node.valid = madCoeffBoth; // both scaling and wavelet coeffs are at root
+    } else { 
+      node.valid = madCoeffWavelet; // only wavelet coeffs are valid
+    }
+
+    // clean up our mess
+    tfree(ss);
+    tfree(sf);
   }
 
-  MSTOP_TIMER(mvmult);
+  // zero scaling coeffs at this node, unless root of tree or subtree
+  if (!keep) {
+    memset(&node.s, 0, sizeof(tensor3dk_t));
+  } 
 
-  // check mra.py (existing wavelet coeffs are accumulated into via gaxpy)
-  set_wavelet(f,node,sf);
+  // update global copy of our node
+  pdht_update(f->ftree, nkey, &node);
 
-  for (i=0;i<8;i++)
-    set_scaling(f, get_child(f->ftree,node,i), NULL);
-
-  tfree(sf);
-  tfree(s);
+  return sc;
 }
 
 
-//gt_cnp_t *testo = NULL;
-void create_reconstruct_task( tc_t *tc, gt_cnp_t *node) {
-  mad_task_t *madtask;
-  task_t     *task;
-  //  long x,y,z;
 
-  //if (!node)
-  //print_tree(f->ftree);
+void par_reconstruct(func_t *f, int limit) {
+  uint64_t st;
+  madkey_t rootkey = { 0, 0, 0, 0};
+  node_t root, stnode;
 
-  //get_xyzindex(f->ftree,node, &x,&y,&z);
-  //printf("%d: reconstruct task created: %ld %ld,%ld,%ld : %p\n", MYTHREAD, get_level(f->ftree, node),x,y,z, node);
+  //   rank 0 does top of tree (limit = PAR_LEVEL)
+  if (c->rank == 0) {
 
-  task = gtc_task_create(sizeof(mad_task_t), reconstruct_handle);
-  madtask = (mad_task_t *)gtc_task_body(task);
-  gt_cnp_copy(f->ftree, node, &madtask->node);
-  gtc_add(madtc, madtc->mythread, task, TASK_PRIORITY, TASK_AFFINITY_HIGH);
-  gtc_task_destroy(task);
-}
+    // get root tree node
+    if (pdht_get(f->ftree, &rootkey, &root) != PdhtStatusOK) {
+      printf("%d: reconstruct root pdht_get error.\n", c->rank);
+      exit(1);
+    }
+
+    tensor_print((tensor_t *)&root.d,1);
+    tensor_print((tensor_t *)&root.s,0);
+    // modifies root, but doesn't store into PDHT
+    reconstruct(f, &root, limit);
+
+    // update root tree node
+    if (pdht_update(f->ftree, &rootkey, &root) != PdhtStatusOK) {
+      printf("%d: reconstruct root pdht_update error.\n", c->rank);
+      exit(1);
+    }
+  }
+  pdht_fence(f->ftree);
 
 
+  // parallel reconstruction starts at limit depth
+  pdht_counter_reset(f->ftree, f->counter);
+  st = pdht_counter_inc(f->ftree, f->counter, 1);
+  while (st < f->stlen) {
 
-void reconstruct_wrapper(tc_t *tc, task_t *closure) {
-  mad_task_t *madtask;
-  //long x,y,z; 
-  //get_xyzindex(f->ftree, &node, &x,&y,&z);
-  //printf("%d reconstruct task: %ld : %ld %ld %ld\n", MYTHREAD, get_level(f->ftree, &node), x,y,z);
+    // fetch subtree node
+    if (pdht_get(f->ftree, &f->subtrees[st], &stnode) != PdhtStatusOK) {
+      printf("%d: reconstruct subtree pdht_get error.\n", c->rank);
+      exit(1);
+    }
 
-  madtask = (mad_task_t *)gtc_task_body(closure);
-  reconstruct(f, &madtask->node);
+    // reconstruct subtree 
+    reconstruct(f,  &stnode, MAX_TREE_DEPTH+1); // recur to leaf nodes
+
+    // store modifications to subtree root
+    if (pdht_update(f->ftree, &f->subtrees[st], &stnode) != PdhtStatusOK) {
+      printf("%d: reconstruct subtree pdht_update error.\n", c->rank);
+      exit(1);
+    }
+
+    printf("%d: completed reconstruct %ld: <%ld,%ld,%ld> @ %ld\n", 
+        c->rank, st, f->subtrees[st].x, f->subtrees[st].y,
+        f->subtrees[st].z, f->subtrees[st].level);
+
+    st = pdht_counter_inc(f->ftree, f->counter, 1);
+  }
+
+  f->compressed = 0;
+  pdht_fence(f->ftree);
 }
 
 
@@ -779,24 +655,34 @@ void reconstruct_wrapper(tc_t *tc, task_t *closure) {
 /* reconstruct scaling basis tree from wavelet form
  * based on madness3/mra/mra.py
  */
-void reconstruct(func_t *f, gt_cnp_t *node) {
+void reconstruct(func_t *f, node_t *node, int limit) {
   tensor_t *du = NULL, *s = NULL, *d = NULL, *tmp = NULL;
-  gt_cnp_t *cnode = NULL;
-  long    i,j,k;
-  long    ix, iy, iz, iix, iiy, iiz;
-  long    count = 0;
-  long    level = get_level(f->ftree, node);
-  long    x,y,z;
+  madkey_t ckey;
+  node_t cnode;
+  long   i,j,k;
+  long   ix, iy, iz, iix, iiy, iiz;
+  long   count = 0;
 
-  get_xyzindex(f->ftree, node, &x,&y,&z);
-  //printf("%d reconstruct: %ld : %ld %ld %ld\n", MYTHREAD, level, x,y,z);
 
-  if ((d = get_wavelet(f, node))) {
-    s = get_scaling(f, node);
+  // reconstruct assumes that scaling/difference coeffs exist at this level
+  // and that difference coeffs exist at n+1
+  // - upon completion scaling/diff coeffs exist at n+1
 
-    assert(s);
+  // root has scaling+diff
+  // interior at n has scaling+diff
+  // interior at n+1 has diff
+  // leaf nodes have no coeffs at all after compression
 
-    MSTART_TIMER(mvmult);
+  // don't walk too far down the tree
+  if (node->a.level >= limit) return;
+
+  printf("%d reconstruct: %ld : %ld %ld %ld\n", c->rank, node->a.level, node->a.x,node->a.y,node->a.z);
+
+  // if have both coeffs, then we must be an interior node
+  if (node->valid == madCoeffBoth) {
+    d = tensor_copy((tensor_t *)&node->d);
+    s = tensor_copy((tensor_t *)&node->s); 
+
     // d(0:k,0:k,0:k) = s;
     for (i=0;i<f->k;i++) {
       for (j=0;j<f->k;j++) {
@@ -806,32 +692,32 @@ void reconstruct(func_t *f, gt_cnp_t *node) {
       }
     }
 
-    //printf(" %d unfilter: %ld : %ld %ld %ld\n", MYTHREAD, level, x,y,z);
-
     // two-scale gives us child scaling coeffs
     du = unfilter(f,d,0);
 
-    MSTOP_TIMER(mvmult);
-
     // remove coeffs from this level of the tree
-    set_wavelet(f, node, NULL);
-    set_scaling(f, node, NULL);
+    memset(&node->d, 0, sizeof(tensor3d2k_t)); // caller must update to make permanent
+    memset(&node->s, 0, sizeof(tensor3dk_t));  // caller must call pdht_update
+    node->valid = madCoeffNone;                // caller must call pdht_update
 
-    //printf(" %d clear coeffs\n", MYTHREAD);
-
-    MSTART_TIMER(mvmult);
     // tmp octant tensor to avoid dealing with slices
     // could save copying... set_wavelet(f,cnode,du[slice])
     tmp = tensor_create3d(f->k,f->k,f->k, TENSOR_NOZERO);
-    MSTOP_TIMER(mvmult);
 
     // for each child of node
     for (ix=0;ix<2;ix++) {
       for (iy=0;iy<2;iy++) {
         for (iz=0;iz<2;iz++) {
-          cnode = get_child(f->ftree, node, count);
-          count++;
-          MSTART_TIMER(mvmult);
+          ckey.x = 2 * node->a.x + ix;
+          ckey.y = 2 * node->a.y + iy;
+          ckey.z = 2 * node->a.z + iz;
+          ckey.level = node->a.level + 1;
+
+
+          if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+            printf("%d: reconstruct: pdht_get error\n", c->rank);
+            exit(1);
+          }
           // for each octant of d[2*k,2*k,2*k]
           for (i=0;i<f->k;i++) {
             for (j=0;j<f->k;j++) {
@@ -841,33 +727,20 @@ void reconstruct(func_t *f, gt_cnp_t *node) {
               }
             }
           }
-          MSTOP_TIMER(mvmult);
-          // update child's scaling coeffs
-          set_scaling(f, cnode, tmp); 
-          tfree(cnode); cnode = NULL;
+
+          memcpy(&cnode.s, tmp, sizeof(tensor3dk_t));
+          cnode.valid = (cnode.valid == madCoeffWavelet) ? madCoeffBoth : madCoeffScaling;
+
+          // call reconstruct recursively XXX
+          reconstruct(f, &cnode, limit);
+
+          // this updates the tree for everything except the call from par_reconstruct
+          if (pdht_update(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+            printf("%d: reconstruct: pdht_update error\n", c->rank);
+            exit(1);
+          }
         }
       }
-    }
-    // parallelize me. recursive call to next lower level
-
-    // DO NOT spawn tasks that may overlap lower in the tree.
-    for (i=0;i<8;i++) {
-      cnode = get_child(f->ftree, node, i);
-
-      //if (cnode) {
-      get_xyzindex(f->ftree,cnode,&x,&y,&z);
-      //printf("  %d: get_child: %ld :: %ld %ld,%ld,%ld\n", MYTHREAD, i, get_level(f->ftree,cnode),x,y,z);
-      //} else {
-      //printf("node: %p cnode: %p : %ld,%ld :: %ld,%ld\n", node, cnode, node->ci, node->ni, cnode->ci, cnode->ni);
-      //}
-
-      if (level < PAR_LEVEL) {
-        MSTART_TIMER(tcreate);
-        create_reconstruct_task(madtc,cnode);
-        MSTOP_TIMER(tcreate);
-      } else 
-        reconstruct(f,cnode);
-      tfree(cnode); cnode = NULL;
     }
   }
 
@@ -881,6 +754,7 @@ void reconstruct(func_t *f, gt_cnp_t *node) {
     tfree(tmp);
 }
 
+#if 0
 
 // ripped off from madness3/mra/mra.py
 static double test1(double x, double y, double z) {
@@ -991,10 +865,10 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
   madkey_t ckey;
   long x, y, z;
   tensor_t *s, *d;
-  int i=0;
+  int c=0;
 
   spaces = malloc(indent+1);
-  for (i=0;i<indent;i++)
+  for (int i=0;i<indent;i++)
     spaces[i] = '.';
   spaces[indent] = '\0';
 
@@ -1004,7 +878,20 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
     return;
   }
 
-  printf("%snode: %ld  %ld,%ld,%ld", spaces, node.a.level, node.a.x, node.a.y,node.a.z);
+  char flag = '-';
+  switch(node.valid) {
+  case madCoeffBoth:
+    flag = 'b';
+    break;
+  case madCoeffScaling:
+    flag = 's';
+    break;
+  case madCoeffWavelet:
+    flag = 'd';
+    break;
+  }
+  printf("%snode: %ld  %ld,%ld,%ld f:%c", spaces, node.a.level, node.a.x, node.a.y,node.a.z, flag);
+  printf(" (%d) %c",childidx, node.children ? 'c' : '-');
 
   s = get_scaling(f, &node);
   d = get_wavelet(f, &node);
@@ -1019,25 +906,25 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
     free(d);
   }
 
-  printf(" (%d) \n",childidx);
+  printf("\n");
 
   x = nkey->x * 2;
   y = nkey->y * 2;
   z = nkey->z * 2;
 
-  for (int lx=0; lx<2; lx++) {
-    for (int ly=0; ly<2; ly++) {
-      for (int lz=0; lz<2; lz++) {
-        if ((node.children >> i) & 0x01) {
+  if (node.children) {
+    for (int lx=0; lx<2; lx++) {
+      for (int ly=0; ly<2; ly++) {
+        for (int lz=0; lz<2; lz++) {
           ckey.x = x+lx;
           ckey.y = y+ly;
           ckey.z = z+lz;
           ckey.level = nkey->level+1;	  
-          print_subtree(f, &ckey, indent+2, i);
+          print_subtree(f, &ckey, indent+2, c);
+          c++;
         }
-        i++;
-      }
-    } 
+      } 
+    }
   }
 
   free(spaces);
@@ -1087,7 +974,7 @@ int main(int argc, char **argv, char **envp) {
   pdht_config_t cfg;
 
   chunksize = DEFAULT_CHUNKSIZE;
-  defaultparlvl = 2;
+  defaultparlvl = INITIAL_LEVEL;
 
 
   // deal with cli args
@@ -1128,12 +1015,22 @@ int main(int argc, char **argv, char **envp) {
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
   cfg.maxentries = 100000;
-  cfg.pendq_size = 5000;
+  cfg.pendq_size = 20000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
   pdht_tune(PDHT_TUNE_ALL, &cfg);
 
-  f = init_function(k, threshold, test1, INITIAL_LEVEL);
+  f = init_function(k, threshold, test1, defaultparlvl);
   eprintf("function tree initialization complete.\n");
+
+  //print_tree(f);
+
+  pdht_barrier();
+  eprintf("compress.\n");
+  par_compress(f, defaultparlvl);
+
+  pdht_barrier();
+  eprintf("reconstruct.\n");
+  par_reconstruct(f, defaultparlvl);
 
   exit(0);
 }
@@ -1144,7 +1041,7 @@ void print_madnode(void *node) {
   node_t *n = (node_t *)node;
   tensor_t *s, *d;
 
-  printf(" node: <%ld,%ld,%ld>@ %ld", n->a.x, n->a.y,n->a.z, n->a.level);
+  printf(" node: <%ld,%ld,%ld>@ %ld %2x", n->a.x, n->a.y,n->a.z, n->a.level, n->children);
 
   s = get_scaling(f, n);
   d = get_wavelet(f, n);
@@ -1159,8 +1056,16 @@ void print_madnode(void *node) {
     free(d);
   }
 }
- 
 
+
+// XXX: call eval() to check results
+
+
+// compress
+
+// reconstruct
+
+// diff
 
 // 
 // check our results

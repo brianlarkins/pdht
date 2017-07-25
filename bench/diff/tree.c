@@ -77,8 +77,20 @@ pdht_t *create_tree(void) {
     k.x = 0; k.y = 0; k.z = 0; k.level = 0;
 
     memset(&n, 0, sizeof(node_t)); // zero everything
+#if 0
+    n.s.h.size = 729;
+    n.s.h.ndim = 3;
+    n.s.h.dim[0] = 9; n.s.h.dim[1] = 9; n.s.h.dim[2] = 9;
+    n.s.h.stride[0] = 81; n.s.h.stride[1] = 9; n.s.h.stride[2] = 1;
+    for (int i=0; i< n.s.h.size; i++) n.s.array[i] = (double)i;
+    n.d.h.size = 5832;
+    n.d.h.ndim = 3;
+    n.d.h.dim[0] = 18; n.d.h.dim[1] = 18; n.d.h.dim[2] = 18;
+    n.d.h.stride[0] = 324; n.d.h.stride[1] = 18; n.d.h.stride[2] = 1;
+    for (int i=0; i< n.d.h.size; i++) n.d.array[i] = (double)i;
+#endif
     n.a = k; // set logical address
-    n.children = 0xff;
+    n.children = 1;
 
     pdht_put(gtree, &k, &n);
   }

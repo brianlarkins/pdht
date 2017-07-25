@@ -30,7 +30,7 @@ typedef struct madkey_s madkey_t;
 
 struct node_s {
   madkey_t     a;  // logical address of node
-  char         children; // boolean flags for the existence of children
+  char         children; // boolean flag for the existence of children
   coeff_t      valid;
   tensor3dk_t  s;  // scaling (sum) coefficients
   tensor3d2k_t d;  // wavelet (difference) coefficients

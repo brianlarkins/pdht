@@ -18,7 +18,7 @@
 #define MAD_CHILD_RIGHT 1
 
 #define MAX_NODE_LIMIT 20
-#define MAX_TREE_DEPTH 10
+#define MAX_TREE_DEPTH 32
 
 #define DEFAULT_CHUNKSIZE 256
 
