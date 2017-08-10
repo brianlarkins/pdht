@@ -404,7 +404,7 @@ void pdht_init(pdht_config_t *cfg) {
   init_pmi();
 
   c->dbglvl = PDHT_DEBUG_WARN;
-/*
+
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_mds: %d\n", c->ptl.ni_limits.max_mds);
@@ -420,7 +420,7 @@ void pdht_init(pdht_config_t *cfg) {
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
-*/
+
   //print_fucking_mapping();
 
   ret = PtlSetMap(c->ptl.lni, c->size, c->ptl.mapping);
