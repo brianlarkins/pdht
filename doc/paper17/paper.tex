@@ -1,12 +1,13 @@
 %\documentclass[letterpaper,times,10pt]{article}
 %\documentclass[letterpaper,times,10pt,twocolumn]{article}
-\documentclass[conference,letterpaper,10pt,times]{IEEEtran}
+%\documentclass[conference,letterpaper,10pt,times]{IEEEtran}
+\documentclass[sigplan, review=false, anonymous=false]{acmart}
 %\usepackage[top=.9in,left=1in,right=.9in,bottom=1in]{geometry}
 %\usepackage{latex8}
 %\usepackage{fullpage}
-\usepackage{cite}
+%\usepackage{cite}
 \usepackage{verbatim}
-\usepackage[pdftex]{graphicx}
+%\usepackage[pdftex]{graphicx}
 %\usepackage{textcomp}
 %\usepackage{mathcomp}
 %\usepackage{listings}
@@ -18,25 +19,37 @@
 %\usepackage{subfig}
 %\usepackage{wrapfig}
 %\usepackage{times}
-\usepackage{url}
+%\usepackage{url}
 %\usepackage[small,compact]{titlesec}
 
 
 %\lstloadlanguages{C}
 \pagestyle{empty}
 
+\acmConference[PPoPP '18]{Principles and Practice of Parallel
+  Programming}{February 24--28}{Vienna, Austria}
+
 \title{Hardware Accelerated Distributed Hash Tables}
 
-\author{
-%\begin{normalsize}
-\begin{tabular}{cc}
-D. Brian Larkins         & James Dinan\\
-Rhodes College          & Intel Corporation\\
-Memphis, TN  38112  & Boston, MA 01234\\
-larkinsb@rhodes.edu  & james.dinan@intel.com\\
-\end{tabular}
-%\end{normalsize}
-}
+% \author{
+% %\begin{normalsize}
+% \begin{tabular}{cc}
+% D. Brian Larkins         & James Dinan\\
+% Rhodes College          & Intel Corporation\\
+% Memphis, TN  38112  & Boston, MA 01234\\
+% larkinsb@rhodes.edu  & james.dinan@intel.com\\
+% \end{tabular}
+% %\end{normalsize}
+% }
+
+\author{D. Brian Larkins}
+\affiliation{Rhodes College}
+\affiliation{Memphis, TN}
+\email{larkinsb@rhodes.edu}
+\author{James Dinan}
+\affiliation{Intel Corporation}
+\affiliation{Hudson, MA}
+\email{james.dinan@intel.com}
 
 \begin{document}
 
@@ -50,13 +63,15 @@ larkinsb@rhodes.edu  & james.dinan@intel.com\\
 
 \input{abstract}
 \input{introduction}
+\input{background}
 \input{implementation}
+
+\pagebreak
 \input{results}
-\input{related}
 \input{conclusion}
 
 %\singlespacing
-\bibliographystyle{IEEEtran}
+\bibliographystyle{ACM-Reference-Format}
 \bibliography{bibdb}
 %\input{appendix}
 \end{document}

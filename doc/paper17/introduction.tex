@@ -3,11 +3,78 @@
 % high-level -> optimizing systems to permit high-performance within
 % context of high core-count hardware
 
-Recent trends in high-performance hardware design have led to a dramatic increase in
-processor core count. While these advances have increased the capability of
-high-performance computing (HPC) systems, they have also introduced new
-challenges. With higher processor core density comes greater
-contention for shared on-chip and off-chip resources. 
+Recent trends in high-performance hardware design have led to a
+dramatic increase in processor core count. While these advances have
+increased the capability of high-performance computing (HPC) systems,
+they have also introduced new challenges. With higher processor core
+density comes greater contention for memory and a renewed interest
+in memory-efficient sparse data structures as well as Partitioned 
+Global Address Space (PGAS) parallel programming models.
+
+Many parallel programming frameworks support PGAS memory models, 
+including OpenSHMEM~\cite{openshmem-1.3}, Unified Parallel 
+C~\cite{upc-13-spec}, Fortran 2008 Coarrays~\cite{reid:08}, and 
+the Remote Memory Access (RMA) interface, supported within 
+MPI~\cite{mpi-forum:15}.
+
+% PGAS -> provides more memory
+%   great for dense, hard for sparse
+PGAS programming models help address memory contention by permitting 
+one-sided access to large distributed data structures. 
+
+% many applications that use sparse data structures are naturally expressed
+% using logical addresses, such as a coordinate/level system in a spatial
+% decompositon tree, etc.
+
+% matching an irregular data structure's logical addressing scheme to a 
+% traditional PGAS model can be challenging. 
+
+% drawbacks/challenges with true PGAS models
+%    - LA -> PA not feasible (i.e. grandchild of a tree node)
+%    - indirections 
+%       - (multiple fetches)
+%       - directory structures
+%    - adds latency for each access
+%    - data layout may change over time
+%    - caching is no silver bullet
+
+% drawbacks with MPI / message passing approaches
+%    - tags can be used to associate "logically addressed" locations
+%    - MPI does not provide a fetch/get mechanism to communicate 
+%      a tagged location
+
+% this work describes an efficient implementation of a PGLAS system 
+% that is built on networking mechanisms designed to support MPI
+% communications
+
+% our approach is based on some insights
+%   - low-level networking systems provide direct support for
+%     logical address systems 
+%   - using lower-level systems reduce communication overhead
+%   - applications can refer to globally shared data objects
+%     using an addressing scheme that corresponds to the problem
+%     at hand
+
+
+% in particular, our work takes advantage of the Portals 4 network
+% programming interface. Portals works great for a number of
+% HPC communication middleware MPI and PGAS-based systems such as
+% OpenMPI and UPC
+%
+% it's also great that Portals is designed to play nice with
+% hardware offload systems
+
+% in this paper we describe the implementation of a system that
+% realizes a PGLAS with a PDHT and is implemented using the 
+% Portals networking interface
+% we make the following contributions:
+%  - MPI matching interfaces can be used to implement a PGLAS
+%  - PGLAS support can be easily run on hardware offload systems
+%    that also support optimized MPI matching operations
+%  - relying on the network layer to map matching criteria
+%    to phys addr reduces the likelihood for collisions vs
+%    a conventional hash table structure
+
 
 Greater contention for memory resources is a well-studied
 consequence of higher core counts. Likewise, access to the

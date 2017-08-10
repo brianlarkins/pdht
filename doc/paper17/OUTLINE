@@ -1,14 +1,31 @@
 
 - intro
 
+  -
+
+  - insights
+
+  - contributions
+
 - background / related work
 
 - approach / PGLAS
   - PGLAS -> portals
 
 - implementation
+  - overall
+  - put
+  - get
+  - fence
+  - other features
+    - atomic counter
+    - barrier/reduce/all-reduce/broadcast
 
 - challenges
+  - poll elimination with triggered updates
+  - matchlist length
+    - multiple portal table entries
+    - Portals 4 unordered matching
 
 - empirical results
 
