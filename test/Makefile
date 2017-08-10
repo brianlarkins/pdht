@@ -36,8 +36,17 @@ latency: pdhtlibs latency.c
 matchlength: pdhtlibs matchlength.c
 	$(CC) $(CFLAGS) -o matchlength matchlength.c $(PDHT_LIBS)
 
+nbtest: pdhtlibs nbtest.c
+	$(CC) $(CFLAGS) -o nbtest nbtest.c $(PDHT_LIBS)
+
 notfound: pdhtlibs notfound.c
 	$(CC) $(CFLAGS) -o notfound notfound.c $(PDHT_LIBS)
+
+ohb_memhybrid: pdhtlibs ohb_memhybrid.c
+	$(CC) $(CFLAGS) -o ohb_memhybrid ohb_memhybrid.c $(PDHT_LIBS)
+
+ohb_memlat: pdhtlibs ohb_memlat.c
+	$(CC) $(CFLAGS) -o ohb_memlat ohb_memlat.c $(PDHT_LIBS)
 
 optimes: pdhtlibs optimes.c
 	$(CC) $(CFLAGS) -o optimes optimes.c $(PDHT_LIBS)

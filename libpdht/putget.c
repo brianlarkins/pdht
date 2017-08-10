@@ -46,10 +46,8 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
   struct timespec ts;
 
   PDHT_START_TIMER(dht, ptimer);
-  PDHT_START_TIMER(dht, t3);
-  PDHT_START_TIMER(dht, t4);
-  dht->stats.puts++;
 
+  dht->stats.puts++;
   // 1. hash key -> rank + match bits + element
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
@@ -132,7 +130,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       goto error;
     }
 
-    PDHT_STOP_TIMER(dht, t3);
+
 
     // wait for local completion
     ret = PtlCTWait(dht->ptl.lmdct, current.success+1, &ctevent);
@@ -141,7 +139,6 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       goto error;
     }
 
-    PDHT_STOP_TIMER(dht, t4);
 
     //pdht_dprintf("pdht_put: post: success: %lu fail: %lu\n", ctevent.success, ctevent.failure);
 
@@ -252,14 +249,15 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_status_t rval = PdhtStatusOK;
 
   PDHT_START_TIMER(dht, gtimer);
-  PDHT_START_TIMER(dht, t1);
-  PDHT_START_TIMER(dht, t2);
+
+
   dht->stats.gets++;
 
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
   dht->stats.ptcounts[ptindex]++;
-
+  
+  PDHT_START_TIMER(dht, t1);
   PtlCTGet(dht->ptl.lmdct, &dht->ptl.curcounts);
   //pdht_dprintf("pdht_get: pre: success: %lu fail: %lu\n", dht->ptl.curcounts.success, dht->ptl.curcounts.failure);
 
@@ -269,13 +267,18 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   PDHT_STOP_TIMER(dht, t1);
 
+  PDHT_START_TIMER(dht, t2);
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
+  
+
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_get: PtlGet(key: %lu, rank: %d, ptindex: %d/%d) failed: (%s) : %d\n", *(long *)key, rank.rank, ptindex, dht->ptl.putindex[ptindex], pdht_ptl_error(ret), dht->stats.gets);
     goto error;
   }
+  
   PDHT_STOP_TIMER(dht, t2);
 
+  PDHT_START_TIMER(dht, t3);
   // check for completion or failure
   ret = PtlCTWait(dht->ptl.lmdct, dht->ptl.curcounts.success+1, &ctevent);
   if (ret != PTL_OK) {
@@ -283,9 +286,10 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     goto error;
   }
 
+  PDHT_STOP_TIMER(dht, t3);
 
   //pdht_dprintf("pdht_get: event counter: success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
-
+  PDHT_START_TIMER(dht,t5);
   if (ctevent.failure > dht->ptl.curcounts.failure) {
     ret = PtlEQWait(dht->ptl.lmdeq, &ev);
     if (ret == PTL_OK) {
@@ -308,7 +312,8 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
       goto error;
     }
   }
-
+  PDHT_STOP_TIMER(dht,t5);
+  PDHT_START_TIMER(dht,t4);
   // fetched entry has key + value concatenated, validate key
   if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
@@ -316,13 +321,15 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     pdht_dprintf("pdht_get: found collision. %d\n");
     pdht_dump_entry(dht, key, buf);
     rval = PdhtStatusCollision;
+    PDHT_STOP_TIMER(dht,t4);
     goto done;
   }
-
+  PDHT_STOP_TIMER(dht,t4);
   // looks good, copy value to application buffer
   // skipping over the embedded key data (for collision detection)
+  PDHT_START_TIMER(dht,t6);
   memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
-
+  PDHT_STOP_TIMER(dht,t6);
 done:
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type

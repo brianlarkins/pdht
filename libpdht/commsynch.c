@@ -143,7 +143,6 @@ void pdht_barrier(void) {
   ptl_size_t     test;
   ptl_ct_event_t cval, cval2;
   int ret; 
-
   // use binary tree of processes
   p.rank = ((c->rank + 1) >> 1) - 1;
   l.rank = ((c->rank + 1) << 1) - 1;
@@ -166,7 +165,6 @@ void pdht_barrier(void) {
     }
     pdht_lprintf(PDHT_DEBUG_VERBOSE, "children have entered barrier\n");
   }
-
   // children tell parents that they have entered
   if (c->rank > 0)  {
     pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", p.rank);
@@ -231,10 +229,10 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
   case PdhtReduceOpMax:
     break;
   default:
+
     pdht_dprintf("pdht_reduce: unsupported reduction operation\n");
     exit(1);
   }
-
   // figure out if we are the left or right child of our parent
   destme = ((c->rank % 2) != 0) ? __PDHT_REDUCE_LMATCH : __PDHT_REDUCE_RMATCH;
 
@@ -255,16 +253,15 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
     ret = PtlCTWait(c->ptl.collective_ct, test, &cval);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_reduce: CTWait failed (children)\n");
+      
       exit(1);
     }
   }
-
   if (kids > 0) {
     reduce_zip(in, c->ptl.collective_lscratch, op, type, elems);
     if (kids == 2) 
       reduce_zip(in, c->ptl.collective_rscratch, op, type, elems);
   }
-
   // send our reduced buffer to our parent
   if (c->rank > 0)  {
     ret = PtlPut(c->ptl.collective_md, (ptl_size_t)in, tysize*elems, PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
@@ -273,6 +270,7 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
     // we're the root our local data has been zipped with each l/r subtree
     memcpy(out, in, tysize*elems);
   }
+  return PdhtStatusOK;
 } 
 
 
@@ -348,7 +346,9 @@ pdht_status_t pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datat
    pdht_status_t ret;
    
    // this is a lazy implementation. i get it.
+   
    ret = pdht_reduce(in, out, op, type, elems);
+
    if (ret != PdhtStatusOK)
       return ret;
    pdht_barrier(); 
@@ -375,8 +375,8 @@ void pdht_fence(pdht_t *dht) {
 
     sbuf[0] = dht->stats.pendputs;
     sbuf[1] = dht->stats.appends;
-
     pdht_allreduce(sbuf, rbuf, PdhtReduceOpSum, IntType, 2);
+    
     //pdht_eprintf(PDHT_DEBUG_NONE, "expected: %d actual: %d\n", rbuf[0], rbuf[1]);
   } while (rbuf[0] > rbuf[1]);
 
