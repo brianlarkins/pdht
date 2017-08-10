@@ -10,6 +10,7 @@
 #define _XOPEN_SOURCE 700
 #include <time.h>
 #include <pdht_impl.h>
+#include <sys/stat.h>
 
 pdht_context_t *c = NULL;       // a global variable. for shame.
 pdht_config_t   *__pdht_config = NULL; // another one. i'm over it. (used only during init)
@@ -36,8 +37,14 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   char *iter; // used for pointer math
   int ret;
 
+  struct stat fileStat;
+  if (stat("/dev/ummunotify",&fileStat) != 0){
+    setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
+  }
+
+  
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
-  setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
+
   //setenv("PTL_LOG_LEVEL","3",1);
   //setenv("PTL_DEBUG","1",1);
   // setenv("PTL_PROGRESS_NOSLEEP","1",1);
@@ -52,14 +59,15 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
-
+  
   if (!c) {
     pdht_init(&cfg);
   }
+	  
 
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
-  
+
   c->hts[c->dhtcount] = dht;
   c->dhtcount++; // register ourselves globally on this process
    
@@ -93,7 +101,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     dht->entrysize = (sizeof(_pdht_ht_trigentry_t)) + dht->elemsize;
   else
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: illegal polling mode\n");
-
+  /*
   // print runtime settings
   pdht_eprintf(PDHT_DEBUG_WARN, "pdht_create: hash table entry size: %lu (%d + %d)\n", 
          dht->entrysize, dht->pmode == PdhtPendingPoll ? sizeof(_pdht_ht_entry_t) : sizeof(_pdht_ht_trigentry_t), dht->elemsize);
@@ -106,15 +114,17 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   } else {
     pdht_eprintf(PDHT_DEBUG_WARN, "\tpending PTE mode: triggered\n");
   }
-
+*/
   dht->ht = calloc(dht->maxentries, dht->entrysize);
   if (!dht->ht) {
     pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
     exit(1);
   }
 
+  
   // use a byte pointer as iterator over variable-sized element array
   iter = (char *)dht->ht;
+
 
   // initialize entire hash table array
   for (int i=0; i < dht->maxentries; i++) {
@@ -123,6 +133,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
     iter += dht->entrysize; // pointer math, danger.
   }
+    
+
 
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
@@ -320,6 +332,7 @@ void pdht_init(pdht_config_t *cfg) {
   ptl_process_t me;
   int ret;
 
+	
 
   // turn off output buffering for everyone's sanity
   setbuf(stdout, NULL);
@@ -327,13 +340,15 @@ void pdht_init(pdht_config_t *cfg) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
-  atexit(pdht_exit_handler);
 
+  atexit(pdht_exit_handler);
+	
   ret = PtlInit();
   if (ret != PTL_OK) {
     pdht_dprintf("portals initialization error\n");
     exit(-1);
   }
+
 #if 0
   ret = PtlNIInit(PTL_IFACE_DEFAULT,
       PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
@@ -389,7 +404,7 @@ void pdht_init(pdht_config_t *cfg) {
   init_pmi();
 
   c->dbglvl = PDHT_DEBUG_WARN;
-
+/*
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_mds: %d\n", c->ptl.ni_limits.max_mds);
@@ -405,7 +420,7 @@ void pdht_init(pdht_config_t *cfg) {
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_waw_ordered_size: %d\n", c->ptl.ni_limits.max_waw_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
-
+*/
   //print_fucking_mapping();
 
   ret = PtlSetMap(c->ptl.lni, c->size, c->ptl.mapping);
