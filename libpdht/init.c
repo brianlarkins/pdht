@@ -101,7 +101,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     dht->entrysize = (sizeof(_pdht_ht_trigentry_t)) + dht->elemsize;
   else
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: illegal polling mode\n");
-  /*
+  
   // print runtime settings
   pdht_eprintf(PDHT_DEBUG_WARN, "pdht_create: hash table entry size: %lu (%d + %d)\n", 
          dht->entrysize, dht->pmode == PdhtPendingPoll ? sizeof(_pdht_ht_entry_t) : sizeof(_pdht_ht_trigentry_t), dht->elemsize);
@@ -114,7 +114,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   } else {
     pdht_eprintf(PDHT_DEBUG_WARN, "\tpending PTE mode: triggered\n");
   }
-*/
+
   dht->ht = calloc(dht->maxentries, dht->entrysize);
   if (!dht->ht) {
     pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
