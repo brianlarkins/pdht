@@ -36,6 +36,7 @@ void pdht_init(){
 
 
 pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
+  printf("\n");
   pdht_t *dht;
   ht_t *ht = NULL;
   dht = (pdht_t *)malloc(sizeof(pdht_t));
