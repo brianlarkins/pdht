@@ -116,12 +116,14 @@ Block_t* filledBlock(int seed,Block_t *newBlock) {
     return newBlock;
 }
 
-Block_t* multiplyBlocks(int row, int col,pdht_t *ht,Block_t *newBlock) {
+void multiplyBlocks(int row, int col,pdht_t *ht,Block_t *newBlock) {
     DEBUG_LOG("\nCalculating block: (%d, %d)\n", row, col);
     unsigned long keyA, keyB;
-    //Block_t *newBlock = calloc(sizeof(Block_t), 1);
+    //Block_t newBlock;
     Block_t blockA;
     Block_t blockB;
+    memset(newBlock,0,sizeof(Block_t));
+    //resultBlock = calloc(sizeof(Block_t),1);
     // Loop over blocks to multiply
     for (int i = 0; i < BLOCKS_PER_ROW; i++) {
         
@@ -148,7 +150,7 @@ Block_t* multiplyBlocks(int row, int col,pdht_t *ht,Block_t *newBlock) {
         }
     }
     
-    return newBlock;
+    //return newBlock;
 }
 
 // pass in the 2 value keying function of the matrix to print
@@ -253,6 +255,7 @@ int main(int argc, char **argv) {
     pdht_fence(ht);
     PDHT_START_ATIMER(total);
     
+    
     resultBlock = calloc(sizeof(Block_t),1);
     for (int row = 0; row < BLOCKS_PER_ROW; row++) {
         for (int col = 0; col < BLOCKS_PER_ROW; col++) {
@@ -267,7 +270,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    free(resultBlock);
+    //free(resultBlock);
     PDHT_STOP_ATIMER(total);
     pdht_fence(ht);
     
