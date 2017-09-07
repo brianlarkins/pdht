@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    //free(resultBlock);
+    free(resultBlock);
     PDHT_STOP_ATIMER(total);
     pdht_fence(ht);
     
