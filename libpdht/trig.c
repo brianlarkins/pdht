@@ -86,7 +86,7 @@ void pdht_trig_init(pdht_t *dht) {
       // append ME to the pending ME list
       ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
       if (ret != PTL_OK) {
-        pdht_dprintf("pdht_trig_init: PtlMEAppend error (%d:%d)\n", i,hte->me.length);
+        pdht_dprintf("pdht_trig_init: PtlMEAppend error (%d:%d) -- %s\n", i,hte->me.length, pdht_ptl_error(ret));
         exit(1);
       }
 
@@ -110,6 +110,7 @@ void pdht_trig_init(pdht_t *dht) {
       }
 
       iter += dht->entrysize; // pointer math, danger.
+      dht->usedentries++;
     }
   }
 
@@ -247,10 +248,15 @@ void *pdht_trig_progress(void *arg) {
           for (int i=0; i < lothresh; i++) {
             hte = (_pdht_ht_trigentry_t *)index;
 
+            // don't create pending queue entries beyond maxentries count 
+            if (dht->usedentries >= dht->maxentries)
+              break;
+
             // allocate per-pending elem trigger event counter
             ret = PtlCTAlloc(dht->ptl.lni, &hte->tct);
             if (ret != PTL_OK) {
-              pdht_dprintf("pdht_trig_init: PtlCTAlloc failure: %s (%d)\n", pdht_ptl_error(ret), i);
+              pdht_dprintf("pdht_trig_progress: PtlCTAlloc failure: %s (%d used: %ld max: %ld)\n", 
+              pdht_ptl_error(ret), i, dht->usedentries, dht->maxentries);
               exit(1);
             }
 
@@ -271,7 +277,8 @@ void *pdht_trig_progress(void *arg) {
             // append ME to the pending ME list
             ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
             if (ret != PTL_OK) {
-              pdht_dprintf("pdht_trig_init: PtlMEAppend error (%d:%d)\n", i,hte->me.length);
+              pdht_dprintf("pdht_trig_progress: PtlMEAppend error (%d:%d) used: %ld: %s\n", 
+                          i, hte->me.length, dht->usedentries,pdht_ptl_error(ret));
               exit(1);
             }
 
@@ -290,12 +297,13 @@ void *pdht_trig_progress(void *arg) {
                                        &hte->me, PTL_PRIORITY_LIST,
                                        hte, &hte->ame, hte->tct, 1);
             if (ret != PTL_OK) {
-              pdht_dprintf("pdht_trig_init: PtlTriggeredMEAppend error (iteration %d)\n",i );
+              pdht_dprintf("pdht_trig_progress: PtlTriggeredMEAppend error (iteration %d)\n",i );
               exit(1);
             }
 
             index += dht->entrysize; // pointer math, danger.
             dht->nextfree++;
+            dht->usedentries++;
           } // refill
 
           dht->stats.tappends[ptindex] -= lothresh; // reset the number of consumed pending entries

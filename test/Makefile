@@ -33,6 +33,9 @@ insert: pdhtlibs insert.c
 latency: pdhtlibs latency.c
 	$(CC) $(CFLAGS) -o latency latency.c $(PDHT_LIBS)
 
+latencies: pdhtlibs latencies.c
+	$(CC) $(CFLAGS) -o latencies latencies.c $(PDHT_LIBS)
+
 matchlength: pdhtlibs matchlength.c
 	$(CC) $(CFLAGS) -o matchlength matchlength.c $(PDHT_LIBS)
 

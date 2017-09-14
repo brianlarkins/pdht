@@ -214,7 +214,8 @@ struct pdht_s {
   unsigned          keysize;
   unsigned          elemsize;
   unsigned          entrysize;
-  unsigned          maxentries;
+  unsigned          maxentries;  // max # of ht entries
+  unsigned          usedentries; // number of pending + active entries
   unsigned          pendq_size;
   pdht_hashfunc     hashfn;
   unsigned          nextfree;

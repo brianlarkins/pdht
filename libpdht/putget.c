@@ -257,7 +257,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   dht->stats.ptcounts[ptindex]++;
   
-  PDHT_START_TIMER(dht, t1);
   PtlCTGet(dht->ptl.lmdct, &dht->ptl.curcounts);
   //pdht_dprintf("pdht_get: pre: success: %lu fail: %lu\n", dht->ptl.curcounts.success, dht->ptl.curcounts.failure);
 
@@ -265,9 +264,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_dprintf("pdht_get: key: %lu from active queue of %d with match: %lu\n", *(unsigned long *)key, rank, mbits);
 #endif  
 
-  PDHT_STOP_TIMER(dht, t1);
 
-  PDHT_START_TIMER(dht, t2);
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
   
 
@@ -276,9 +273,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     goto error;
   }
   
-  PDHT_STOP_TIMER(dht, t2);
-
-  PDHT_START_TIMER(dht, t3);
   // check for completion or failure
   ret = PtlCTWait(dht->ptl.lmdct, dht->ptl.curcounts.success+1, &ctevent);
   if (ret != PTL_OK) {
@@ -286,10 +280,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     goto error;
   }
 
-  PDHT_STOP_TIMER(dht, t3);
-
   //pdht_dprintf("pdht_get: event counter: success: %lu failure: %lu\n", ctevent.success, ctevent.failure);
-  PDHT_START_TIMER(dht,t5);
   if (ctevent.failure > dht->ptl.curcounts.failure) {
     ret = PtlEQWait(dht->ptl.lmdeq, &ev);
     if (ret == PTL_OK) {
@@ -312,8 +303,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
       goto error;
     }
   }
-  PDHT_STOP_TIMER(dht,t5);
-  PDHT_START_TIMER(dht,t4);
   // fetched entry has key + value concatenated, validate key
   if (memcmp(buf, key, dht->keysize) != 0) {
     // keys don't match, this must be a collision
@@ -324,12 +313,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     PDHT_STOP_TIMER(dht,t4);
     goto done;
   }
-  PDHT_STOP_TIMER(dht,t4);
   // looks good, copy value to application buffer
   // skipping over the embedded key data (for collision detection)
-  PDHT_START_TIMER(dht,t6);
   memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
-  PDHT_STOP_TIMER(dht,t6);
 done:
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type

@@ -1,5 +1,5 @@
 #!/bin/bash
 cd ../portals4
-./autogen.sh
+#./autogen.sh
 ./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-transport-shmem --enable-unordered-matching
-#./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-unordered-matching
+#./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --disable-arg-checking

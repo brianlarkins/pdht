@@ -41,7 +41,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   if (stat("/dev/ummunotify",&fileStat) != 0){
     setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
   }
-
   
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
 
@@ -79,6 +78,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->keysize = keysize;
   dht->elemsize = elemsize;
   dht->maxentries = cfg.maxentries;
+  dht->usedentries = 0;
   dht->pendq_size = cfg.pendq_size;
   dht->mode = mode;
   dht->pmode = cfg.pendmode;
@@ -134,8 +134,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     iter += dht->entrysize; // pointer math, danger.
   }
     
-
-
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
