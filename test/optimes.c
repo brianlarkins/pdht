@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
   memset(val,1,elemsize);
   if (c->rank == 0) {
     PDHT_START_ATIMER(lupdate);
-    for (int iter=0; iter < maxentries; iter++) {
+    for (int iter=0; iter < maxiters; iter++) {
       pdht_update(ht, &key, val);
     } 
     PDHT_STOP_ATIMER(lupdate);
@@ -284,7 +284,7 @@ int main(int argc, char **argv) {
         (PDHT_READ_ATIMER_USEC(lupdate)/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
     for (int e=0; e<6; e++) {
-      eprintf("  [%7d]: local get: %12.7f us remote get: %12.7f us\n", mlistentry[e],
+      eprintf("  [%7d]: local get: %12.7f us remote get:     %12.7f us\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
     }
