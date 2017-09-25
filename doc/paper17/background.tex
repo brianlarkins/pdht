@@ -72,11 +72,11 @@ PGAS unordered-by-default communication model. Next, tags are intended to be
 used as a mechanism to fix a matching of specific send/receive messages, not to 
 implement a persistent key/value store. Tagged receive operations are consumed 
 by incoming messages, whereas the PGLAS model permits the key/value association
-to persist until explicity released by the application. Lastly, tagged MPI 
+to persist until explicitly released by the application. Lastly, tagged MPI 
 requests for data objects that do not exist will result in the request being 
 deferred to the unexpected message list, rather than a negative 
 acknowledgement. While this is reasonable for a two-sided communication model, 
-it makes more sesne to explicitly reject PGLAS requests for non-existent data 
+it makes more sense to explicitly reject PGLAS requests for non-existent data 
 objects.
 
 \subsection{Distributed Sparse Data}
@@ -84,7 +84,7 @@ objects.
 We see the PGLAS model as tool for dealing sparsity within HPC problem domains.  
 Sparse data structures are commonly used in a number of important HPC 
 applications, which can create challenges in obtaining high performance. Matrix 
-and tensor representations frequently have to contend withi sparse data, 
+and tensor representations frequently have to contend with sparse data, 
 relying on specialized formats such as compressed spare row (CSR) and variants.  
 Other problems, such as grid/mesh solvers, or N-body simulation are naturally 
 expressed with spatial decomposition data structures such as quadtrees and 
