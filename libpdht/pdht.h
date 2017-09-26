@@ -241,6 +241,7 @@ typedef struct pdht_s pdht_t;
 #define PDHT_TUNE_ENTRY      0x04
 #define PDHT_TUNE_PENDQ      0x08
 #define PDHT_TUNE_PTOPT      0x10
+#define PDHT_TUNE_QUIET      0x20
 #define PDHT_TUNE_ALL        0xffffffff
 struct pdht_config_s {
   unsigned      nptes;
@@ -248,6 +249,7 @@ struct pdht_config_s {
   unsigned      maxentries;
   unsigned      pendq_size;
   unsigned      ptalloc_opts;
+  unsigned      quiet;
 };
 typedef struct pdht_config_s pdht_config_t;
 

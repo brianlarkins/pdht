@@ -264,9 +264,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_dprintf("pdht_get: key: %lu from active queue of %d with match: %lu\n", *(unsigned long *)key, rank, mbits);
 #endif  
 
-
   ret = PtlGet(dht->ptl.lmd, (ptl_size_t)buf, PDHT_MAXKEYSIZE + dht->elemsize, rank, dht->ptl.getindex[ptindex], mbits, roffset, NULL);
-  
 
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_get: PtlGet(key: %lu, rank: %d, ptindex: %d/%d) failed: (%s) : %d\n", *(long *)key, rank.rank, ptindex, dht->ptl.putindex[ptindex], pdht_ptl_error(ret), dht->stats.gets);
