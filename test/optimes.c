@@ -53,11 +53,13 @@ int main(int argc, char **argv) {
   cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
   cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
   cfg.ptalloc_opts = 0;
+  cfg.quiet        = 0;
 
   while ((opt = getopt(argc, argv, "dhi:n:s:puU")) != -1) {
     switch (opt) {
       case 'd':
         rawmode = 1;
+        cfg.quiet = 1;
         break;
       case 'h':
         fprintf(stderr,"usage:\t%s [-dhuU] [-i iters] [-s size]\n", argv[0]);
@@ -159,7 +161,8 @@ int main(int argc, char **argv) {
       key+=2;
     } 
     PDHT_STOP_ATIMER(lput);
-    printf("last local: %ld\n",key-2);
+    if (!rawmode)
+      printf("last local: %ld\n",key-2);
   }
 
   // TIMING: latency for local update operations
@@ -169,7 +172,7 @@ int main(int argc, char **argv) {
   memset(val,1,elemsize);
   if (c->rank == 0) {
     PDHT_START_ATIMER(lupdate);
-    for (int iter=0; iter < maxentries; iter++) {
+    for (int iter=0; iter < maxiters; iter++) {
       pdht_update(ht, &key, val);
     } 
     PDHT_STOP_ATIMER(lupdate);
@@ -187,7 +190,8 @@ int main(int argc, char **argv) {
       key+=2;
     }
     PDHT_STOP_ATIMER(rput);
-    printf("last remote: %ld\n",key-2);
+    if (!rawmode)
+      printf("last remote: %ld\n",key-2);
   } 
 
   // TIMING: latency for remote update operations
@@ -284,20 +288,23 @@ int main(int argc, char **argv) {
         (PDHT_READ_ATIMER_USEC(lupdate)/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
     for (int e=0; e<6; e++) {
-      eprintf("  [%7d]: local get: %12.7f us remote get: %12.7f us\n", mlistentry[e],
+      eprintf("  [%7d]: local get: %12.7f us remote get:     %12.7f us\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
     }
   } else {
     // iterations elemsize lput rput lupdate rupdate lhead rhead ltail rtail
+#if 0
     eprintf("  %7d %7d %9.5f %9.5f ", maxentries, elemsize,
         (PDHT_READ_ATIMER_USEC(lput)/(double)maxentries), 
         (PDHT_READ_ATIMER_USEC(rput)/(double)maxentries));
     eprintf(" %9.5f %9.5f ", 
         (PDHT_READ_ATIMER_USEC(lupdate)/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
+#endif
+    // { 1, 10, 100, 1000, 10000, 50000 }
     for (int e=0; e<6; e++) {
-      eprintf(" %9.5f %9.5f ", 
+      eprintf(" %7d %9.5f %9.5f\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
     }

@@ -46,7 +46,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   //setenv("PTL_LOG_LEVEL","3",1);
   //setenv("PTL_DEBUG","1",1);
-  // setenv("PTL_PROGRESS_NOSLEEP","1",1);
+  //setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   if (!__pdht_config) {
      cfg.nptes       = PDHT_DEFAULT_NUM_PTES;
@@ -55,6 +55,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
      cfg.pendq_size  = PDHT_PENDINGQ_SIZE;
      cfg.pendq_size  = PDHT_PENDINGQ_SIZE;
      cfg.ptalloc_opts = PDHT_PTALLOC_OPTIONS;
+     cfg.quiet        = PDHT_DEFAULT_QUIET;
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
@@ -294,6 +295,7 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
      __pdht_config->maxentries   = PDHT_DEFAULT_TABLE_SIZE;
      __pdht_config->pendq_size   = PDHT_PENDINGQ_SIZE;
      __pdht_config->ptalloc_opts = PDHT_PTALLOC_OPTIONS;
+     __pdht_config->ptalloc_opts = PDHT_DEFAULT_QUIET;
   }
   if (opts & PDHT_TUNE_NPTES) 
     __pdht_config->nptes        = config->nptes;
@@ -305,6 +307,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->pendq_size   = config->pendq_size;
   if (opts & PDHT_TUNE_PTOPT)
     __pdht_config->ptalloc_opts = config->ptalloc_opts;
+  if (opts & PDHT_TUNE_QUIET)
+    __pdht_config->quiet        = config->quiet;
 
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
@@ -338,6 +342,10 @@ void pdht_init(pdht_config_t *cfg) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
+  if (!cfg->quiet)
+    c->dbglvl = PDHT_DEBUG_WARN;
+  else 
+    c->dbglvl = PDHT_DEBUG_NONE;
 
   atexit(pdht_exit_handler);
 	
@@ -401,7 +409,6 @@ void pdht_init(pdht_config_t *cfg) {
 
   init_pmi();
 
-  c->dbglvl = PDHT_DEBUG_WARN;
 
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);

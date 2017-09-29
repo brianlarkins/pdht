@@ -96,6 +96,7 @@ int main(int   argc,
         CHECK_RETURNVAL(PtlCTWait(read_md.ct_handle, 1, &ctc));
         assert(ctc.failure == 0);
     }
+
     /*printf("%i readval: %llx\n", (int)myself.rank,
      *     (unsigned long long)readval);*/
     assert(readval == 0xdeadbeefc0d1f1ed);
