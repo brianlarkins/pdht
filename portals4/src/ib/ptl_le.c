@@ -392,6 +392,7 @@ int __check_overflow(le_t *le, int delete)
  */
 int check_overflow_search_only(le_t *le)
 {
+
     ni_t *ni = obj_to_ni(le);
     pt_t *pt = &ni->pt[le->pt_index];
     buf_t *buf;
@@ -401,7 +402,6 @@ int check_overflow_search_only(le_t *le)
     ptl_event_t event[atomic_read(&pt->unexpected_size)];
 
     list_for_each_entry_safe(buf, n, &pt->unexpected_list, unexpected_list) {
-
         if ((le->type == TYPE_LE || check_match(buf, (me_t *)le))) {
             if (le->eq && !(le->options & PTL_LE_EVENT_COMM_DISABLE)) {
                 buf->matching_list = PTL_OVERFLOW_LIST;
@@ -438,6 +438,88 @@ int check_overflow_search_only(le_t *le)
     }
 
     return PTL_OK;
+}
+
+//finds entry in active list that has same match bits as passed in le
+
+int check_active_search_only(le_t *le){
+
+
+
+  me_t *me = (me_t *)le;
+  ni_t *ni = obj_to_ni(me);
+  pt_t *pt = &ni->pt[le->pt_index];
+  
+  ptl_event_t ev;
+  buf_t *buf;// = (buf_t *)malloc(sizeof(buf_t));
+#ifdef WITH_UNORDERED_MATCHING
+
+  if(pt->options & PTL_PT_MATCH_UNORDERED){
+
+
+
+
+    PTL_FASTLOCK_LOCK(&pt->lock);
+    pt_me_hash_t *hashentry;
+    HASH_FIND(hh,pt->matchlist_ht,&me->match_bits,sizeof(ptl_match_bits_t),hashentry);
+    if(hashentry != NULL){
+      
+      
+      ev.type = PTL_EVENT_SEARCH;
+      ev.start = hashentry->match_entry->start;
+      ev.user_ptr = le->user_ptr;
+      ev.ni_fail_type = PTL_NI_OK;
+      send_target_event(le->eq, &ev);
+    }
+    else{
+      
+      make_le_event(le,le->eq, PTL_EVENT_SEARCH, PTL_NI_NO_MATCH);
+
+    }
+    
+    PTL_FASTLOCK_UNLOCK(&pt->lock);
+    return PTL_OK;
+  }
+
+#endif
+
+  int found = 0;
+  PTL_FASTLOCK_LOCK(&pt->lock);
+
+  me_t *mcur = NULL, *n = NULL;
+
+  list_for_each_entry_safe(mcur, n, &pt->priority_list, list) {
+
+    if ((mcur->match_bits | mcur->ignore_bits) == (me->match_bits | me->ignore_bits)) {
+
+      ev.type = PTL_EVENT_SEARCH;
+      ev.start = mcur->start;
+      ev.user_ptr = mcur->user_ptr;
+      found = 1;
+      break;
+    }
+  
+
+  }
+
+  PTL_FASTLOCK_UNLOCK(&pt->lock);
+
+  if (le->eq && !(le->options & PTL_LE_EVENT_COMM_DISABLE)) {
+     if(found == 1){
+        ev.ni_fail_type = PTL_NI_OK;
+        send_target_event(le->eq, &ev);
+    } else {
+        
+
+        make_le_event(le, le->eq, PTL_EVENT_SEARCH, PTL_NI_NO_MATCH);
+    }
+  }
+
+
+
+  ptl_warn("Cannot do active search if not using unordered matching"); 
+  return PTL_OK;
+
 }
 
 /**

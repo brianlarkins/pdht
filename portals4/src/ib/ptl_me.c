@@ -58,6 +58,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
                                ptl_search_op_t search_op, void *user_ptr,
                                ptl_handle_me_t *me_handle_p)
 {
+    
     int err;
     ni_t *ni;
     me_t *me = me;
@@ -88,6 +89,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
          ni->limits.max_entries)) {
         (void)__sync_fetch_and_sub(&ni->current.max_entries, 1);
         err = PTL_NO_SPACE;
+
         goto err2;
     }
 
@@ -124,7 +126,6 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     me->ignore_bits = me_init->ignore_bits;
 
     atomic_set(&me->busy, 0);
-
 #ifndef NO_ARG_VALIDATION
     if (me_handle_p) {
         /* Only append can modify counters. */
@@ -136,6 +137,8 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     }
 
     if (me->ct && (obj_to_ni(me->ct) != ni)) {
+        
+       
         err = PTL_ARG_INVALID;
         goto err3;
     }
@@ -176,6 +179,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
 
         err = le_append_pt(ni, (le_t *)me);
 
+
 #ifdef WITH_UNORDERED_MATCHING
        if ((pt->options & PTL_PT_MATCH_UNORDERED) && (ni->options & PTL_NI_MATCHING)) {
            pt_me_hash_t *newbuf = calloc(1,sizeof(pt_me_hash_t)); // zeroed for UTHash
@@ -195,12 +199,16 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
         *me_handle_p = me_to_handle(me);
 
     } else {
+
         if (search_op == PTL_SEARCH_ONLY)
             err = check_overflow_search_only((le_t *)me);
-        else
-            err = check_overflow_search_delete((le_t *)me);
 
-        if (err)
+        else if((search_op == PTL_ACTIVE_SEARCH_ONLY)){
+
+            err = check_active_search_only((le_t *)me);
+        }
+        else     err = check_overflow_search_delete((le_t *)me);
+      if (err)
             goto err3;
 
         me_put(me);
@@ -212,8 +220,11 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     return PTL_OK;
 
   err3:
+    
+
     me_put(me);
   err2:
+
     ni_put(ni);
 #ifndef NO_ARG_VALIDATION
   err1:
