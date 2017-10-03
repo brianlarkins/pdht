@@ -1,4 +1,7 @@
+
+
 #define _XOPEN_SOURCE 600
+
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -12,6 +15,7 @@ extern pdht_context_t *c;
 int eprintf(const char *format, ...);
 
 int main(int argc, char **argv);
+
 
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
@@ -54,8 +58,8 @@ int main(int argc, char **argv) {
   cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
   cfg.ptalloc_opts = 0;
   cfg.quiet        = 0;
-
-  while ((opt = getopt(argc, argv, "dhi:n:s:puU")) != -1) {
+  cfg.local_gets   = PdhtRegular;
+  while ((opt = getopt(argc, argv, "dhi:n:s:puUl")) != -1) {
     switch (opt) {
       case 'd':
         rawmode = 1;
@@ -79,6 +83,7 @@ int main(int argc, char **argv) {
         maxentries = atoi(optarg);
         cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
         cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
+        printf("maxentries : %d\n",maxentries);
         break;
       case 's':
         elemsize = atoi(optarg);
@@ -92,6 +97,9 @@ int main(int argc, char **argv) {
       case 'U':
         setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
         break;
+      case 'l':
+        cfg.local_gets = PdhtOptimized;
+        break;
     } 
   }
 
@@ -101,13 +109,14 @@ int main(int argc, char **argv) {
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
-
+  ht->unordered = cfg.ptalloc_opts;
   if (c->size != 2) {
-    if (c->rank == 0) {
+    if (c->rank == 1) {
       printf("requires two (and only two) processes to run\n");
     }
     goto done;
   }
+
 
   pdht_sethash(ht, localhash);
 
@@ -124,9 +133,11 @@ int main(int argc, char **argv) {
   // TIMING: latency for local not found elements
   // nothing should be in hash, so everything should be not found
   key = 1; // local uses odds
+
   if (c->rank == 0) {
     PDHT_START_ATIMER(lnotfound);
     for (int iter=0; iter < maxentries; iter++) {
+      //write(1,"a\n",3);
       pdht_get(ht, &key, val);
       key+=2;
     } 
@@ -157,6 +168,7 @@ int main(int argc, char **argv) {
   if (c->rank == 0) {
     PDHT_START_ATIMER(lput);
     for (int iter=0; iter < maxentries; iter++) {
+      
       pdht_put(ht, &key, val);
       key+=2;
     } 
@@ -193,7 +205,6 @@ int main(int argc, char **argv) {
     if (!rawmode)
       printf("last remote: %ld\n",key-2);
   } 
-
   // TIMING: latency for remote update operations
   // NOTE: only checking for updating first matchlist entry
   pdht_barrier();
@@ -221,6 +232,7 @@ int main(int argc, char **argv) {
     key = 2 * mlistentry[e] - 1; // e.g. 100th entry is (2*100-1) == 199
     if (c->rank == 0) {
       PDHT_START_ATIMER(lgets[e]);
+
       for (int iter=0; iter<maxiters; iter++) {
         pdht_get(ht,&key,val);
       }
