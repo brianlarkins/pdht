@@ -1030,6 +1030,7 @@ typedef unsigned char ptl_search_op_t;
                               * without consuming an item in the list. */
 #define PTL_SEARCH_DELETE 1  /*!< Use the LE/ME to search the unexpected list
                               * and delete the item from the list. */
+#define PTL_ACTIVE_SEARCH_ONLY 2
 
 /*! Specifies that the list entry will respond to \p put operations. By
  * default, list entries reject \p put operations. If a \p put operation
