@@ -177,6 +177,13 @@ enum pdht_status_e {
 };
 typedef enum pdht_status_e pdht_status_t;
 
+enum pdht_local_gets_e{
+  PdhtOptimized,
+  PdhtRegular
+};
+typedef enum pdht_local_gets_e pdht_local_gets_t;
+#define PDHT_DEFAULT_LOCAL_GETS PdhtRegular
+
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
@@ -222,10 +229,13 @@ struct pdht_s {
   pdht_mode_t       mode;
   pdht_pmode_t      pmode;
   pdht_stats_t      stats;
+  pdht_local_gets_t local_get;
   uint64_t          counters[PDHT_MAX_COUNTERS]; // rank 0 target (master) counters
   uint64_t          lcounts[PDHT_MAX_COUNTERS];  // initiator side buffers
+  int               local_get_flag;
   int               countercount; // :)
   int               gameover; // signal for progress thread to die
+  int               unordered;
   pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
@@ -242,6 +252,7 @@ typedef struct pdht_s pdht_t;
 #define PDHT_TUNE_PENDQ      0x08
 #define PDHT_TUNE_PTOPT      0x10
 #define PDHT_TUNE_QUIET      0x20
+#define PDHT_TUNE_GETS       0x40
 #define PDHT_TUNE_ALL        0xffffffff
 struct pdht_config_s {
   unsigned      nptes;
@@ -250,6 +261,7 @@ struct pdht_config_s {
   unsigned      pendq_size;
   unsigned      ptalloc_opts;
   unsigned      quiet;
+  pdht_local_gets_t local_gets;
 };
 typedef struct pdht_config_s pdht_config_t;
 

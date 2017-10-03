@@ -393,7 +393,7 @@ void pdht_fence(pdht_t *dht) {
  * @returns status of operation
  */
 pdht_status_t pdht_finalize_puts(pdht_t *dht) {
-  int ret;
+  int ret = PTL_OK;
   ptl_event_t ev;
   unsigned int ptindex;
   ptl_time_t timeout;
@@ -410,10 +410,22 @@ pdht_status_t pdht_finalize_puts(pdht_t *dht) {
       dht->stats.appends++;
       dht->stats.tappends[ptindex]++;
     }
+    else if (ev.type == PTL_EVENT_SEARCH){
+      dht->local_get_flag = 1;
+      if(ev.ni_fail_type == PTL_NI_NO_MATCH){
+       *(void **)ev.user_ptr = NULL;
+      }
+      else{
+               
+        *(ptl_event_t **)ev.user_ptr = ev.start;
+      }
+      return ret;
+    }
   }
   if ((ret != PTL_EQ_EMPTY) && (ret != PTL_INTERRUPTED)) {
     printf("pdht_finalize_puts: PtlEQPoll error %s\n", pdht_ptl_error(ret));
   }
+  return ret;
 }
 
 

@@ -56,6 +56,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
      cfg.pendq_size  = PDHT_PENDINGQ_SIZE;
      cfg.ptalloc_opts = PDHT_PTALLOC_OPTIONS;
      cfg.quiet        = PDHT_DEFAULT_QUIET;
+     cfg.local_gets   = PDHT_DEFAULT_LOCAL_GETS;
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
@@ -85,7 +86,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->pmode = cfg.pendmode;
   dht->countercount = 0;
   dht->gameover = 0;
-
+  dht->local_get = cfg.local_gets;
   dht->hashfn = pdht_hash;
 
   // portals info
@@ -309,7 +310,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->ptalloc_opts = config->ptalloc_opts;
   if (opts & PDHT_TUNE_QUIET)
     __pdht_config->quiet        = config->quiet;
-
+  if (opts & PDHT_TUNE_GETS)
+    __pdht_config->local_gets   = config->local_gets;
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
 }
