@@ -235,7 +235,6 @@ struct pdht_s {
   int               local_get_flag;
   int               countercount; // :)
   int               gameover; // signal for progress thread to die
-  int               unordered;
   pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);

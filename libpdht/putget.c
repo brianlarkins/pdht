@@ -267,7 +267,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   pdht_dprintf("pdht_get: key: %lu from active queue of %d with match: %lu\n", *(unsigned long *)key, rank, mbits);
 #endif
 
-  if (rank.rank == c->rank && dht->local_get == PdhtOptimized && dht->unordered == PTL_PT_MATCH_UNORDERED){
+  if (rank.rank == c->rank && dht->local_get == PdhtOptimized && dht->ptl.ptalloc_opts == PTL_PT_MATCH_UNORDERED){
     ptl_me_t me;
     char *index;
     ptl_event_t ev;

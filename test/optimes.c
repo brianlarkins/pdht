@@ -83,7 +83,6 @@ int main(int argc, char **argv) {
         maxentries = atoi(optarg);
         cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
         cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
-        printf("maxentries : %d\n",maxentries);
         break;
       case 's':
         elemsize = atoi(optarg);
@@ -93,6 +92,7 @@ int main(int argc, char **argv) {
         break;
       case 'u':
         cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+        
         break;
       case 'U':
         setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
@@ -109,7 +109,6 @@ int main(int argc, char **argv) {
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
-  ht->unordered = cfg.ptalloc_opts;
   if (c->size != 2) {
     if (c->rank == 1) {
       printf("requires two (and only two) processes to run\n");
