@@ -7,7 +7,6 @@
 /*                                                      */
 /********************************************************/
 
-#include <pthread.h>
 #include <time.h>
 
 #include <pdht_impl.h>
@@ -36,8 +35,11 @@ void pdht_polling_init(pdht_t *dht) {
   me.ct_handle   = PTL_CT_NONE;
   me.uid         = PTL_UID_ANY;
   // disable AUTO unlink events, we just check for PUT completion
-  me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
-    | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE | PTL_ME_EVENT_LINK_DISABLE;
+  me.options     = PTL_ME_OP_PUT 
+                 | PTL_ME_USE_ONCE 
+                 | PTL_ME_IS_ACCESSIBLE 
+                 | PTL_ME_EVENT_UNLINK_DISABLE 
+                 | PTL_ME_EVENT_LINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
   me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
   me.ignore_bits = 0xffffffffffffffff; // ignore it all
@@ -77,7 +79,7 @@ void pdht_polling_init(pdht_t *dht) {
       if (ret != PTL_OK) {
         pdht_dprintf("pdht_polling_init: [%d/%d]:ht[%d] PTE: %d PtlMEAppend error: %s\n", ptindex, i, pdht_find_bucket(dht,iter),dht->ptl.putindex[ptindex], pdht_ptl_error(ret));
         pdht_dprintf("start %p len: %lu %d %d %8x %8x %8x\n", me.start, me.length, (me.ct_handle==PTL_CT_NONE), 
-                         (me.uid==PTL_UID_ANY), me.options, me.match_bits, me.ignore_bits);
+            (me.uid==PTL_UID_ANY), me.options, me.match_bits, me.ignore_bits);
         exit(1);
       } 
       pentries++;
@@ -109,8 +111,8 @@ void pdht_polling_fini(pdht_t *dht) {
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++)
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
-  // kill polling thread
-  pthread_cancel(_pdht_poll_tid);
+  // wait for polling progress thread to exit
+  pthread_join(_pdht_poll_tid, NULL);
 
   // kill off event queues
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
@@ -177,22 +179,25 @@ void *pdht_poll(void *arg) {
   // NOTE: we have one thread per DHT, we could re-write to handle _all_ 
   //   polling activity in one thread, need to keep a list of "active" hts
   //   and switch over to PtlEQPoll()
+  // XXX - this will cause pain in the future. TODO
 
   // default match-list entry values
   me.length        = PDHT_MAXKEYSIZE + dht->elemsize; // storing HT key _and_ HT entry in each elem.
   me.ct_handle     = PTL_CT_NONE;
   me.uid           = PTL_UID_ANY;
   // disable auto-unlink events, we just check for PUT completion
-  me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE;
+  me.options       = PTL_ME_OP_GET 
+                   | PTL_ME_OP_PUT
+                   | PTL_ME_IS_ACCESSIBLE 
+                   | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
 
   pdht_eprintf(PDHT_DEBUG_WARN, "Polling thread is active\n");
 
 
   // need to run through the event queue for the putindex
-  while (1) {
-    //if ((ret = PtlEQWait(dht->ptl.eq,&ev)) == PTL_OK)  {
-
+  while (!dht->gameover) {
+ 
     if ((ret = PtlEQPoll(dht->ptl.eq,dht->ptl.nptes, PTL_TIME_FOREVER, &ev, &ptindex)) == PTL_OK)  {
       PDHT_START_TIMER(dht,t5);
       // found something to do, is it something we care about?
@@ -209,8 +214,9 @@ void *pdht_poll(void *arg) {
 
           //eprintf("processing key: %lu\n", (u_int64_t)be64toh(hte->key));
           me.start         = &hte->key; // hte points to entire entry, start at key+val
-          me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE 
-            | PTL_ME_EVENT_UNLINK_DISABLE | PTL_ME_EVENT_LINK_DISABLE;
+          me.options       = PTL_ME_OP_GET 
+                           | PTL_ME_IS_ACCESSIBLE 
+                           | PTL_ME_EVENT_UNLINK_DISABLE;
           me.match_bits = ev.match_bits; // copy over match_bits from put
           me.ignore_bits   = 0;
 
@@ -230,9 +236,11 @@ void *pdht_poll(void *arg) {
 
         hte = (_pdht_ht_entry_t *)index; // index into HT entry table
         me.start       = &hte->key; // put stores key+val into ht
-        me.options     = PTL_ME_OP_PUT | PTL_ME_USE_ONCE 
-          | PTL_ME_IS_ACCESSIBLE | PTL_ME_EVENT_UNLINK_DISABLE 
-          | PTL_ME_EVENT_LINK_DISABLE;
+        me.options     = PTL_ME_OP_PUT 
+                       | PTL_ME_USE_ONCE 
+                       | PTL_ME_IS_ACCESSIBLE 
+                       | PTL_ME_EVENT_UNLINK_DISABLE 
+                       | PTL_ME_EVENT_LINK_DISABLE;
         me.match_bits  = __PDHT_PENDING_MATCH; // this is ignored, each one of these is a wildcard
         me.ignore_bits = 0xffffffffffffffff; // ignore it all
 
@@ -248,10 +256,10 @@ void *pdht_poll(void *arg) {
           pdht_dprintf("append: ptindex: %d pollcount: %d %d %d userp: %p\n", ptindex, pollcount, dht->nextfree, pdht_find_bucket(dht, hte), hte);
           pdht_dprintf("pdht_poll: PtlMEAppend error (pending): %s\n", pdht_ptl_error(ret));
         }
+
         PDHT_STOP_TIMER(dht,t6);
 
         dht->nextfree++; // update next free space in local HT table
-
       } else {
         pdht_dprintf("pdht_poll: got event for %s\n", pdht_event_to_string(ev.type));
         pdht_dprintf("pdht_poll: pollcount: %d\n", pollcount);
@@ -262,6 +270,11 @@ void *pdht_poll(void *arg) {
       pdht_dprintf("pdht_poll: event queue issue: %s\n", pdht_ptl_error(ret));
     }
     PDHT_STOP_TIMER(dht,t5);
+
+    // count up link events from appending things to the active queue
+    pthread_mutex_lock(&dht->completion_mutex);
+    pdht_finalize_puts(dht);
+    pthread_mutex_unlock(&dht->completion_mutex);
   }
   return NULL;
-  }
+}

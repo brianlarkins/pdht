@@ -1,0 +1,135 @@
+\section{Background}
+
+This work focuses on an efficient implementation of a runtime system that
+provides a partitioned, global logical address space (PGLAS). Similar in spirit
+to traditional PGAS data models, the PGLAS distinguishes itself by logically
+addressing data elements with a {\em key} which is meaningful to the
+application. Keys are mapped to a unique location in the partitioned global
+address space. The application may iterate over local keys or get locality
+information for the logically addressed element in order to support
+owner-compute work distribution. Rather than application-specific keys for distributed
+data, conventional PGAS data models rely on direct remote addresses (OpenSHMEM
+and UPC), an offset into a remote buffer (MPI), or an index into an array
+(Fortran Coarrays). 
+
+While PGLAS and PGAS models differ in addressing and layout, PGLAS shares a
+one-sided communication model and asynchronous data accesss common to existing
+PGAS approaches. Data is accessed using one-sided get, put, and atomic operations.
+The PGLAS model is a member of the larger family of distributed key/value stores where
+the organization and access of data follow a PGAS model.
+
+% compare contrast PGAS/PGLAS
+%   - PGAS requires global management of address space often with collectives (openshmem)
+%   - PGLAS adds indirection layer between logical/physical global addresses
+%   - reduces burden of global memory management and "enables more dynamic models"
+%   - PGLAS can support dynamic put and get operations of key/value pairs in the
+%     global address space
+
+There are several important distinctions between the traditional global memory
+addressing and management under the PGAS model versus the PGLAS approach. PGAS
+models typically require global management of the addresses space. In the
+OpenSHMEM model, for example, the globally accessible address space must be the
+same on every process. This requires global coordination or the use of
+collectives in order to effectively manage shared memory regions. In contrast,
+the PGLAS model introduces an indirection layer between the logical and
+physical global addresses. This avoids the overhead common to PGAS systems and
+is used to relax the memory management semantics of such systems even further.
+This indirection fosters more dynamic global memory usage, specifically with
+the support for dynamic insertions and removals of key/value pairs in the
+shared global address space. 
+
+% efficiency
+%   - must have efficient/scalable support for mapping keys -> addresses
+%   - PGAS one-sided ops can do, but would require multiple communication
+%     operations to resolve a logical address -> not efficient, high overhead
+
+%   - MPI allows for applications to use tags to use tags associated with
+%     the send and recieve operations
+%   - MPI could be adapated to support a PGLAS model, using a unique tag for
+%     each logical address     
+%   - there are problems with this:
+%     - MPI requires message ordering, but this is not required under the PGLAS model
+%     - MPI requests for non-existent data elements are deferred on the unexpected
+%       list, but not dropped. The PGLAS model requires that remote requests are
+%       explicitly rejected in the case of a non-exsistent data element
+%     - persistence: tags and tagged data elements exist only until a pairing 
+%       can be made between sender and receiver, the PGLAS model requires that 
+%       data elements (and the key/value association) continue to exist until
+%       explicitly released.
+
+Achieving high-performance with PGLAS is only possible with an efficient
+mechanism for translating logical addresses (keys) to physical addresses within
+a PGAS system. One-sided, asynchronous PGAS operations can be used to resolve
+logical addresses, but it is difficult to do efficiently. Resolution may
+require several communication operations to query a remote translation 
+directory, resulting in high overheads~\cite{namashivayam:15}.
+
+MPI provides application-specified tags to match up specific pairs of 
+send/receive operations. MPI tags could be used in place of more general PGLAS 
+keys, however there are some limitations with this approach. First, MPI 
+requires ordered message processing, whereas the PGLAS adopts the
+PGAS unordered-by-default communication model. Next, tags are intended to be 
+used as a mechanism to fix a matching of specific send/receive messages, not to 
+implement a persistent key/value store. Tagged receive operations are consumed 
+by incoming messages, whereas the PGLAS model permits the key/value association
+to persist until explicitly released by the application. Lastly, tagged MPI 
+requests for data objects that do not exist will result in the request being 
+deferred to the unexpected message list, rather than a negative 
+acknowledgement. While this is reasonable for a two-sided communication model, 
+it makes more sense to explicitly reject PGLAS requests for non-existent data 
+objects.
+
+\subsection{Distributed Sparse Data}
+
+We see the PGLAS model as tool for dealing sparsity within HPC problem domains.  
+Sparse data structures are commonly used in a number of important HPC 
+applications, which can create challenges in obtaining high performance. Matrix 
+and tensor representations frequently have to contend with sparse data, 
+relying on specialized formats such as compressed spare row (CSR) and variants.  
+Other problems, such as grid/mesh solvers, or N-body simulation are naturally 
+expressed with spatial decomposition data structures such as quadtrees and 
+octrees. 
+
+In these instances, PGLAS provides a natural mapping between an application's 
+inherent indexing system and the corresponding distributed data. Global 
+distributed key/value stores make it straightforward to deal with sparse data 
+and are helpful in avoiding the complications and difficulty in parallelizing 
+these classes of applications.
+
+\subsection{Related Work} 
+
+Logically addressing data across memories in a distributed
+system has been explored in a number of other models.  Distributed,
+shared key/value stores are an intrinsic part of the Piccolo
+programming model~\cite{power:10}.  The Linda programming
+model~\cite{ahuja:86} is built around tuple spaces, that allows data
+to be inserted, read, and removed from global memory. Linda data items
+are identified through a user-supplied tuple.  Such models are of
+renewed interest in the context of resilience~\cite{wilke:14}.
+Distributed object models, such as Orca~\cite{bal:92}, reference
+shared data through graphs rather than direct pointers.  In the Open
+Community Runtime (OCR)~\cite{OCR}, data blocks (DBs) are identified
+by a globally unique ID, which is assigned by the OCR runtime system
+and used to portably reference a DB.  In the MPI-3 RMA 
+model~\cite{mpi-forum:15}, windows allowing remote
+access to the private memory of a process can be created.  However,
+window creation is collective and each process must maintain a table of
+all window handles.  Finally, migratable object
+models, such as Charm++~\cite{kale:93}, support a variety of methods
+for representing and querying object collections.
+
+Hash tables are also commonly used to store sparse or loosely structured
+data~\cite{memcached04,chord01,docan:12}
+and their implementation has been studied in the context of MPI and popular PGAS
+models~\cite{zht13,fompi13,cmpi10,maynard:12,memcached12,mht15} as well as in
+the context of RDMA offload~\cite{memcached12,mitchell:13,kalia:14}.  In
+addition, PGAS-like hierarchical approaches to
+managing sparse spatial decomposition have been proposed~\cite{larkins:08}
+along with runtime methods to manage this data and exploit spatial
+locality~\cite{larkins:12}.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End:

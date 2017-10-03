@@ -1,0 +1,27 @@
+\begin{abstract}
+
+  Many HPC applications rely on Partitioned Global Address Space (PGAS)
+  parallel programming models as a means to efficiently manage shared
+  data located across multiple nodes in a distributed memory system.
+  These models are typically directly addressed which may render them
+  difficult to use with loosely-structured or sparse data. Locating 
+  a given data element with a PGAS can be a complex process with 
+  substantial overhead. Additional overhead may be incurred by performing
+  lookups from remote location resolution structures. Additionally,
+  large data structures may consume memory and create coherence
+  problems that may limit scalability.
+
+  We propose that the matching systems used by implementations of the Message
+  Passing Interface (MPI) can be used to create a separation between 
+  write operations and the physical location that data is stored. This work
+  explores the extension of such structures to establish an indirection
+  layer between incoming read operations and the physical location of the
+  requested object, thereby effectively extending PGAS models with support
+  for logical addressing.
+
+\end{abstract}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End:

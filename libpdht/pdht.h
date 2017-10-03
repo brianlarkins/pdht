@@ -26,10 +26,20 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#include <pthread.h>
+
+#ifdef __APPLE__
+#include <portals4/pmi.h>
+#else
 #include <slurm/pmi.h>
+#endif // pmi.h
 #include <portals4.h>
 
-#define PDHT_MAX_PTES 25
+#define PDHT_MAX_TABLES        20
+#define PDHT_MAX_PTES          25
+#define PDHT_MAX_COUNTERS      20
+#define PDHT_MAX_REDUCE_ELEMS 128
+#define PDHT_MAX_RANKS       1024
 
 /**********************************************/
 /* statistics/performance data                */
@@ -47,6 +57,10 @@ typedef struct pdht_timer_s pdht_timer_t;
 
 struct pdht_stats_s {
   u_int64_t    puts;
+  u_int64_t    rankputs[PDHT_MAX_RANKS]; // keep per-target stats
+  u_int64_t    pendputs;      // track PtlPuts to pending q for fence
+  u_int64_t    appends;       // track complete appends to active q
+  u_int64_t    tappends[PDHT_MAX_PTES];      // track complete appends to active q
   u_int64_t    gets;
   u_int64_t    collisions;
   u_int64_t    notfound;
@@ -66,6 +80,7 @@ typedef struct pdht_stats_s pdht_stats_t;
 /**********************************************/
 /* sub structures contained in global context */
 /**********************************************/
+struct pdht_s; // forward ref
 
 // polling queue - ME append list entry
 struct pdht_append_s {
@@ -96,15 +111,21 @@ typedef struct pdht_pollq_s pdht_pollq_t;
 
 /* portals specific data for global context */
 struct pdht_portals_s {
-  ptl_handle_ni_t  phy;           //!< physical NI
-  ptl_handle_ni_t  lni;           //!< logical NI
-  ptl_ni_limits_t  ni_limits;     //!< logical NI limits
-  ptl_process_t   *mapping;       //!< physical/logical NI mapping
-  ptl_handle_md_t  barrier_md;    //!< barrier MD handle
-  ptl_handle_me_t  barrier_me;    //!< barrier ME handle
-  ptl_handle_ct_t  barrier_ct;    //!< barrier CT handle
-  ptl_size_t       barrier_count; //!< barrier count
-  u_int32_t        pt_entries;     //!< number of portals table entries per hash table
+  ptl_handle_ni_t  phy;                 //!< physical NI
+  ptl_handle_ni_t  lni;                 //!< logical NI
+  ptl_ni_limits_t  ni_limits;           //!< logical NI limits
+  ptl_process_t   *mapping;             //!< physical/logical NI mapping
+  ptl_handle_md_t  collective_md;       //!< collective MD handle
+  ptl_handle_me_t  barrier_me;          //!< barrier ME handle
+  ptl_handle_me_t  reduce_lme;          //!< reduce left ME handle
+  ptl_handle_me_t  reduce_rme;          //!< reduce right ME handle
+  ptl_handle_ct_t  barrier_ct;          //!< barrier CT handle
+  ptl_handle_ct_t  collective_ct;       //!< collective CT handle
+  ptl_size_t       collective_count;    //!< collective count
+  ptl_size_t       barrier_count;       //!< barrier  count
+  void            *collective_lscratch; //!< scratch space for collective ops
+  void            *collective_rscratch; //!< scratch space for collective ops
+  u_int32_t        pt_entries;          //!< number of portals table entries per hash table
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -113,10 +134,12 @@ typedef struct pdht_portals_s pdht_portals_t;
 /**********************************************/
 struct pdht_context_s {
   int              dhtcount;     //!< DHTs that have been created
+  struct pdht_s   *hts[PDHT_MAX_TABLES]; //!< array of active hash tables
   int              rank;         //!< process rank
   int              size;         //!< process count
   int              dbglvl;       //!< debug level for error printing
   pdht_portals_t   ptl;          //!< Portals 4 ADTs
+  pthread_t       progress_tid; //!< progress thread id
 };
 typedef struct pdht_context_s pdht_context_t;
 
@@ -142,8 +165,8 @@ enum pdht_pmode_e {
   PdhtPendingTrig
 };
 typedef enum pdht_pmode_e pdht_pmode_t;
-//#define PDHT_DEFAULT_PMODE PdhtPendingTrig
-#define PDHT_DEFAULT_PMODE PdhtPendingPoll
+#define PDHT_DEFAULT_PMODE PdhtPendingTrig
+//#define PDHT_DEFAULT_PMODE PdhtPendingPoll
 
 /* DHT operatation status */
 enum pdht_status_e {
@@ -154,10 +177,16 @@ enum pdht_status_e {
 };
 typedef enum pdht_status_e pdht_status_t;
 
+enum pdht_local_gets_e{
+  PdhtOptimized,
+  PdhtRegular
+};
+typedef enum pdht_local_gets_e pdht_local_gets_t;
+#define PDHT_DEFAULT_LOCAL_GETS PdhtRegular
+
 #define PDHT_NULL_HANDLE -1
 typedef int pdht_handle_t;
 
-struct pdht_s;
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
 
@@ -170,10 +199,14 @@ struct pdht_htportals_s {
   ptl_pt_index_t  getindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_pt_index_t  putindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
+  ptl_handle_eq_t aeq[PDHT_MAX_PTES];           //!< event queue for get PT entry (fence/triggered)
   ptl_me_t        me;                           //!< default match entry for ht
   ptl_handle_md_t lmd;                          //!< memory descriptor for any outgoing put/gets
   ptl_handle_eq_t lmdeq;                        //!< event queue for local MD
   ptl_handle_ct_t lmdct;                        //!< counter for local MD
+  ptl_handle_me_t centries[PDHT_MAX_COUNTERS];  //!< ME entries for atomic counters (target, rank 0 only)
+  ptl_handle_md_t countmds[PDHT_MAX_COUNTERS];  //!< MDs for initiator counter ops (initiator, all ranks)
+  ptl_handle_ct_t countcts[PDHT_MAX_COUNTERS];  //!< CTs for initiator counter ops (initiator, all ranks)
   ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
   ptl_size_t      lfail;                        //!< number of strict messages received
 };
@@ -188,13 +221,21 @@ struct pdht_s {
   unsigned          keysize;
   unsigned          elemsize;
   unsigned          entrysize;
-  unsigned          maxentries;
+  unsigned          maxentries;  // max # of ht entries
+  unsigned          usedentries; // number of pending + active entries
   unsigned          pendq_size;
   pdht_hashfunc     hashfn;
   unsigned          nextfree;
   pdht_mode_t       mode;
   pdht_pmode_t      pmode;
   pdht_stats_t      stats;
+  pdht_local_gets_t local_get;
+  uint64_t          counters[PDHT_MAX_COUNTERS]; // rank 0 target (master) counters
+  uint64_t          lcounts[PDHT_MAX_COUNTERS];  // initiator side buffers
+  int               local_get_flag;
+  int               countercount; // :)
+  int               gameover; // signal for progress thread to die
+  pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
@@ -203,13 +244,14 @@ struct pdht_s {
 };
 typedef struct pdht_s pdht_t;
 
-
 /* application-specified tunable parameters */
 #define PDHT_TUNE_NPTES      0x01
 #define PDHT_TUNE_PMODE      0x02
 #define PDHT_TUNE_ENTRY      0x04
 #define PDHT_TUNE_PENDQ      0x08
 #define PDHT_TUNE_PTOPT      0x10
+#define PDHT_TUNE_QUIET      0x20
+#define PDHT_TUNE_GETS       0x40
 #define PDHT_TUNE_ALL        0xffffffff
 struct pdht_config_s {
   unsigned      nptes;
@@ -217,6 +259,8 @@ struct pdht_config_s {
   unsigned      maxentries;
   unsigned      pendq_size;
   unsigned      ptalloc_opts;
+  unsigned      quiet;
+  pdht_local_gets_t local_gets;
 };
 typedef struct pdht_config_s pdht_config_t;
 
@@ -229,11 +273,20 @@ typedef enum pdht_oper_e pdht_oper_t;
 /* atomic operation data types */
 enum pdht_datatype_e {
   IntType,
+  LongType,
   DoubleType,
   CharType,
   BoolType
 };
 typedef enum pdht_datatype_e pdht_datatype_t;
+
+enum pdht_reduceop_e {
+  PdhtReduceOpSum,
+  PdhtReduceOpMin,
+  PdhtReduceOpMax
+};
+typedef enum pdht_reduceop_e pdht_reduceop_t;
+
 
 /* DHT iterators (UNSUPPORTED) */
 struct pdht_iter_s {
@@ -254,13 +307,16 @@ void                 pdht_tune(unsigned opts, pdht_config_t *config);
 
 
 // Communication Completion Operations -- commsynch.c
-void                 pdht_fence(int rank);
-void                 pdht_allfence(void);
+void                 pdht_barrier(void);
+void                 pdht_fence(pdht_t *dht);
+pdht_status_t        pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
+pdht_status_t        pdht_broadcast(void *buf, pdht_datatype_t type, int elems);
+
 pdht_status_t        pdht_test(pdht_handle_t h);
 pdht_status_t        pdht_wait(pdht_handle_t h);
 pdht_status_t        pdht_waitrank(int rank);
 pdht_status_t        pdht_waitall(void);
-void                 pdht_barrier(void);
 
 // Put / Get Operations -- putget.c
 pdht_status_t        pdht_put(pdht_t *dht, void *key, void *value);
@@ -288,11 +344,17 @@ int                  pdht_hasnext(pdht_iter_t *it);
 void                *pdht_getnext(pdht_iter_t *it);
 
 
+// atomics / counter support atomics.c
+int                  pdht_counter_init(pdht_t *ht, int initval);
+uint64_t             pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
+void                 pdht_counter_reset(pdht_t *ht, int counter);
+
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);
 
 
 //util.c
 void   pdht_print_stats(pdht_t *dht);
+void   pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val));
 
 #include <pdht_inline.h>

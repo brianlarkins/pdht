@@ -1,0 +1,15 @@
+
+put from initiator matches "any" next entry on pending list
+  - each pending entry points to unique element in "local entries" array
+  - each local entry has entry + me_handle + me
+  - need to have a counter for each pending entry
+  - each pending entry counter tracks auto_unlink + put
+
+register triggered ptlPut at increment of counter for auto unlink
+register triggered ptlMEAppend at counter for ptlPut
+
+triggered ptlPut:
+  - puts match bits from event queue into me for "local entry"
+
+triggered ptlMEAppend:
+  - uses ME for "local entry" to append on to active match list

@@ -1,0 +1,57 @@
+POLLING THREAD
+
+elemsize 1024 iterations: 10000 elapsed time:  201.1879058 s
+    puts:              20000     gets:            40000
+    collisions:            0     notfound:        20000
+    puttime:       94.2365 sec    gettime:      5.7254 sec
+    t1:             0.0265 sec    t2:           5.7174 sec
+    t3:            49.1079 sec    t4:          94.2343 sec
+
+  totl: local  get:    7.6023602 s put:  107.6409264 s  -- notfound:    0.1090961 s
+  totl: remote get:    3.6428838 s put:   80.8346000 s  -- notfound:    0.0999579 s
+
+  unit: local  get:    0.7602360 ms put:   10.7640926 ms  -- notfound:    0.0109096 ms
+  unit: remote get:    0.3642884 ms put:    8.0834600 ms  -- notfound:    0.0099958 ms
+
+
+elemsize 1024 iterations: 1000 elapsed time:   20.6011763 s
+    puts:               2000     gets:             4000
+    collisions:            0     notfound:         2000
+    puttime:        9.5950 sec    gettime:      0.1575 sec
+    t1:             0.0083 sec    t2:           0.1567 sec
+    t3:             4.9893 sec    t4:           9.5948 sec
+
+  totl: local  get:    0.2178202 s put:   10.9697099 s  -- notfound:    0.0208464 s
+  totl: remote get:    0.0651078 s put:    8.2205482 s  -- notfound:    0.0115600 s
+
+  unit: local  get:    0.2178202 ms put:   10.9697099 ms  -- notfound:    0.0208464 ms
+  unit: remote get:    0.0651078 ms put:    8.2205482 ms  -- notfound:    0.0115600 ms
+
+
+TRIGGERED ME APPEND
+
+elemsize 1024 iterations: 10000 elapsed time:   16.6054902 s
+    puts:              20000     gets:            40000
+    collisions:            0     notfound:        20000
+    puttime:        5.5472 sec    gettime:      2.1474 sec
+    t1:             0.0272 sec    t2:           2.1395 sec
+    t3:             0.0134 sec    t4:           5.5451 sec
+
+  totl: local  get:    2.0416636 s put:    5.6028080 s  -- notfound:    0.0899839 s
+  totl: remote get:    2.0811100 s put:    5.4936700 s  -- notfound:    0.0853262 s
+
+  unit: local  get:    0.2041664 ms put:    0.5602808 ms  -- notfound:    0.0089984 ms
+  unit: remote get:    0.2081110 ms put:    0.5493670 ms  -- notfound:    0.0085326 ms
+
+elemsize 1024 iterations: 1000 elapsed time:    1.7314119 s
+    puts:               2000     gets:             4000
+    collisions:            0     notfound:         2000
+    puttime:        0.5280 sec    gettime:      0.0571 sec
+    t1:             0.0084 sec    t2:           0.0563 sec
+    t3:             0.0013 sec    t4:           0.5278 sec
+
+  totl: local  get:    0.0267601 s put:    0.5110559 s  -- notfound:    0.0285058 s
+  totl: remote get:    0.0484219 s put:    0.5451179 s  -- notfound:    0.0108938 s
+
+  unit: local  get:    0.0267601 ms put:    0.5110559 ms  -- notfound:    0.0285058 ms
+  unit: remote get:    0.0484219 ms put:    0.5451179 ms  -- notfound:    0.0108938 ms

@@ -32,9 +32,15 @@ static inline long pdht_get_rank(void) {
  */
 static inline struct timespec pdht_get_wtime() {
   struct timespec ts;
+#if __APPLE__
+  clock_gettime(_CLOCK_MONOTONIC, &ts);
+#else
   clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#endif // clock_gettime
   return ts;
 }
+
+#define PDHT_INIT_ATIMER(TMR) do { TMR.total.tv_sec = 0; TMR.total.tv_nsec = 0; } while (0)
 #define PDHT_START_ATIMER(TMR) TMR.last   = pdht_get_wtime();
 #define PDHT_STOP_ATIMER(TMR) do {\
                                   TMR.temp = pdht_get_wtime();\
@@ -48,13 +54,23 @@ static inline struct timespec pdht_get_wtime() {
 #define PDHT_READ_ATIMER_SEC(TMR)   PDHT_READ_ATIMER(TMR)/(double)1e9
 
 // PDHT_READ_TIMER returns elapsed time in nanoseconds
-#define PDHT_START_TIMER(HT,TMR) PDHT_START_ATIMER(HT->stats.TMR)
-#define PDHT_STOP_TIMER(HT,TMR)  PDHT_STOP_ATIMER(HT->stats.TMR)
-#define PDHT_READ_TIMER(HT,TMR)  PDHT_READ_ATIMER(HT->stats.TMR)
+#ifdef PDHT_USE_INTERNAL_TIMERS
+  #define PDHT_START_TIMER(HT,TMR) PDHT_START_ATIMER(HT->stats.TMR)
+  #define PDHT_STOP_TIMER(HT,TMR)  PDHT_STOP_ATIMER(HT->stats.TMR)
+  #define PDHT_READ_TIMER(HT,TMR)  PDHT_READ_ATIMER(HT->stats.TMR)
 
-#define PDHT_READ_TIMER_USEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/1000.0
-#define PDHT_READ_TIMER_MSEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/(double)1e6
-#define PDHT_READ_TIMER_SEC(HT,TMR)   PDHT_READ_TIMER(HT,TMR)/(double)1e9
+  #define PDHT_READ_TIMER_USEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/1000.0
+  #define PDHT_READ_TIMER_MSEC(HT,TMR)  PDHT_READ_TIMER(HT,TMR)/(double)1e6
+  #define PDHT_READ_TIMER_SEC(HT,TMR)   PDHT_READ_TIMER(HT,TMR)/(double)1e9
+#else
+  #define PDHT_START_TIMER(HT,TMR) 
+  #define PDHT_STOP_TIMER(HT,TMR)  
+  #define PDHT_READ_TIMER(HT,TMR) 0
+
+  #define PDHT_READ_TIMER_USEC(HT,TMR) 0
+  #define PDHT_READ_TIMER_MSEC(HT,TMR) 0
+  #define PDHT_READ_TIMER_SEC(HT,TMR)  0
+#endif // PDHT_USE_INTERNAL_TIMERS
 
 
 #ifdef DEPRECATED

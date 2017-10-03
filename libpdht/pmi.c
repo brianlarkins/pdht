@@ -7,7 +7,11 @@ static int encode(const void *inval, int invallen, char *outval, int outvallen);
 static int decode(const char *inval, void *outval, int outvallen);
 
 void init_pmi() {
+#ifdef __APPLE__
+    int initialized;
+#else
     PMI_BOOL initialized;
+#endif
     ptl_process_t me;
     int name_max, key_max, val_max;
     char *name, *key, *val;

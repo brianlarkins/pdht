@@ -1,12 +1,11 @@
 #include <portals4.h>
-#include <./../support.h>
+#include <../support.h>
 
 #include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sched.h>
-#include <string.h> /* for memset() */
 
 #include "testing.h"
 
@@ -40,7 +39,7 @@ int main(int   argc,
     int             num_procs;
 
 #if INTERFACE != 1
-    	assert("This test is only valid for MEs" == 0);
+    assert("This test is only valid for MEs" == 0);
 #endif
 
     CHECK_RETURNVAL(PtlInit());
@@ -60,7 +59,6 @@ int main(int   argc,
     CHECK_RETURNVAL(PtlPTAlloc(ni_logical, PTL_PT_MATCH_UNORDERED, PTL_EQ_NONE, PTL_PT_ANY,
                                &logical_pt_index));
     assert(logical_pt_index == 0);
-
     /* Now do the initial setup on ni_logical */
     value          = myself.rank + 0xdeadbeefc0d1f1ed;
     value_e.start  = &value;
@@ -68,7 +66,7 @@ int main(int   argc,
     value_e.uid    = PTL_UID_ANY;
 #if INTERFACE == 1
     value_e.match_id.rank = PTL_RANK_ANY;
-    value_e.match_bits    = 0xc0d1f1eddeadbeef;
+    value_e.match_bits    = 1;
     value_e.ignore_bits   = 0;
 #endif
     value_e.options = OPTIONS;
@@ -76,16 +74,10 @@ int main(int   argc,
     CHECK_RETURNVAL(APPEND(ni_logical, 0, &value_e, PTL_PRIORITY_LIST, NULL,
                            &value_e_handle));
     /* Now do a barrier (on ni_physical) to make sure that everyone has their
- *      * logical interface set up */
+     * logical interface set up */
     libtest_barrier();
 
     /* now I can communicate between ranks with ni_logical */
- 
-    // XXX tests
-    //   - test hashed get with expected match
-    //   - test hashed get on non-existent matchlist entry
-    //   - test hashed put with expected match
-    //   - test hashed put on non-existent matchlist entry
 
     /* set up the landing pad so that I can read others' values */
     read_md.start     = &readval;
@@ -94,24 +86,20 @@ int main(int   argc,
     read_md.eq_handle = PTL_EQ_NONE;   // i.e. don't queue send events
     CHECK_RETURNVAL(PtlCTAlloc(ni_logical, &read_md.ct_handle));
     CHECK_RETURNVAL(PtlMDBind(ni_logical, &read_md, &read_md_handle));
-    //printf("rank: %d\n", myself.rank);
 
     /* read rank 0's value */
     {
         ptl_ct_event_t ctc;
         ptl_process_t  r0 = { .rank = 0 };
         CHECK_RETURNVAL(PtlGet(read_md_handle, 0, sizeof(uint64_t), r0,
-                               logical_pt_index, 0xc0d1f1eddeadbeef, 0, NULL));
-        //printf("grank: %d\n", myself.rank);
+                               logical_pt_index, 1, 0, NULL));
         CHECK_RETURNVAL(PtlCTWait(read_md.ct_handle, 1, &ctc));
-        //printf("crank: %d\n", myself.rank); fflush(stdout);
         assert(ctc.failure == 0);
     }
+
     /*printf("%i readval: %llx\n", (int)myself.rank,
- *      *     (unsigned long long)readval);*/
-    //printf("arank: %d\n", myself.rank);
+     *     (unsigned long long)readval);*/
     assert(readval == 0xdeadbeefc0d1f1ed);
-    //printf("brank: %d\n", myself.rank);
     if (myself.rank == 0) {
         NO_FAILURES(value_e.ct_handle, num_procs);
     }

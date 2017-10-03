@@ -4,20 +4,21 @@
 # created: 3/20/16
 #
 
-PORTALS_INCLUDEDIR = $(PDHT_TOP)/opt/include
-PORTALS_LIBDIR     = $(PDHT_TOP)/opt/lib
+PORTALS_INCLUDEDIR = opt/include
+PORTALS_LIBDIR     = opt/lib
 #PORTALS_INCLUDEDIR = /opt/hpctools/include
 #PORTALS_LIBDIR     = /opt/hpctools/lib
 
 #CC = clang
 CC = gcc
-GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L
-#GCFLAGS = -std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L
+#GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # development
+GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = -g -Wall
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
-#GCFLAGS = -pg -O3
+#GCFLAGS = --std=c99 -pg -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # profiling
+#GCFLAGS = --std=c99 -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # performance
 #GCFLAGS = -O3
-CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
+CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
@@ -30,7 +31,7 @@ PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
 
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 
-PDHT_LIBS = -L$(PORTALS_LIBDIR) -Wl,-rpath=$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(RT_LIB) $(PORTALS_LIB)
+PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(RT_LIB) $(PORTALS_LIB) $(MATH_LIB)
 
 .PHONY: all
 

@@ -58,6 +58,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
                                ptl_search_op_t search_op, void *user_ptr,
                                ptl_handle_me_t *me_handle_p)
 {
+    
     int err;
     ni_t *ni;
     me_t *me = me;
@@ -88,6 +89,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
          ni->limits.max_entries)) {
         (void)__sync_fetch_and_sub(&ni->current.max_entries, 1);
         err = PTL_NO_SPACE;
+
         goto err2;
     }
 
@@ -124,7 +126,6 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     me->ignore_bits = me_init->ignore_bits;
 
     atomic_set(&me->busy, 0);
-
 #ifndef NO_ARG_VALIDATION
     if (me_handle_p) {
         /* Only append can modify counters. */
@@ -136,6 +137,8 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     }
 
     if (me->ct && (obj_to_ni(me->ct) != ni)) {
+        
+       
         err = PTL_ARG_INVALID;
         goto err3;
     }
@@ -157,8 +160,6 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
                 /* Some XT were processed. */
                 if (me->options & PTL_ME_USE_ONCE) {
                     eq_t *eq = ni->pt[me->pt_index].eq;
-
-                    PTL_FASTLOCK_UNLOCK(&pt->lock);
                     if (eq && !(me->options & PTL_ME_EVENT_UNLINK_DISABLE)) {
                         make_le_event((le_t *)me, eq, PTL_EVENT_AUTO_UNLINK,
                                       PTL_NI_OK);
@@ -169,6 +170,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
 
                     *me_handle_p = me_to_handle(me);
                     me_put(me);
+                    PTL_FASTLOCK_UNLOCK(&pt->lock);
 
                     goto done;
                 }
@@ -176,6 +178,7 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
         }
 
         err = le_append_pt(ni, (le_t *)me);
+
 
 #ifdef WITH_UNORDERED_MATCHING
        if ((pt->options & PTL_PT_MATCH_UNORDERED) && (ni->options & PTL_NI_MATCHING)) {
@@ -196,12 +199,16 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
         *me_handle_p = me_to_handle(me);
 
     } else {
+
         if (search_op == PTL_SEARCH_ONLY)
             err = check_overflow_search_only((le_t *)me);
-        else
-            err = check_overflow_search_delete((le_t *)me);
 
-        if (err)
+        else if((search_op == PTL_ACTIVE_SEARCH_ONLY)){
+
+            err = check_active_search_only((le_t *)me);
+        }
+        else     err = check_overflow_search_delete((le_t *)me);
+      if (err)
             goto err3;
 
         me_put(me);
@@ -213,8 +220,11 @@ static int me_append_or_search(PPEGBL ptl_handle_ni_t ni_handle,
     return PTL_OK;
 
   err3:
+    
+
     me_put(me);
   err2:
+
     ni_put(ni);
 #ifndef NO_ARG_VALIDATION
   err1:
@@ -410,18 +420,35 @@ int _PtlMEUnlink(PPEGBL ptl_handle_me_t me_handle)
     int err;
     me_t *me;
     int ref_cnt;
+//    int pt_index;
+    pt_t *pt;
+//    ni_t *ni;
 
 #ifndef NO_ARG_VALIDATION
     err = gbl_get();
     if (err)
         goto err0;
 
+  
     err = to_me(MYGBL_ me_handle, &me);
     if (err)
         goto err1;
+ 
+    if (me == NULL){
+       err = PTL_OK;
+       goto err1;
+    }
+    else{
+       pt = me->pt;
+    }
 #else
     me = to_obj(MYGBL_ POOL_ANY, me_handle);
+    pt = me->pt;
 #endif
+    //pt_index = me->pt_index;
+    //pt = &ni->pt[pt_index];
+    //me_get(me);
+   
     //If this was an overflow, it should just complete now
     //there's no other busy work being done
     if (me->ptl_list == PTL_OVERFLOW_LIST) {
@@ -430,8 +457,30 @@ int _PtlMEUnlink(PPEGBL ptl_handle_me_t me_handle)
 
     /* make sure the me isn't still involved in any final
      * cleanup before we unlink it */
-    while (atomic_read(&me->busy) == 1) {
-        SPINLOCK_BODY();
+    if (atomic_read(&me->busy) == 1){
+        err = PTL_IN_USE;
+        me_put(me);
+        goto err1;
+    }
+
+
+    if (me != NULL && pt != NULL){
+        while (pthread_spin_trylock(&pt->lock) != 0){
+            usleep(500);
+            if(me == NULL ){
+               err = PTL_IN_USE;
+               goto err1;
+            }
+        }
+        if(me == NULL){
+            PTL_FASTLOCK_UNLOCK(&pt->lock);
+            err = PTL_IN_USE;
+            goto err1;
+        } 
+    }
+    else {
+        err = PTL_OK;
+        goto err1;
     }
 
     ref_cnt = me_ref_cnt(me);
@@ -441,15 +490,18 @@ int _PtlMEUnlink(PPEGBL ptl_handle_me_t me_handle)
     if (ref_cnt > 2) {
         me_put(me);
         err = PTL_IN_USE;
-        goto err1;
-    } else if (ref_cnt < 2) {
+        goto err2;
+    } else if (ref_cnt < 2 && ref_cnt > 0) {
         me_put(me);
         err = PTL_ARG_INVALID;
-        goto err1;
+        goto err2;
+    }
+    else if (ref_cnt <= 0){
+        err = PTL_OK;
+        goto err2;
     }
 
 #ifdef WITH_UNORDERED_MATCHING
-    pt_t *pt = me->pt;
     if (pt->options & PTL_PT_MATCH_UNORDERED) {
         pt_me_hash_t *hashentry;
         HASH_FIND(hh, pt->matchlist_ht, &me->match_bits, sizeof(ptl_match_bits_t), hashentry);
@@ -460,11 +512,20 @@ int _PtlMEUnlink(PPEGBL ptl_handle_me_t me_handle)
     }
 #endif
 
-    le_unlink((le_t *)me, 0);
-
+    //if (me->pt != NULL)
+        PTL_FASTLOCK_UNLOCK(&pt->lock);
+    //if (me != NULL)
+        le_unlink((le_t *)me, 0);
+        
     err = PTL_OK;
 
-    me_put(me);
+    ref_cnt = me_ref_cnt(me);
+    if (ref_cnt > 0) 
+       me_put(me);
+    goto err1;
+  err2:
+    //if (me->pt != NULL)
+        PTL_FASTLOCK_UNLOCK(&pt->lock);
   err1:
 #ifndef NO_ARG_VALIDATION
     gbl_put();

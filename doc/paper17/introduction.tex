@@ -1,0 +1,144 @@
+\section{Introduction}
+
+% high-level -> optimizing systems to permit high-performance within
+% context of high core-count hardware
+
+Recent trends in high-performance hardware design have led to a
+dramatic increase in processor core count. While these advances have
+increased the capability of high-performance computing (HPC) systems,
+they have also introduced new challenges. With higher processor core
+density comes greater contention for memory and a renewed interest
+in memory-efficient sparse data structures as well as Partitioned 
+Global Address Space (PGAS) parallel programming models.
+
+Many parallel programming frameworks support PGAS memory models, 
+including OpenSHMEM~\cite{openshmem-1.3}, Unified Parallel 
+C~\cite{upc-13-spec}, Fortran 2008 Coarrays~\cite{reid:08}, and 
+the Remote Memory Access (RMA) interface, supported within 
+MPI~\cite{mpi-forum:15}.
+
+% PGAS -> provides more memory
+%   great for dense, hard for sparse
+PGAS programming models help address memory contention by permitting 
+one-sided access to large distributed data structures. 
+
+% many applications that use sparse data structures are naturally expressed
+% using logical addresses, such as a coordinate/level system in a spatial
+% decompositon tree, etc.
+
+% matching an irregular data structure's logical addressing scheme to a 
+% traditional PGAS model can be challenging. 
+
+% drawbacks/challenges with true PGAS models
+%    - LA -> PA not feasible (i.e. grandchild of a tree node)
+%    - indirections 
+%       - (multiple fetches)
+%       - directory structures
+%    - adds latency for each access
+%    - data layout may change over time
+%    - caching is no silver bullet
+
+% drawbacks with MPI / message passing approaches
+%    - tags can be used to associate "logically addressed" locations
+%    - MPI does not provide a fetch/get mechanism to communicate 
+%      a tagged location
+
+% this work describes an efficient implementation of a PGLAS system 
+% that is built on networking mechanisms designed to support MPI
+% communications
+
+% our approach is based on some insights
+%   - low-level networking systems provide direct support for
+%     logical address systems 
+%   - using lower-level systems reduce communication overhead
+%   - applications can refer to globally shared data objects
+%     using an addressing scheme that corresponds to the problem
+%     at hand
+
+
+% in particular, our work takes advantage of the Portals 4 network
+% programming interface. Portals works great for a number of
+% HPC communication middleware MPI and PGAS-based systems such as
+% OpenMPI and UPC
+%
+% it's also great that Portals is designed to play nice with
+% hardware offload systems
+
+% in this paper we describe the implementation of a system that
+% realizes a PGLAS with a PDHT and is implemented using the 
+% Portals networking interface
+% we make the following contributions:
+%  - MPI matching interfaces can be used to implement a PGLAS
+%  - PGLAS support can be easily run on hardware offload systems
+%    that also support optimized MPI matching operations
+%  - relying on the network layer to map matching criteria
+%    to phys addr reduces the likelihood for collisions vs
+%    a conventional hash table structure
+
+
+Greater contention for memory resources is a well-studied
+consequence of higher core counts. Likewise, access to the
+interconnect can also be a bottleneck, greatly limiting overall system
+communication throughput. To remedy this problem, several approaches
+aim to address network interface contention by providing
+hardware-based solutions that offload communication
+processing. 
+
+Recent updates to the Portals 4.0 communications interface provide
+additions to a well-known interconnect programming model that permits
+efficient hardware offload of communication traffic. The latest BXI
+interconnect hardware from Bull has provided a hardware implementation
+of the Portals interface.  Parallel programs written using middleware
+systems that are built on the Portals interface will be able to take
+advantage of network offload hardware without special consideration. 
+The problem of course, is to map data and task abstractions onto
+programming constructs that match the communication operations
+supported by the low-level communications systems (Portals). 
+
+Portals is designed as a low-level abstraction layer for the network
+interface hardware. The provided operations are meant to support the
+efficient implementation of high-performance programming interfaces
+and runtime systems that provide either message-passing semantics
+(such as MPI), or one-sided, partitioned global address (PGAS) based
+activities. For message-passing systems, Portals provides a {\em
+  matching interface} that allows runtime implementators to robustly
+support a two-sided (matched sends and receives) communication
+model. Alternatively, Portals also provides a {\em non-matching
+  interface} that sheds much of the complexity in matching messages
+for one-sided communication operations found in PGAS systems and
+languages.
+
+Rather than considering the matching and non-matching interfaces as
+the basis for higher-level communication systems, we have developed a
+system that provides a distributed key/value storage that use Portals
+primitives in a novel manner, leading towards a hardware accelerated
+hash table system. In this paper, we describe the implementation of a
+parallel distributed hash table (PDHT) that is implemented directly
+using the Portals programming interface. This work is based on the
+following insights: (1) implementing data structures using Portals
+leads to an opportunity for efficient implementation with respect to
+known hardware offload engines and (2) that operations on a hash-table
+can be readily mapped to hardware accelerated operations within
+Portals that would be difficult to express exclusively within an
+MPI-like system or a PGAS system.
+
+This work makes the following contributions: First, we describe the
+design and implementation of a one-sided distributed hash table that
+is amenable to network hardware offload. Second, we describe a novel
+application of Portals matching interface operations to realize a
+distributed data structure. Lastly, we provide an experimental validation of
+our approach.
+
+% high performance interconnect hardware
+%  - provides hardware optimized for use cases
+%  - matching - > MPI
+%  - one-sided PGAS
+
+% insights
+
+% contributions
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End:

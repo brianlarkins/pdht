@@ -675,7 +675,6 @@ int PtlGetMap(ptl_handle_ni_t ni_handle,
 /*!
  * @addtogroup PT (PT) Portal Table Entries
  * @{ */
-/* DBL - added MATCH_UNORDERED */
 enum pt_options {
     ONLY_USE_ONCE,
     FLOWCTRL,
@@ -697,7 +696,6 @@ enum pt_options {
 #define PTL_PT_ONLY_TRUNCATE (1 << ONLY_TRUNCATE)
 
 /*! Allow for unordered match list searching. (via hash table) */
-/* DBL added */
 #define PTL_PT_MATCH_UNORDERED (1 << MATCH_UNORDERED)
 
 #define PTL_PT_ALLOC_OPTIONS_MASK ((1 << PT_OPTIONS_MASK) - 1)
@@ -1032,6 +1030,7 @@ typedef unsigned char ptl_search_op_t;
                               * without consuming an item in the list. */
 #define PTL_SEARCH_DELETE 1  /*!< Use the LE/ME to search the unexpected list
                               * and delete the item from the list. */
+#define PTL_ACTIVE_SEARCH_ONLY 2
 
 /*! Specifies that the list entry will respond to \p put operations. By
  * default, list entries reject \p put operations. If a \p put operation

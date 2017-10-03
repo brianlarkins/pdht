@@ -611,6 +611,7 @@ int check_perm(buf_t *buf, const le_t *le)
                 break;
         }
     }
+
     return ret;
 }
 
@@ -635,9 +636,9 @@ static int tgt_get_match(buf_t *buf)
     PTL_FASTLOCK_LOCK(&pt->lock);
 
 #ifdef WITH_UNORDERED_MATCHING
-    /* If message ordering isn't necessary use a hash lookup instead of 
+    /* If message ordering isn't necessary use a hash lookup instead of
      * a list search for priority list lookups */
-    if ((pt->options & PTL_PT_MATCH_UNORDERED) && (ni->options & PTL_NI_MATCHING)) { 
+    if ((pt->options & PTL_PT_MATCH_UNORDERED) && (ni->options & PTL_NI_MATCHING)) {
         pt_me_hash_t *hashentry;
         const req_hdr_t *hdr = (req_hdr_t *) buf->data;
         ptl_match_bits_t mbits = le64_to_cpu(hdr->match_bits);
@@ -652,7 +653,6 @@ static int tgt_get_match(buf_t *buf)
         }
     }
 #endif
-
     /* Check the priority list.
      * If we find a match take a reference to protect
      * the list element pointer.
@@ -726,6 +726,8 @@ static int tgt_get_match(buf_t *buf)
                     pt->state |= PT_AUTO_DISABLED;
                     ptl_info("dropping due to lack of unexpected headers\n");
                     PTL_FASTLOCK_UNLOCK(&pt->lock);
+                    le_put(buf->le);
+                    buf->le = NULL;
                     buf->ni_fail = PTL_NI_PT_DISABLED;
                     WARN();
                     return STATE_TGT_DROP;
@@ -1743,8 +1745,9 @@ static int tgt_send_ack(buf_t *buf)
 
     if (buf->le && buf->le->ptl_list == PTL_PRIORITY_LIST) {
         /* The LE must be released before we sent the ack. */
-        le_put(buf->le);
+        //le_put(buf->le);
         atomic_set(&buf->me->busy, 0);
+        le_put(buf->le);
         buf->le = NULL;
     }
 
@@ -1839,8 +1842,8 @@ static int tgt_send_reply(buf_t *buf)
 
     if (buf->le && buf->le->ptl_list == PTL_PRIORITY_LIST) {
         /* The LE must be released before we sent the ack. */
-        le_put(buf->le);
         atomic_set(&buf->me->busy, 0);
+        le_put(buf->le);
         buf->le = NULL;
     }
 
@@ -1895,7 +1898,7 @@ static int tgt_cleanup(buf_t *buf)
         /* On the overflow list, and was already matched by an
          * ME/LE. */
         assert(buf->le->ptl_list == PTL_OVERFLOW_LIST);
-        atomic_set(&buf->le->busy, 0);
+        //atomic_set(&buf->le->busy, 0);
         state = STATE_TGT_OVERFLOW_EVENT;
     } else if (buf->le && buf->le->ptl_list == PTL_OVERFLOW_LIST) {
         //if the pt hasn't run out of resources and unexpected headers are enabled
@@ -1956,8 +1959,8 @@ static void tgt_cleanup_2(buf_t *buf)
 {
     if (buf->le) {
         ptl_warn("me/le cleanup \n");
-        le_put(buf->le);
         atomic_set(&buf->me->busy, 0);
+        le_put(buf->le);
         buf->le = NULL;
     }
 
@@ -1969,8 +1972,8 @@ static void tgt_cleanup_2(buf_t *buf)
         //it was an overflow match, so reduce the
         //unexpected message count
         atomic_dec(&pt->unexpected_size);
-        le_put(buf->matching.le);
         atomic_set(&buf->matching.le->busy, 0);
+        le_put(buf->matching.le);
         buf->matching.le = NULL;
     }
 

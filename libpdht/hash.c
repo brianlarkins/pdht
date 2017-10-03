@@ -7,6 +7,7 @@
 /*                                                      */
 /********************************************************/
 
+#include <city.h>
 #include <pdht_impl.h>
 
 /**
@@ -22,11 +23,10 @@
  *  @returns match bits for portals request
  */
 void pdht_hash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
-   // THIS IS ALL TOTAL BULLSHIT
-   *mbits = *(ptl_match_bits_t *)key;
-   //printf("mbits: %lu %lu\n", *mbits, *(unsigned long *)key);
+   *mbits = CityHash64((char *)key, dht->keysize);
    *ptindex = *mbits % dht->ptl.nptes;
-   (*rank).rank  = *mbits % c->size; // always assume that 0 is where the hash table entries are
+   //(*rank).rank  = 0; // for testing only
+   (*rank).rank  = *mbits % c->size; 
 }
 
 

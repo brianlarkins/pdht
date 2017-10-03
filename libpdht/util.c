@@ -269,17 +269,137 @@ void pdht_dump_event(ptl_event_t *ev) {
 }
 
 
+
+/**
+ * pdht_print_active
+ */
+void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val)) {
+  char *iter;
+  int pending = 0;
+  _pdht_ht_trigentry_t *hte;
+  long *key;
+
+  iter = (char *)dht->ht;
+
+  for (int i=0; i < dht->maxentries; i++) {
+    hte = (_pdht_ht_trigentry_t *)iter;
+    key = (long *)hte->key;
+    if (hte->ame != PTL_INVALID_HANDLE) {
+      pdht_dprintf("elem %d: mbits: %12"PRIx64" ptr: %p", i, hte->me.match_bits, &hte->key);
+      //pdht_dprintf(" pkey: %ld ", key[0]);
+      //pdht_dprintf(" pkey: [%ld,%ld,%ld@%ld] ", key[0],key[1],key[2],key[3]); // MADNESS
+      kprinter(hte->key);
+      vprinter(&hte->data);
+      printf("\n");
+    } else {
+      pending++;
+    }
+    iter += dht->entrysize;
+  }
+  pdht_dprintf("pending: %d\n", pending);
+}
+
+
+
 /**
  * pdht_print_stats - prints out runtime statistics
  */
 void pdht_print_stats(pdht_t *dht) {
+  u_int64_t iglobal[PDHT_MAX_RANKS];
+  u_int64_t ilocal[4];
+  u_int64_t tilocal[4];
+  u_int64_t isum[4];
+  u_int64_t imin[4];
+  u_int64_t imax[4];
+  double    dlocal[8];
+  double    dsum[8];
+  double    dmin[8];
+  double    dmax[8];
+  double    tdlocal[8];
+ 
 
+  ilocal[0] = dht->stats.puts;
+  ilocal[1] = dht->stats.gets;
+  ilocal[2] = dht->stats.collisions;
+  ilocal[3] = dht->stats.notfound;
+ 
+  memcpy(tilocal,ilocal,sizeof(ilocal));
+
+
+
+
+  dlocal[0] = PDHT_READ_TIMER(dht, ptimer);
+  dlocal[1] = PDHT_READ_TIMER(dht, gtimer);
+  dlocal[2] = PDHT_READ_TIMER(dht, t1);
+  dlocal[3] = PDHT_READ_TIMER(dht, t2);
+  dlocal[4] = PDHT_READ_TIMER(dht, t3);
+  dlocal[5] = PDHT_READ_TIMER(dht, t4);
+  dlocal[6] = PDHT_READ_TIMER(dht, t5);
+  dlocal[7] = PDHT_READ_TIMER(dht, t6);
+
+  memcpy(tdlocal,dlocal,sizeof(dlocal));//have to set temp locals because they are manipulated for pdht_allreduce
+  
+  pdht_allreduce(tilocal, isum, PdhtReduceOpSum, LongType, 4);
+  memcpy(tilocal,ilocal,sizeof(ilocal));
+  pdht_allreduce(tilocal, imin, PdhtReduceOpMin, LongType, 4);
+  memcpy(tilocal,ilocal,sizeof(ilocal));
+  pdht_allreduce(tilocal, imax, PdhtReduceOpMax, LongType, 4);
+
+  
+
+
+  pdht_allreduce(tdlocal, dsum, PdhtReduceOpSum, DoubleType, 8);
+  memcpy(tdlocal,dlocal,sizeof(dlocal));
+  pdht_allreduce(tdlocal, dmin, PdhtReduceOpMin, DoubleType, 8);
+  memcpy(tdlocal,dlocal,sizeof(dlocal));
+  pdht_allreduce(tdlocal, dmax, PdhtReduceOpMax, DoubleType, 8);
+
+  if (c->rank == 0) {
+    printf("pdht global stats: \n");    
+
+    printf("\tputs:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[0], imax[0], (double)isum[0]/(double)c->size);
+    printf("\tgets:       min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[1], imax[1], (double)isum[1]/(double)c->size);
+    printf("\tcollisions: min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[2], imax[2], (double)isum[2]/(double)c->size);
+    printf("\tnotfound:   min: %12"PRIu64"\tmax: %12"PRIu64"\t avg: %12.4f\n", imin[3], imax[3], (double)isum[3]/(double)c->size);
+    printf("\tputtime:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[0]/(double)1e9, dmax[0]/(double)1e9, dsum[0]/(double)(c->size * 1e9));
+    printf("\tgettime:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[1]/(double)1e9, dmax[1]/(double)1e9, dsum[1]/(double)(c->size * 1e9));
+    printf("\tt1:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[2]/(double)1e9, dmax[2]/(double)1e9, dsum[2]/(double)(c->size * 1e9));
+    printf("\tt2:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[3]/(double)1e9, dmax[3]/(double)1e9, dsum[3]/(double)(c->size * 1e9));
+    printf("\tt3:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[4]/(double)1e9, dmax[4]/(double)1e9, dsum[4]/(double)(c->size * 1e9));
+    printf("\tt4:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[5]/(double)1e9, dmax[5]/(double)1e9, dsum[5]/(double)(c->size * 1e9));
+    printf("\tt5:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[6]/(double)1e9, dmax[6]/(double)1e9, dsum[6]/(double)(c->size * 1e9));
+    printf("\tt6:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
+                  dmin[7]/(double)1e9, dmax[7]/(double)1e9, dsum[7]/(double)(c->size * 1e9));
+  }
+
+  // hash distribution data
+  pdht_allreduce(dht->stats.rankputs, iglobal, PdhtReduceOpSum, LongType, PDHT_MAX_RANKS);
+  
+  if (c->rank == 0) {
+    printf("  put distribution: \n");
+    for (int i=0; i < c->size; i++)
+      printf("    rank[%d] : %12"PRIu64"\n", i, iglobal[i]);
+  }
+  pdht_barrier();
+
+  for (int p=0; p<c->size; p++) {
+  
+  }
+
+#if 0
   for (int p=0; p<c->size; p++)  {
     u_int64_t total = 0;
     if (p == c->rank) {
       printf("pdht statistics for rank %d\n", p);
-      printf("\tputs:       %12lu \tgets:     %12lu\n", dht->stats.puts, dht->stats.gets);
-      printf("\tcollisions: %12lu \tnotfound: %12lu\n", dht->stats.collisions, dht->stats.notfound);
+      printf("\tputs:       %12"PRIu64" \tgets:     %12"PRIu64"\n", dht->stats.puts, dht->stats.gets);
+      printf("\tcollisions: %12"PRIu64" \tnotfound: %12"PRIu64"\n", dht->stats.collisions, dht->stats.notfound);
       printf("\tputtime:    %10.4f sec\tgettime:  %10.4f sec\n", PDHT_READ_TIMER(dht,ptimer)/(double)1e9, PDHT_READ_TIMER(dht,gtimer)/(double)1e9);
       printf("\tt1:         %10.4f sec\tt2:       %10.4f sec\n", PDHT_READ_TIMER(dht,t1)/(double)1e9, PDHT_READ_TIMER(dht,t2)/(double)1e9);
       printf("\tt3:         %10.4f sec\tt4:       %10.4f sec\n", PDHT_READ_TIMER(dht,t3)/(double)1e9, PDHT_READ_TIMER(dht,t4)/(double)1e9);
@@ -295,4 +415,5 @@ void pdht_print_stats(pdht_t *dht) {
     }
     pdht_barrier();
   } 
+#endif 
 }

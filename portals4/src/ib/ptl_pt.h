@@ -28,7 +28,6 @@ enum pt_state {
     PT_AUTO_DISABLED = 1 << 1,
 };
 
-
 #ifdef WITH_UNORDERED_MATCHING
 /**
  * PT hash table structure for unordered match lists
@@ -36,11 +35,10 @@ enum pt_state {
 struct pt_me_hash {
     uint64_t match_bits;  // hash key
     struct me *match_entry;    // hash object
-    UT_hash_handle hh; 
+    UT_hash_handle hh;
 };
 typedef struct pt_me_hash pt_me_hash_t;
 #endif
-
 
 /**
  * pt class into.

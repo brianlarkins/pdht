@@ -1,0 +1,147 @@
+%\documentclass[letterpaper,times,10pt]{article}
+%\documentclass[letterpaper,times,10pt,twocolumn]{article}
+\documentclass[conference,letterpaper,10pt,times]{IEEEtran}
+%\documentclass[sigplan, review=false, anonymous=false]{acmart}
+%\usepackage[top=.9in,left=1in,right=.9in,bottom=1in]{geometry}
+%\usepackage{latex8}
+%\usepackage{fullpage}
+%\usepackage{cite}
+%\usepackage{textcomp}
+%\usepackage{mathcomp}
+%\usepackage{listings}
+%\usepackage{latexsym}
+%\usepackage[plain]{algorithm}
+%\usepackage{epsfig}
+%\usepackage{setspace}
+%\usepackage{subfig}
+%\usepackage{wrapfig}
+
+\usepackage{times}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage[pdftex]{graphicx}
+\usepackage{subcaption}
+\usepackage{url}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{flushend}
+\usepackage{xspace}
+
+
+%\lstloadlanguages{C}
+\pagestyle{empty}
+
+\title{Hardware Accelerated Distributed Hash Tables}
+
+% \author{
+% %\begin{normalsize}
+% \begin{tabular}{cc}
+% D. Brian Larkins         & James Dinan\\
+% Rhodes College          & Intel Corporation\\
+% Memphis, TN  38112  & Boston, MA 01234\\
+% larkinsb@rhodes.edu  & james.dinan@intel.com\\
+% \end{tabular}
+% %\end{normalsize}
+% }
+
+%\author{D. Brian Larkins}
+%\affiliation{Rhodes College}
+%\affiliation{Memphis, TN}
+%\email{larkinsb@rhodes.edu}
+%\author{James Dinan}
+%\affiliation{Intel Corporation}
+%\affiliation{Hudson, MA}
+%\email{james.dinan@intel.com}
+
+\usepackage[
+  pdfborder={0 0 0},
+  colorlinks=false,
+  pdfpagelabels=false,
+  pdftitle={Extending a Message Passing Runtime to Support
+    Partitioned, Global Logical Address Spaces},
+  pdfauthor={D. Brian Larkins and James Dinan},
+  pdfsubject={},
+  pdfkeywords={},
+  bookmarks=false,
+]{hyperref}
+
+\newcommand{\pdht}{{PDHT}\xspace}
+
+%\newcommand{\comment}[1]{}
+\newcommand{\code}[1]{{\small\sf #1}}
+\newcommand{\note}[2]{\textcolor{red}{\textbf{#1}: #2}}
+\newcommand{\othertm}{\textsuperscript{$\star$}\xspace}
+\newcommand{\regtm}{\textsuperscript{\textregistered{}}\xspace}
+\newcommand{\tm}{{\scriptsize\texttrademark{}}\xspace}
+
+
+% Document starts
+\begin{document}
+\IEEEoverridecommandlockouts
+% Title portion
+\title{Hardware Accelerated Distributed Hash Tables}
+\author{\IEEEauthorblockN{D. Brian Larkins\IEEEauthorrefmark{1}, John Snyder\IEEEauthorrefmark{2}}
+\IEEEauthorblockA{Rhodes College}
+\IEEEauthorblockA{Memphis, TN}
+\IEEEauthorblockA{Email: \IEEEauthorrefmark{1}larkinsb@rhodes.edu, \IEEEauthorrefmark{2}snyjm-18@rhodes.edu}
+\and
+\IEEEauthorblockN{James Dinan\IEEEauthorrefmark{3}}
+\IEEEauthorblockA{Intel Corporation}
+\IEEEauthorblockA{Hudson, MA}
+\IEEEauthorblockA{Email: james.dinan@intel.com}
+\thanks{\hspace{-1em}CC/Grid; Washington, D.C.; May 2018\newline
+   5/18/\$31.00 \copyright 2018 IEEE}
+   %978-1-5090-3829-9/16/\$31.00 \copyright 2016 IEEE}
+}
+
+
+%\lstset{language=C,basicstyle={\tt \scriptsize},framexbottommargin=3pt,emph={gt_group_t,gt_tree_t,gt_visitor_t,gt_node_t,gt_nodeptr_t,gt_visit_node_t,size_t},emphstyle=\bf,framexrightmargin=-5ex,framextopmargin=1.5ex}
+
+\maketitle
+
+%\doublespacing
+
+\thispagestyle{empty}
+
+\input{abstract}
+\input{introduction}
+\input{background}
+\input{implementation}
+
+\pagebreak
+\input{results}
+\input{conclusion}
+
+%\singlespacing
+%\bibliographystyle{ACM-Reference-Format}
+\bibliographystyle{IEEEtran}
+\bibliography{bibdb}
+%\input{appendix}
+%\pagebreak
+%\vfill
+\begin{flushright}
+%\scriptsize
+\footnotesize
+\framebox{
+  \parbox{\columnwidth}
+  {
+  Intel and Xeon are trademarks of Intel Corporation in the U.S. and/or other countries.
+  Software and workloads used in performance tests may have been optimized
+  for performance only on Intel microprocessors.  Performance tests, such as
+  SYSmark and MobileMark, are measured using specific computer systems,
+  components, software, operations and functions.  Any change to any of those
+  factors may cause the results to vary.  You should consult other information
+  and performance tests to assist you in fully evaluating your contemplated
+  purchases, including the performance of that product when combined with
+  other products.  For more information go to \url{http://www.intel.com/performance}.
+  }
+}
+%\normalsize
+\end{flushright}
+%~\\
+
+\noindent\othertm{}{\footnotesize Other names and brands may be claimed as the
+property of others.}
+
+\end{document}

@@ -11,7 +11,6 @@
 
 #if !IS_PPE
 int global_umn_init=0;
-int global_umn_fake=0;
 int global_umn_fd;
 uint64_t *global_umn_counter;
 ev_io global_umn_watcher;
@@ -135,7 +134,7 @@ static void umn_register(ni_t *ni, mr_t *mr, void *start, size_t size)
     if (ni->umn_fd == -1)
         return;
 
-    if (!global_umn_fake && ioctl(ni->umn_fd, UMMUNOTIFY_REGISTER_REGION, &r)) {
+    if (ioctl(ni->umn_fd, UMMUNOTIFY_REGISTER_REGION, &r)) {
         perror("register ioctl");
         return;
     }
@@ -528,27 +527,19 @@ void mr_init(ni_t *ni)
             global_umn_init = 1;
             global_umn_fd = open("/dev/ummunotify", O_RDONLY | O_NONBLOCK);
             if (global_umn_fd == -1) {
-                char *str;
                 fprintf(stderr,
                         "WARNING: Ummunotify not found: Not using ummunotify can result in incorrect results download and install ummunotify from:\n http://support.systemfabricworks.com/downloads/ummunotify/ummunotify-v2.tar.bz2\n");
                 global_umn_init = 0;
-                str = getenv("PTL_IGNORE_UMMUNOTIFY");
-                if (NULL != str && (str[0] == 'y' || str[0] == 'Y' | str[0] == '1')) {
-                    global_umn_init = 1;
-                    global_umn_fake = 1;
-                    global_umn_fd = open("/dev/null", O_RDONLY | O_NONBLOCK);
-                    global_umn_counter = malloc(sizeof*(global_umn_counter));   
-                   *global_umn_counter = 0;
-                }
-            } else {
-               global_umn_counter =
-                    mmap(NULL, sizeof *(global_umn_counter), PROT_READ, MAP_SHARED,
-                         global_umn_fd, 0);
-                if (global_umn_counter == MAP_FAILED) {
-                    close(global_umn_fd);
-                    global_umn_fd = -1;
-                    return;
-                }
+                return;
+            }   
+
+            global_umn_counter =
+                mmap(NULL, sizeof *(global_umn_counter), PROT_READ, MAP_SHARED,
+                     global_umn_fd, 0);
+            if (global_umn_counter == MAP_FAILED) {
+                close(global_umn_fd);
+                global_umn_fd = -1;
+                return;
             }
 
             global_umn_watcher.data = NULL;

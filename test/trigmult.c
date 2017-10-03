@@ -3,7 +3,7 @@
 
 #include <pdht.h>
 
-#define ASIZE 10
+#define ASIZE 7000
 #define ELEMS 12
 
 void pdht_poll(pdht_t *dht);
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
       printf("%d: putting object %d\n", c->rank, e);
       pdht_put(ht, &key, pbuf[e]);
     }
-    pdht_barrier();
+    pdht_fence(ht);
 
 
     for (int e=0; e<ELEMS; e++) {
@@ -56,12 +56,12 @@ int main(int argc, char **argv) {
 
   } else {
     print_count(ht, "before barrier:");
-    pdht_barrier();
+    pdht_fence(ht);
     print_count(ht, "after barrier:");
   }
-
   pdht_barrier();
 
 done:
   pdht_free(ht);
+  printf("\n\ndone\n\n");
 }

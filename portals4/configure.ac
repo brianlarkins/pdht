@@ -96,9 +96,8 @@ AC_ARG_ENABLE([unordered-matching],
   [AS_HELP_STRING([--enable-unordered-matching],
     [Enable unordered (hashed) match list searching. Experimental. (default: no)])])
 AS_IF([test "x$enable_unordered_matching" == "xyes"],
-  [AC_DEFINE([WITH_UNORDERED_MATCHING], [1], [Define to enable unordered (hashed) match list searching])]) 
+  [AC_DEFINE([WITH_UNORDERED_MATCHING], [1], [Define to enable unordered (hashed) match list searching])])
 AM_CONDITIONAL(WITH_UNORDERED_MATCHING, test "x$enable_unordered_matching" == xyes)
-   
 
 AC_ARG_ENABLE([transport-shmem],
   [AS_HELP_STRING([--enable-transport-shmem],
