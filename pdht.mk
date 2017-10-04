@@ -22,6 +22,7 @@ CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
+RT_LIB              = -lrt
 PMI_LIB             = -lpmi
 PORTALS_LIB         = -lportals
 PTHREAD_LIB         = -lpthread
@@ -30,7 +31,7 @@ PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
 
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 
-PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
+PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(RT_LIB) $(PORTALS_LIB) $(MATH_LIB)
 
 .PHONY: all
 

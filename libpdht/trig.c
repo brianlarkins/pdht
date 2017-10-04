@@ -208,6 +208,7 @@ void *pdht_trig_progress(void *arg) {
 
       // count up link events from appending things to the active queue
       pthread_mutex_lock(&dht->completion_mutex);
+      dht->local_get_flag = 1;
       pdht_finalize_puts(dht);
       pthread_mutex_unlock(&dht->completion_mutex);
 
@@ -224,6 +225,8 @@ void *pdht_trig_progress(void *arg) {
       while (PtlEQPoll(dht->ptl.eq, dht->ptl.nptes, 10, &ev, &which) == PTL_OK) {
          switch (ev.type) {
          case PTL_EVENT_PUT:
+           break;
+         case PTL_EVENT_SEARCH:
            break;
          case PTL_EVENT_PT_DISABLED:
            assert(which < dht->ptl.nptes);
@@ -276,6 +279,7 @@ void *pdht_trig_progress(void *arg) {
 
             // append ME to the pending ME list
             ret = PtlMEAppend(dht->ptl.lni, dht->ptl.putindex[ptindex], &hte->me, PTL_PRIORITY_LIST, hte, &hte->pme);
+            
             if (ret != PTL_OK) {
               pdht_dprintf("pdht_trig_progress: PtlMEAppend error (%d:%d) used: %ld: %s\n", 
                           i, hte->me.length, dht->usedentries,pdht_ptl_error(ret));

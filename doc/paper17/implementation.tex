@@ -105,6 +105,14 @@ Lastly, an acknowledgement message is sent back to the initiator, possibly
 generating another full or counting event associated with the MD that
 was used to initiate the {\tt PtlPut} operation.
 
+Portals supports two lists for messages, the unexpected list and priority list. 
+These are used for the unexpected message queue and posted recieve queue in MPI. Portals supports the 
+searching of the local unexpected list through PtlMESearch because of the need to match a MPI\_Recv
+call with a message on the local unexpected message queue. However, Portals does not support the searching of 
+the local priority list through PtlMESearch. We added functionality to PtlMESearch so it looks for matches
+on the local priority list instead of the unexpected list, if specified. This allowed us to find hash table entries without 
+calling PtlGet when hash table entries were stored locally. This lead to a 10x speed up in local hash table 
+lookups.
 
 
 \subsection{PDHT Implementation}
@@ -322,6 +330,7 @@ collision, given a reasonable hash function.
 %  - run hash
 %  - issue PtlGet from active list
 %  - check for collision
+
 
 
 %  - custom hash functions 
