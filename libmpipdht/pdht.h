@@ -4,13 +4,26 @@
 #include <stdio.h>
 #include "uthash.h"
 #include <string.h>
-#include "city.h"
 #include <signal.h>
 #include <stdarg.h>
 #include <time.h>
+#include <portals4.h>
 
 #include "mpi.h"
 
+
+
+struct pdht_timer_s{
+  double total;
+  double last;
+  double temp;
+
+};
+typedef struct pdht_timer_s pdht_timer_t;
+
+
+
+#define PDHT_PTALLOC_OPTIONS PTL_PT_MATCH_UNORDERED
 #define PDHT_MAX_TABLES 20
 #define PDHT_MAXKEYSIZE 32
 
@@ -21,20 +34,24 @@
                                   TMR.total += (TMR.temp - TMR.last);\
                                 } while (0)
 // PDHT_READ_TIMER returns elapsed time in nanoseconds
-#define PDHT_READ_ATIMER(TMR)  (1000000000L * (TMR.total))
+#define PDHT_READ_ATIMER(TMR)  1000000000L * (TMR.total)
 #define PDHT_READ_ATIMER_USEC(TMR)  PDHT_READ_ATIMER(TMR)/1000.0
 #define PDHT_READ_ATIMER_MSEC(TMR)  PDHT_READ_ATIMER(TMR)/(double)1e6
 #define PDHT_READ_ATIMER_SEC(TMR)   PDHT_READ_ATIMER(TMR)/(double)1e9
-
+#define PDHT_INIT_ATIMER(TMR) do { TMR.total = 0;} while (0)
 
 //typedef ptl stuff so things can still work
 typedef uint64_t ptl_match_bits_t;
 
-struct ptl_process_s{
-  int rank;  
-  
+
+
+
+enum pdht_local_gets_e{
+  PdhtOptimized,
+  PdhtRegular
 };
-typedef struct ptl_process_s ptl_process_t;
+typedef enum pdht_local_gets_e pdht_local_gets_t;
+
 
 struct pdht_s;
 
@@ -45,13 +62,17 @@ typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *m
 typedef enum {pdhtGet, pdhtPut, pdhtStop} msg_type;
 
 
-struct pdht_timer_s{
-  double total;
-  double last;
-  double temp;
+
+
+
+
+//shhhh im trying to be portals
+struct fake_portals_s{
+  int nptes;//idk?
 
 };
-typedef struct pdht_timer_s pdht_timer_t;
+typedef struct fake_portals_s fake_portals_t;
+
 
 //slimmed down pdht_context
 struct pdht_context_s{
@@ -85,6 +106,18 @@ struct message_s{
 };
 typedef struct message_s message_t;
 
+struct pdht_config_s{
+  int nptes;
+  int pendmode;
+  long unsigned maxentries;
+  int quiet;
+  pdht_local_gets_t local_gets;
+  long unsigned pendq_size;
+  long unsigned ptalloc_opts;
+
+};
+typedef struct pdht_config_s pdht_config_t;
+
 
 //slimmed down pdht
 struct pdht_s{
@@ -92,14 +125,22 @@ struct pdht_s{
   pdht_hashfunc hashfn;
   unsigned elemsize;
   unsigned keysize;
-
+  fake_portals_t ptl;
 
   int fuckups;
 };
 typedef struct pdht_s pdht_t;
 
 
-
+//tuning stuff that is not used
+#define PDHT_TUNE_NPTES     0x01
+#define PDHT_TUNE_PMODE     0x02
+#define PDHT_TUNE_ENTRY     0x04
+#define PDHT_TUNE_PENDQ     0x08
+#define PDHT_TUNE_PTOPT     0x10
+#define PDHT_TUNE_QUIET     0x20
+#define PDHT_TUNE_GETS      0x40
+#define PDHT_TUNE_ALL       0xffffffff
 
 
 
@@ -111,6 +152,11 @@ enum pdht_mode_e{
 };
 typedef enum pdht_mode_e pdht_mode_t;
 
+enum pdht_pmode_e{
+  PdhtPendingPoll,
+  PdhtPendingTrig
+};
+typedef enum pdht_pmode_e pdht_pmode_t;
 
 enum pdht_status_e{
   PdhtStatusOK,
@@ -123,14 +169,16 @@ typedef enum pdht_status_e pdht_status_t;
 //declaring functions the user can use
 pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode);
 void pdht_free(pdht_t *dht);
+void pdht_tune(unsigned opts, pdht_config_t *config);
 
 //putget ops
-void pdht_put(pdht_t *dht,void *key, void *value);
-void pdht_get(pdht_t *dht,void *key, void *value);
+void pdht_put(pdht_t *dht, void *key, void *value);
+void pdht_get(pdht_t *dht, void *key, void *value);
+void pdht_update(pdht_t *dht, void *key, void *value);
 
 //commsynch
 void pdht_barrier(void);
-void pdht_fence(void);
+void pdht_fence(pdht_t *dht);
 
 //util
 void pdht_print_all(pdht_t *dht);

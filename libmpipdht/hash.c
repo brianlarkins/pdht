@@ -1,4 +1,5 @@
 #include <pdht.h>
+#include <city.h>
 
 extern pdht_context_t *c;
 

@@ -11,6 +11,7 @@ PORTALS_LIBDIR     = opt/lib
 
 #CC = clang
 CC = gcc
+MPICC = mpicc
 #GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # development
 GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = -g -Wall
@@ -19,6 +20,7 @@ GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = --std=c99 -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # performance
 #GCFLAGS = -O3
 CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR)
+CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
@@ -27,10 +29,13 @@ PORTALS_LIB         = -lportals
 PTHREAD_LIB         = -lpthread
 PDHT_INSTALL_LIBDIR = $(PDHT_TOP)/lib
 PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
+PDHT_LIBMPIPDHT     = $(PDHT_INSTALL_LIBDIR)/libmpipdht.a
 
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
+PDHT_LIBMPIDIRS = $(PDHT_TOP)/libmpipdht
 
 PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
+PDHT_MPILIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBMPIPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
 
 .PHONY: all
 
@@ -54,17 +59,29 @@ endif
 .PHONY: pdhtlibs $(PDHT_LIBDIRS)
 pdhtlibs: pdhtheaders $(PDHT_LIBDIRS)
 
+.PHONY: pdhtlibs $(PDHT_LIBMPIDIRS)
+pdhtmpilibs: pdhtheaders $(PDHT_LIBMPIDIRS)
+
 .PHONY: checkflags pdhtheaders
 pdhtheaders: 
 	for dir in $(PDHT_LIBDIRS); do \
     $(MAKE) -C $$dir headers; \
-  done
+  done; \
+	for dir in $(PDHT_LIBMPIDIRS); do \
+		$(MAKE) -C $$dir headers; \
+	done
 
 $(PDHT_LIBDIRS):
 	$(MAKE) -C $@ GCFLAGS="$(GCFLAGS)" CC="$(CC)" PORTALS_INCLUDEDIR="$(PORTALS_INCLUDEDIR)" PORTALS_LIBDIR="$(PORTALS_LIBDIR)"
 
+$(PDHT_LIBMPIDIRS):
+	$(MAKE) -C $@ GCFLAGS="$(GCFLAGS)" CC="$(MPICC)" PORTALS_INCLUDEDIR="$(PORTALS_INCLUDEDIR)" PORTALS_LIBDIR="$(PORTALS_LIBDIR)"
+
 clean:
 	for dir in $(PDHT_LIBDIRS); do \
     $(MAKE) -C $$dir clean; \
-  done
+  done;\
+	for dir in $(PDHT_LIBMPIDIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done;\
 	rm -f *~ *.o gmon.out $(LOCAL_EXECS)

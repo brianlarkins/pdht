@@ -134,3 +134,7 @@ void pdht_put(pdht_t *dht, void *key, void *value){
   }
 
 }
+
+void pdht_update(pdht_t *dht, void *key, void *value){
+  pdht_put(dht,key,value);
+}
