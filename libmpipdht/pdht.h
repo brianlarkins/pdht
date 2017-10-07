@@ -1,5 +1,6 @@
 #include <pthread.h>
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "uthash.h"
@@ -8,9 +9,9 @@
 #include <stdarg.h>
 #include <time.h>
 #include <portals4.h>
-
+#include <stdlib.h>
 #include "mpi.h"
-
+#include <stdio.h>
 
 
 struct pdht_timer_s{
@@ -184,6 +185,7 @@ void pdht_fence(pdht_t *dht);
 void pdht_print_all(pdht_t *dht);
 void pdht_print_stats(pdht_t *dht);
 int eprintf(const char *format, ...);
+void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *value));
 
 //hash
 void pdht_sethash(pdht_t *dht,pdht_hashfunc hfun);

@@ -14,7 +14,7 @@ void pdht_init(){
   MPI_SUCCESS == MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   
   MPI_Comm_size(MPI_COMM_WORLD,&size);
-   
+  c->dhtcount = 0;
   c->size = size;
   c->rank = my_rank;
   //making message datatype
@@ -54,7 +54,6 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
   }
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
-  
 
 
   if (c->dhtcount == 1){
