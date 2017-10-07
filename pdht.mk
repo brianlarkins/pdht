@@ -24,6 +24,7 @@ CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PDHT_TOP)/$(PORTALS_INCL
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
+RT_LIB              = -lrt
 PMI_LIB             = -lpmi
 PORTALS_LIB         = -lportals
 PTHREAD_LIB         = -lpthread
@@ -34,8 +35,10 @@ PDHT_LIBMPIPDHT     = $(PDHT_INSTALL_LIBDIR)/libmpipdht.a
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 PDHT_LIBMPIDIRS = $(PDHT_TOP)/libmpipdht
 
+<<<<<<< HEAD
 PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
 PDHT_MPILIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBMPIPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
+=======
 
 .PHONY: all
 
