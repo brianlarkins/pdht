@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   int lastlength = 9;
   pdht_timer_t gtimer,total;
 
-  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
+//  setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
   setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   // setup experimental configuration
@@ -106,7 +106,6 @@ int main(int argc, char **argv) {
   pdht_barrier();
 
   eprintf("#entries  time (usec)\n");
-  eprintf("+elemsize %d\n", elemsize);
   // for each matchlist length in mlengths...
   for (int len=0; len<=lastlength; len++) {
     if (c->rank == 0) {
@@ -118,7 +117,6 @@ int main(int argc, char **argv) {
       }
       PDHT_STOP_ATIMER(gtimer);
       eprintf(" %7d %12.7f\n", mlengths[len], PDHT_READ_ATIMER_USEC(gtimer)/(double)(maxiters));
-      eprintf("+ %12.7f\n", PDHT_READ_ATIMER_USEC(gtimer)/(double)(maxiters));
     }
     pdht_barrier();
   }

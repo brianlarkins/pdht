@@ -46,3 +46,6 @@ void pdht_print_stats(pdht_t *dht){
 
 
 }
+void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val)){
+  printf("dont do anything\n");
+}

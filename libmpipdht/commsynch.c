@@ -6,7 +6,7 @@ void pdht_barrier(void){
 
 }
 
-void pdht_fence(void){
+void pdht_fence(pdht_t *dht){
   MPI_Barrier(MPI_COMM_WORLD);
 
 }

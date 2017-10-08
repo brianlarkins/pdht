@@ -13,7 +13,7 @@ all: pointPractice
 
 
 barrier: pdhtlibs barrier.c
-	$(CC) $(CFLAGS) -o barrier barrier.c $(PDHT_LIBS)
+	$(CC) $(CFLAGS) -o barrier barrier.c $(PDHT_LIBS)	
 
 collision: pdhtlibs collision.c
 	$(CC) $(CFLAGS) -o collision collision.c $(PDHT_LIBS)
@@ -54,13 +54,18 @@ ohb_memlat: pdhtlibs ohb_memlat.c
 optimes: pdhtlibs optimes.c
 	$(CC) $(CFLAGS) -o optimes optimes.c $(PDHT_LIBS)
 
+
+optimesMPI: pdhtmpilibs optimes.c
+	$(MPICC) $(CFLAGSMPI) -o optimesMPI optimes.c $(PDHT_MPILIBS)
+
 oshbench: pdhtlibs oshbench.c
 	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)
-
 
 pointPractice: pdhtlibs pointPractice.c
 	$(CC) $(CFLAGS) -o pointPractice pointPractice.c $(PDHT_LIBS)
 
+pointPracticeMPI: pdhtmpilibs pointPractice.c
+	$(MPICC) $(CFLAGSMPI) -o pointPracticeMPI pointPractice.c $(PDHT_MPILIBS)
 
 scaling: pdhtlibs scaling.c
 	$(CC) $(CFLAGS) -o scaling scaling.c $(PDHT_LIBS)

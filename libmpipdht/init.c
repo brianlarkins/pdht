@@ -11,12 +11,12 @@ void pdht_init(){
   MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
   int my_rank;
   int size;
-  MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
+  MPI_SUCCESS == MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
+  
   MPI_Comm_size(MPI_COMM_WORLD,&size);
-   
+  c->dhtcount = 0;
   c->size = size;
   c->rank = my_rank;
-
   //making message datatype
   const int nitems = 2;
   int blocklengths[2] = {1,1};
@@ -45,7 +45,7 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
   dht->elemsize = elemsize;
   dht->hashfn = pdht_hash;
   dht->keysize = keysize;
-
+  dht->ptl.nptes = 1;
 
 
 
@@ -54,7 +54,6 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
   }
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
-  
 
 
   if (c->dhtcount == 1){
@@ -146,7 +145,10 @@ void *pdht_comm(void *arg){
 
 void pdht_fini(){
   
-  pthread_kill(c->tid,0);
+  c->thread_active = 0;
+  message_t msg;
+  msg.type = pdhtStop;
+  MPI_Send(&msg, sizeof(message_t), c->msgType, c->rank, 1, MPI_COMM_WORLD);
   
   MPI_Finalize();
   free(c);
@@ -197,10 +199,7 @@ void pdht_free(pdht_t *dht){
   }
 }
 
-
-
-
-
-
-
+void pdht_tune(unsigned opts, pdht_config_t *config){
+  return;
+}
 
