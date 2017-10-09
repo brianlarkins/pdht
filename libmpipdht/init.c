@@ -20,15 +20,15 @@ void pdht_init(){
   c->rank = my_rank;
   //making message datatype
   const int nitems = 3;
-  int blocklengths[3] = {1,1,1};
-  MPI_Datatype types[3] = {MPI_INT,MPI_INT,MPI_INT};
+  int blocklengths[4] = {1,1,1,1};
+  MPI_Datatype types[4] = {MPI_INT,MPI_INT,MPI_INT,MPI_UNSIGNED_LONG};
   MPI_Datatype mpi_msg_type;
-  MPI_Aint offsets[3];
+  MPI_Aint offsets[4];
 
   offsets[0] = offsetof(message_t,type);
   offsets[1] = offsetof(message_t,rank);
   offsets[2] = offsetof(message_t,ht_index);
-
+  offsets[3] = offsetof(message_t,match_bits);
   MPI_Type_create_struct(nitems,blocklengths, offsets, types, &mpi_msg_type);
   MPI_Type_commit(&mpi_msg_type);
 
@@ -37,7 +37,6 @@ void pdht_init(){
 
 
 pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
-  printf("\n");
   pdht_t *dht;
   ht_t *ht = NULL;
   dht = (pdht_t *)malloc(sizeof(pdht_t));
@@ -85,11 +84,11 @@ void *pdht_comm(void *arg){
     if (msg.type == pdhtStop) break;
 
     if(msg.type == pdhtGet){
-      uint64_t recvBuf;
-      MPI_Recv(&recvBuf,sizeof(recvBuf),MPI_UNSIGNED_LONG_LONG,requester,2,MPI_COMM_WORLD,&status);
+//      uint64_t recvBuf;
+//      MPI_Recv(&recvBuf,sizeof(recvBuf),MPI_UNSIGNED_LONG_LONG,requester,2,MPI_COMM_WORLD,&status);
       
       
-      uint64_t mbits = recvBuf;
+      //uint64_t mbits = msg.match_bits;
       
       
       ht_t *instance;
@@ -97,7 +96,7 @@ void *pdht_comm(void *arg){
       
       
       char buf[PDHT_MAXKEYSIZE + dht->elemsize + sizeof(int)];
-      HASH_FIND_INT(dht->ht,&mbits,instance);
+      HASH_FIND_INT(dht->ht,&(msg.match_bits),instance);
       if (instance == NULL){
         int failure = 0;
         //printf("not found\n");
@@ -110,7 +109,7 @@ void *pdht_comm(void *arg){
         memcpy(buf,instance->value,PDHT_MAXKEYSIZE + dht->elemsize);
         memcpy(buf + PDHT_MAXKEYSIZE + dht->elemsize,&failure,sizeof(int));
       }
-
+      //printf("sending payload\n");
       MPI_Send(buf,sizeof(buf),MPI_CHAR,requester,0,MPI_COMM_WORLD);
 
 

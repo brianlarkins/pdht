@@ -57,10 +57,10 @@ void pdht_get(pdht_t *dht, void *key, void *value){
 
     msg.type = type;
     msg.rank = c->rank;
-
+    msg.match_bits = mbits;
     MPI_Send(&msg,sizeof(message_t),c->msgType,rank.rank,1,MPI_COMM_WORLD);//what i want to do, and where to send it
     
-    MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
+    //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
     
     char recvbuf[PDHT_MAXKEYSIZE + dht->elemsize + sizeof(int)];
     if(MPI_Recv(recvbuf,sizeof(recvbuf),MPI_CHAR,rank.rank,0,MPI_COMM_WORLD,&status) != MPI_SUCCESS){
