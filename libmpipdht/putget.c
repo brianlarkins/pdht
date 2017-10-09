@@ -60,7 +60,7 @@ void pdht_get(pdht_t *dht, void *key, void *value){
 
     MPI_Send(&msg,sizeof(message_t),c->msgType,rank.rank,1,MPI_COMM_WORLD);//what i want to do, and where to send it
     
-    MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,1,MPI_COMM_WORLD);//matchbits of the thing i want
+    MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
     
     char recvbuf[PDHT_MAXKEYSIZE + dht->elemsize + sizeof(int)];
     if(MPI_Recv(recvbuf,sizeof(recvbuf),MPI_CHAR,rank.rank,0,MPI_COMM_WORLD,&status) != MPI_SUCCESS){
@@ -120,14 +120,12 @@ void pdht_put(pdht_t *dht, void *key, void *value){
       }
 
     }
-
     MPI_Send(&msg,sizeof(msg),c->msgType,rank.rank,1,MPI_COMM_WORLD);//intial message saying what i want to do
     char sendbuf[sizeof(mbits) + PDHT_MAXKEYSIZE + dht->elemsize];
     memcpy(sendbuf,&mbits,sizeof(mbits));
     memcpy(sendbuf + sizeof(mbits),key,PDHT_MAXKEYSIZE);
     memcpy(sendbuf + sizeof(mbits) + PDHT_MAXKEYSIZE,value,dht->elemsize);
-    MPI_Send(sendbuf,sizeof(sendbuf),MPI_CHAR,rank.rank,1,MPI_COMM_WORLD); //second message with information on how to do the put
-    
+    MPI_Send(sendbuf,sizeof(sendbuf),MPI_CHAR,rank.rank,2,MPI_COMM_WORLD); //second message with information on how to do the put
     int flag;
     //reciveing confirmation
     MPI_Recv(&flag,sizeof(int),MPI_INT,rank.rank,0,MPI_COMM_WORLD,&status);
