@@ -8,7 +8,8 @@ void pdht_init(){
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   c->thread_active = 1;
   int result;
-  MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
+
+  int ret = MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
   int my_rank;
   int size;
   MPI_SUCCESS == MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
@@ -18,8 +19,8 @@ void pdht_init(){
   c->size = size;
   c->rank = my_rank;
   //making message datatype
-  const int nitems = 2;
-  int blocklengths[2] = {1,1};
+  const int nitems = 3;
+  int blocklengths[3] = {1,1,1};
   MPI_Datatype types[3] = {MPI_INT,MPI_INT,MPI_INT};
   MPI_Datatype mpi_msg_type;
   MPI_Aint offsets[3];
@@ -84,9 +85,8 @@ void *pdht_comm(void *arg){
     if (msg.type == pdhtStop) break;
 
     if(msg.type == pdhtGet){
-
       uint64_t recvBuf;
-      MPI_Recv(&recvBuf,sizeof(recvBuf),MPI_UNSIGNED_LONG_LONG,requester,1,MPI_COMM_WORLD,&status);
+      MPI_Recv(&recvBuf,sizeof(recvBuf),MPI_UNSIGNED_LONG_LONG,requester,2,MPI_COMM_WORLD,&status);
       
       
       uint64_t mbits = recvBuf;
@@ -118,7 +118,7 @@ void *pdht_comm(void *arg){
     else if(msg.type == pdhtPut){
       uint64_t mbits;
       char recvBuf[sizeof(mbits) + PDHT_MAXKEYSIZE + dht->elemsize];
-      MPI_Recv(recvBuf,sizeof(recvBuf),MPI_CHAR,requester,1,MPI_COMM_WORLD,&status);  
+      MPI_Recv(recvBuf,sizeof(recvBuf),MPI_CHAR,requester,2,MPI_COMM_WORLD,&status);  
 
       memcpy(&mbits,recvBuf,sizeof(mbits));
       
@@ -131,7 +131,7 @@ void *pdht_comm(void *arg){
         instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
       }
       
-
+      
       memcpy(instance->value,recvBuf+sizeof(mbits),PDHT_MAXKEYSIZE + dht->elemsize);
       int flag = 1;
       MPI_Send(&flag,sizeof(int),MPI_INT,requester,0,MPI_COMM_WORLD);
@@ -149,7 +149,7 @@ void pdht_fini(){
   message_t msg;
   msg.type = pdhtStop;
   MPI_Send(&msg, sizeof(message_t), c->msgType, c->rank, 1, MPI_COMM_WORLD);
-  
+  pthread_join(c->tid,NULL);
   MPI_Finalize();
   free(c);
   
