@@ -78,6 +78,8 @@ struct pdht_context_s {
   int            thread_active;        // comm thread status
   MPI_Datatype   msgType;              // registered MPI datatype for structured comms
   int            maxbufsize;           // maximum MPI receive buffer size for all HTs
+  MPI_Comm       barrier_comm;
+  int            pid;
 };
 typedef struct pdht_context_s pdht_context_t;
 
@@ -147,6 +149,7 @@ struct pdht_s{
   unsigned       keysize;
   int            fuckups;
   pdht_ptl_t     ptl;
+  pthread_mutex_t *uthash_lock;
 };
 typedef struct pdht_s pdht_t;
 
