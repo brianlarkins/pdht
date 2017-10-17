@@ -1,182 +1,248 @@
 #include <pdht.h>
 
+/* local protos */
 void *pdht_comm(void *arg);
+void free_entries(pdht_t *dht);
 
+
+// global pdht context
 pdht_context_t *c = NULL;
 
-void pdht_init(){
-  c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
-  c->thread_active = 1;
-  int result;
 
-  int ret = MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
+/**
+ * pdht_init - initializes PDHT system
+ */
+void pdht_init(void) {
+  int result;
   int my_rank;
   int size;
-  MPI_SUCCESS == MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-  
+
+  // init MPI, need MPI_THREAD_MULTIPLE 
+  MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
+  assert(result == MPI_THREAD_MULTIPLE);
+
+  MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
+
+  // setup global context
+  c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
+  c->thread_active = 1;
   c->dhtcount = 0;
   c->size = size;
   c->rank = my_rank;
-  //making message datatype
+  c->maxbufsize = 0;
+  c->pid = getpid();
+
+#if 0
+  // define  message datatype for MPI
   const int nitems = 3;
-  int blocklengths[3] = {1,1,1};
-  MPI_Datatype types[3] = {MPI_INT,MPI_INT,MPI_INT};
+  int blocklengths[4] = {1,1,1,1};
+  MPI_Datatype types[4] = {MPI_INT,MPI_INT,MPI_INT,MPI_UNSIGNED_LONG};
   MPI_Datatype mpi_msg_type;
-  MPI_Aint offsets[3];
+  MPI_Aint offsets[4];
 
   offsets[0] = offsetof(message_t,type);
   offsets[1] = offsetof(message_t,rank);
   offsets[2] = offsetof(message_t,ht_index);
-
+  offsets[3] = offsetof(message_t,mbits);
   MPI_Type_create_struct(nitems,blocklengths, offsets, types, &mpi_msg_type);
   MPI_Type_commit(&mpi_msg_type);
 
   c->msgType = mpi_msg_type;
+#endif 
 }
 
 
-pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode){
-  printf("\n");
+
+/**
+ * pdht_create -- allocates a new dht
+ * @returns the newly minted dht
+ */
+pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
   pdht_t *dht;
   ht_t *ht = NULL;
-  dht = (pdht_t *)malloc(sizeof(pdht_t));
-  memset(dht,0,sizeof(pdht_t));
+  int htbuflen;
+
+  pthread_mutex_t *lock = malloc(sizeof(pthread_mutex_t));
+  
+  //printf("lock : %p\n",lock);
+  pthread_mutex_init(lock,NULL);
+
+  //printf("lock : %p\n",lock);
+  dht = (pdht_t *)calloc(1,sizeof(pdht_t));
   dht->ht = ht;
   dht->elemsize = elemsize;
   dht->hashfn = pdht_hash;
   dht->keysize = keysize;
   dht->ptl.nptes = 1;
 
-
-
+  dht->uthash_lock = lock;
   if (!c){
     pdht_init();
+  
+
   }
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
 
+  htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
+  c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
+
 
   if (c->dhtcount == 1){
-    pthread_create(&c->tid,NULL,pdht_comm,NULL);
+    pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
+    MPI_Comm b_comm;
+    MPI_Comm_split(MPI_COMM_WORLD, 0,c->rank, &b_comm);
+    c->barrier_comm = b_comm;
   }
   return dht;
-
-
 }
 
 
 
-
-
-
-void *pdht_comm(void *arg){
-  
-  pdht_t *dht = c->hts[0];
-  message_t msg;
+/**
+ * pdht_comm -- target-side communication thread for MPI PDHT
+ * @param arg - unused
+ */
+void *pdht_comm(void *arg) {
+  pdht_t *dht = NULL;
+  char msgbuf[c->maxbufsize];
   MPI_Status status;
   int requester;
-  while(c->thread_active){
-    MPI_Recv(&msg,sizeof(msg),c->msgType,MPI_ANY_SOURCE,1,MPI_COMM_WORLD,&status);
-    pdht_t *dht = c->hts[msg.ht_index];
-    
-    requester = msg.rank;
-    char *iter;
-    if (msg.type == pdhtStop) break;
+  char *iter;
+  ht_t *instance;
+  uint64_t mbits;
+  int flag = 1;
+  char *buf = NULL, *tbuf = NULL;
+  message_t *msg = NULL;
+  reply_t *reply = NULL;
+  int buflen;
+  int need;
 
-    if(msg.type == pdhtGet){
-      uint64_t recvBuf;
-      MPI_Recv(&recvBuf,sizeof(recvBuf),MPI_UNSIGNED_LONG_LONG,requester,2,MPI_COMM_WORLD,&status);
-      
-      
-      uint64_t mbits = recvBuf;
-      
-      
-      ht_t *instance;
-      
-      
-      
-      char buf[PDHT_MAXKEYSIZE + dht->elemsize + sizeof(int)];
-      HASH_FIND_INT(dht->ht,&mbits,instance);
-      if (instance == NULL){
-        int failure = 0;
-        //printf("not found\n");
-        memcpy(buf + PDHT_MAXKEYSIZE + dht->elemsize,&failure,sizeof(int));
+  while(c->thread_active) {
 
-      }
-      else{
-        iter = (char *)instance->value;
-        int failure = 1;
-        memcpy(buf,instance->value,PDHT_MAXKEYSIZE + dht->elemsize);
-        memcpy(buf + PDHT_MAXKEYSIZE + dht->elemsize,&failure,sizeof(int));
-      }
+    MPI_Recv(msgbuf, c->maxbufsize, MPI_CHAR, MPI_ANY_SOURCE,
+        PDHT_TAG_COMMAND, MPI_COMM_WORLD, &status);
 
-      MPI_Send(buf,sizeof(buf),MPI_CHAR,requester,0,MPI_COMM_WORLD);
+    msg = (message_t *)msgbuf; // cast to access message fields
+
+    dht = c->hts[msg->ht_index];
+
+    requester = msg->rank;
 
 
+    switch (msg->type) {
+      case pdhtStop:
+        // game over, go home
+        goto done;
+        break;
+
+      case pdhtGet:
+        // get request, search for entry and send reply to requestor
+        
+        // make sure MPI send buffer is big enough
+        need = sizeof(reply_t) + dht->elemsize;
+        if ((!buf) || (buflen < need)) {
+          tbuf = realloc(buf, need);
+          if (!tbuf) {
+            printf("%d: realloc failure. game over.\n", c->rank); fflush(stdout);
+            MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          buf = tbuf;
+          buflen = need;
+        }
+
+        reply = (reply_t *)buf; // cast so we can set header values
+
+
+        HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+
+        if (instance) {
+          // found entry
+          reply->status = 1; 
+          memcpy(&reply->key, instance->value, PDHT_MAXKEYSIZE + dht->elemsize);
+        } else {
+          // not found
+          reply->status = 0;
+        }
+
+        //printf("sending payload\n");
+        MPI_Send(buf,buflen,MPI_CHAR,requester,PDHT_TAG_REPLY,MPI_COMM_WORLD);
+        break;
+
+
+      case pdhtPut:
+        // put request, check for existence and add/overwrite as needed
+        
+
+        pthread_mutex_lock(dht->uthash_lock);
+        HASH_FIND_INT(dht->ht,&msg->mbits,instance);
+        pthread_mutex_unlock(dht->uthash_lock);
+
+        if (!instance) {
+          // new entry -- create new HT entry
+          instance = (ht_t*)calloc(1,sizeof(ht_t));
+          instance->key = msg->mbits;
+          instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
+          pthread_mutex_lock(dht->uthash_lock); 
+          HASH_ADD_INT(dht->ht,key,instance);  
+          pthread_mutex_unlock(dht->uthash_lock);
+        }
+
+        // update HT entry with PUT data
+        memcpy(instance->value,&msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
+
+        // send ack to requestor
+        MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
+        break;
     }
-    else if(msg.type == pdhtPut){
-      uint64_t mbits;
-      char recvBuf[sizeof(mbits) + PDHT_MAXKEYSIZE + dht->elemsize];
-      MPI_Recv(recvBuf,sizeof(recvBuf),MPI_CHAR,requester,2,MPI_COMM_WORLD,&status);  
-
-      memcpy(&mbits,recvBuf,sizeof(mbits));
-      
-      ht_t *instance;
-      HASH_FIND_INT(dht->ht,&mbits,instance);
-      if (instance == NULL){
-        instance = (ht_t*)malloc(sizeof(ht_t));
-        instance->key = mbits;
-        HASH_ADD_INT(dht->ht,key,instance);  
-        instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
-      }
-      
-      
-      memcpy(instance->value,recvBuf+sizeof(mbits),PDHT_MAXKEYSIZE + dht->elemsize);
-      int flag = 1;
-      MPI_Send(&flag,sizeof(int),MPI_INT,requester,0,MPI_COMM_WORLD);
-
-    }
-    
-
-
   }
+done:
+  if (buf) free(buf);
 }
 
-void pdht_fini(){
-  
-  c->thread_active = 0;
+
+
+/**
+ * pdht_fini - clean up everything
+ */
+void pdht_fini() {
   message_t msg;
+
+  // force comm thread out of service loop
+  c->thread_active = 0;
+  // send comm thread game over message
   msg.type = pdhtStop;
-  MPI_Send(&msg, sizeof(message_t), c->msgType, c->rank, 1, MPI_COMM_WORLD);
-  pthread_join(c->tid,NULL);
+  MPI_Send(&msg, sizeof(message_t), MPI_CHAR, c->rank, 1, MPI_COMM_WORLD);
+  pthread_join(c->comm_tid,NULL);
   MPI_Finalize();
   free(c);
-  
-
-
 }
 
+
+
+/*
+ * free_entries - clean up target-side HT for a PDHT
+ * @param dht - ht to clean out
+ */
 void free_entries(pdht_t *dht){
   ht_t *cur, *tmp;
   HASH_ITER(hh,dht->ht,cur,tmp){
     HASH_DEL(dht->ht,cur);
     free(cur);
-
   }
-
-  
-
 }
 
 
-void pdht_free(pdht_t *dht){
-  
-
-
-
+/**
+ * pdht_free - release all resources with a PDHT
+ * @param dht - ht to free
+ */
+void pdht_free(pdht_t *dht) {
   int dht_index;
   int i;
+
+  // bookkeep on ht list
   for(i = 0;i < c->dhtcount;i++){
     if(c->hts[i] == dht){
       break;
@@ -187,19 +253,19 @@ void pdht_free(pdht_t *dht){
     i++;
   }
 
-
+  // clean out target side entries
   free_entries(dht);
   free(dht);
   c->dhtcount--;
   if(c->dhtcount == 0){
     pdht_fini();
-
-
-
   }
 }
 
-void pdht_tune(unsigned opts, pdht_config_t *config){
-  return;
-}
 
+/**
+ *  pdht_tune - non-functioning stub
+ */
+void pdht_tune(unsigned opts, pdht_config_t *config) {
+  ;
+}

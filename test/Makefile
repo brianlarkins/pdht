@@ -70,6 +70,9 @@ pointPracticeMPI: pdhtmpilibs pointPractice.c
 scaling: pdhtlibs scaling.c
 	$(CC) $(CFLAGS) -o scaling scaling.c $(PDHT_LIBS)
 
+scalingMPI: pdhtmpilibs scaling.c
+	$(MPICC) $(CFLAGSMPI) -o scalingMPI scaling.c $(PDHT_MPILIBS)
+
 simple: pdhtlibs simple.c
 	$(CC) $(CFLAGS) -o simple simple.c $(PDHT_LIBS)
 

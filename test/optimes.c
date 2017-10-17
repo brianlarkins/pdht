@@ -136,7 +136,6 @@ int main(int argc, char **argv) {
   if (c->rank == 0) {
     PDHT_START_ATIMER(lnotfound);
     for (int iter=0; iter < maxentries; iter++) {
-      //write(1,"a\n",3);
       pdht_get(ht, &key, val);
       key+=2;
     } 
@@ -167,7 +166,6 @@ int main(int argc, char **argv) {
   if (c->rank == 0) {
     PDHT_START_ATIMER(lput);
     for (int iter=0; iter < maxentries; iter++) {
-      
       pdht_put(ht, &key, val);
       key+=2;
     } 
