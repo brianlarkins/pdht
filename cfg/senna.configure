@@ -1,5 +1,11 @@
 #!/bin/bash
-cd ../portals4
-#./autogen.sh
-./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-transport-shmem --enable-unordered-matching
+cd $HOME
+#
+# install libev into $HOME/opt
+# set LD_LIBRARY_PATH to point 
+git clone https://github.com/dblarkins/portals4.git
+git checkout pdht-portals
+cd portals4
+./autogen.sh
+./configure --prefix=$HOME/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-transport-shmem --enable-unordered-matching
 #./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --disable-arg-checking

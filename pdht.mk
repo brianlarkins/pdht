@@ -4,8 +4,8 @@
 # created: 3/20/16
 #
 
-PORTALS_INCLUDEDIR = opt/include
-PORTALS_LIBDIR     = opt/lib
+PORTALS_INCLUDEDIR = ../opt/include
+PORTALS_LIBDIR     = ../opt/lib
 #PORTALS_INCLUDEDIR = /opt/hpctools/include
 #PORTALS_LIBDIR     = /opt/hpctools/lib
 
