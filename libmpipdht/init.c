@@ -31,7 +31,7 @@ void pdht_init(void) {
   c->size = size;
   c->rank = my_rank;
   c->maxbufsize = 0;
-
+  c->pid = getpid();
 
 #if 0
   // define  message datatype for MPI
@@ -63,6 +63,12 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
   ht_t *ht = NULL;
   int htbuflen;
 
+  pthread_mutex_t *lock = malloc(sizeof(pthread_mutex_t));
+  
+  //printf("lock : %p\n",lock);
+  pthread_mutex_init(lock,NULL);
+
+  //printf("lock : %p\n",lock);
   dht = (pdht_t *)calloc(1,sizeof(pdht_t));
   dht->ht = ht;
   dht->elemsize = elemsize;
@@ -70,8 +76,11 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
   dht->keysize = keysize;
   dht->ptl.nptes = 1;
 
+  dht->uthash_lock = lock;
   if (!c){
     pdht_init();
+  
+
   }
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
@@ -79,8 +88,12 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
   htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
   c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
 
+
   if (c->dhtcount == 1){
     pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
+    MPI_Comm b_comm;
+    MPI_Comm_split(MPI_COMM_WORLD, 0,c->rank, &b_comm);
+    c->barrier_comm = b_comm;
   }
   return dht;
 }
@@ -141,7 +154,9 @@ void *pdht_comm(void *arg) {
 
         reply = (reply_t *)buf; // cast so we can set header values
 
+
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+
         if (instance) {
           // found entry
           reply->status = 1; 
@@ -158,15 +173,20 @@ void *pdht_comm(void *arg) {
 
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
+        
 
+        pthread_mutex_lock(dht->uthash_lock);
         HASH_FIND_INT(dht->ht,&msg->mbits,instance);
+        pthread_mutex_unlock(dht->uthash_lock);
 
         if (!instance) {
           // new entry -- create new HT entry
           instance = (ht_t*)calloc(1,sizeof(ht_t));
           instance->key = msg->mbits;
           instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
+          pthread_mutex_lock(dht->uthash_lock); 
           HASH_ADD_INT(dht->ht,key,instance);  
+          pthread_mutex_unlock(dht->uthash_lock);
         }
 
         // update HT entry with PUT data

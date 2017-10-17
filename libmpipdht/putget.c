@@ -53,7 +53,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
     }
     msg->rank = c->rank;
     msg->mbits = mbits;
-
     // go ask remote for the element
     MPI_Send(msg, sizeof(message_t), MPI_CHAR, rank.rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
 
@@ -98,14 +97,18 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
 
   if (rank.rank == c->rank){
     // if i have the entry, just update directly
-    HASH_FIND_INT(dht->ht,&mbits,instance);
 
+    pthread_mutex_lock(dht->uthash_lock);
+    HASH_FIND_INT(dht->ht,&mbits,instance);
+    pthread_mutex_unlock(dht->uthash_lock);
     if (!instance) {
       // new entry, insert HT metadata
       instance = (ht_t*)calloc(1,sizeof(ht_t));
       instance->key = mbits;
       instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
-      HASH_ADD_INT(dht->ht,key,instance);  
+      pthread_mutex_lock(dht->uthash_lock);
+      HASH_ADD_INT(dht->ht,key,instance);
+      pthread_mutex_unlock(dht->uthash_lock);
     }
    
     // add/overwrite HT entry data in our local table
@@ -128,15 +131,16 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
 
     memcpy(&msg->key, key, dht->keysize);
     memcpy(&msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
-
     // send command message to target
     MPI_Send(sbuf, sizeof(sbuf), MPI_CHAR, rank.rank,
              PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
 
     //reciveing confirmation
     MPI_Recv(&flag,sizeof(int),MPI_INT,rank.rank,PDHT_TAG_ACK,MPI_COMM_WORLD,&status);
-    if (flag != 1)
+    if (flag != 1){
       return PdhtStatusError;
+    }
+      
   }
   return PdhtStatusOK;
 }
