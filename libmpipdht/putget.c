@@ -26,8 +26,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
   if (rank.rank == c->rank){
     // if i have the entry just get it
+    pthread_mutex_lock(dht->uthash_lock);
     HASH_FIND_INT(dht->ht,&mbits,instance);
-
+    pthread_mutex_unlock(dht->uthash_lock);
     // check to see if it exists
     if (!instance)
       return PdhtStatusNotFound;
@@ -132,15 +133,16 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
     memcpy(&msg->key, key, dht->keysize);
     memcpy(&msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
     // send command message to target
-    MPI_Send(sbuf, sizeof(sbuf), MPI_CHAR, rank.rank,
+    MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, rank.rank,
              PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
 
     //reciveing confirmation
-    MPI_Recv(&flag,sizeof(int),MPI_INT,rank.rank,PDHT_TAG_ACK,MPI_COMM_WORLD,&status);
+    //MPI_Recv(&flag,sizeof(int),MPI_INT,rank.rank,PDHT_TAG_ACK,MPI_COMM_WORLD,&status);
+    /*
     if (flag != 1){
       return PdhtStatusError;
     }
-      
+    */
   }
   return PdhtStatusOK;
 }

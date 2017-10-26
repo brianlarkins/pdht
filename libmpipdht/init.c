@@ -154,9 +154,9 @@ void *pdht_comm(void *arg) {
 
         reply = (reply_t *)buf; // cast so we can set header values
 
-
+        pthread_mutex_lock(dht->uthash_lock);
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
-
+        pthread_mutex_unlock(dht->uthash_lock);
         if (instance) {
           // found entry
           reply->status = 1; 
@@ -193,7 +193,7 @@ void *pdht_comm(void *arg) {
         memcpy(instance->value,&msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
 
         // send ack to requestor
-        MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
+        //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
         break;
     }
   }
