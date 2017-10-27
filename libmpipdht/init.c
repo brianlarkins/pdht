@@ -213,6 +213,7 @@ void pdht_fini() {
   c->thread_active = 0;
   // send comm thread game over message
   msg.type = pdhtStop;
+  msg.ht_index = 0;
   MPI_Send(&msg, sizeof(message_t), MPI_CHAR, c->rank, 1, MPI_COMM_WORLD);
   pthread_join(c->comm_tid,NULL);
   MPI_Finalize();
