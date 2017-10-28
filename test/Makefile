@@ -21,6 +21,9 @@ collision: pdhtlibs collision.c
 counter: pdhtlibs counter.c
 	$(CC) $(CFLAGS) -o counter counter.c $(PDHT_LIBS)
 
+counterMPI: pdhtmpilibs counter.c
+	$(MPICC) $(CFLAGSMPI) -o counterMPI counter.c $(PDHT_MPILIBS)
+
 csort: pdhtlibs csort.c
 	$(CC) $(CFLAGS) -o csort csort.c $(PDHT_LIBS)
 

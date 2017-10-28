@@ -24,6 +24,7 @@ typedef struct pdht_timer_s pdht_timer_t;
 #define PDHT_PTALLOC_OPTIONS PTL_PT_MATCH_UNORDERED
 #define PDHT_MAX_TABLES 20
 #define PDHT_MAXKEYSIZE 32
+#define PDHT_MAX_COUNTERS 20
 
 #define PDHT_START_ATIMER(TMR) TMR.last   = MPI_Wtime();
 #define PDHT_STOP_ATIMER(TMR) do {\
@@ -65,7 +66,7 @@ struct pdht_s; // forward ref
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank);
 
 // message types
-typedef enum { pdhtGet, pdhtPut, pdhtStop } msg_type;
+typedef enum { pdhtGet, pdhtPut, pdhtStop, pdhtCounterReset, pdhtCounterInc } msg_type;
 
 
 /* global context structure */
@@ -117,7 +118,7 @@ typedef struct reply_s reply_t;
 #define PDHT_TAG_COMMAND 1
 #define PDHT_TAG_REPLY   2
 #define PDHT_TAG_ACK     3
-
+#define PDHT_COUNTER_REPLY 4
 
 /* fake tuning structure to not break regular PDHT benches/apps */
 //tuning stuff that is not used
@@ -150,6 +151,8 @@ struct pdht_s{
   int            fuckups;
   pdht_ptl_t     ptl;
   pthread_mutex_t *uthash_lock;
+  uint64_t       counters[PDHT_MAX_COUNTERS];//only used by rank 0
+  int            counter_count;
 };
 typedef struct pdht_s pdht_t;
 
@@ -189,6 +192,9 @@ pdht_status_t pdht_update(pdht_t *dht, void *key, void *value);
 //commsynch
 void pdht_barrier(void);
 void pdht_fence(pdht_t *dht);
+int pdht_counter_init(pdht_t *ht, int initval);
+void pdht_counter_reset(pdht_t *ht, int counter);
+uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
 
 //util
 void pdht_print_all(pdht_t *dht);

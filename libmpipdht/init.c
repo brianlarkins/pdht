@@ -118,6 +118,9 @@ void *pdht_comm(void *arg) {
   reply_t *reply = NULL;
   int buflen;
   int need;
+  int *counter_index;
+  uint64_t increment;
+
 
   while(c->thread_active) {
 
@@ -195,6 +198,22 @@ void *pdht_comm(void *arg) {
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
         break;
+
+
+      case pdhtCounterReset:
+        //reset counter
+        counter_index = (int *)(msg->key);
+        dht->counters[*counter_index] = 0;
+
+      case pdhtCounterInc:
+        increment = msg->mbits;
+        counter_index = (int *)(msg->key);
+        int counter_value = dht->counters[*counter_index];
+        
+        MPI_Send(&counter_value, sizeof(int), MPI_INT, msg->rank, PDHT_COUNTER_REPLY, MPI_COMM_WORLD);
+
+        dht->counters[*counter_index] += increment;
+
     }
   }
 done:
