@@ -185,7 +185,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       pdht_dprintf("pdht_create: PtlEQAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
-
+    
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],__PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
@@ -367,11 +367,12 @@ void pdht_init(pdht_config_t *cfg) {
   }
 #endif
 
+
   // request portals NI limits
   ni_req_limits.max_entries = cfg->maxentries;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
-  ni_req_limits.max_eqs = (2*cfg->nptes)+2;
+  ni_req_limits.max_eqs = PDHT_MAX_TABLES * ((2*cfg->nptes)+2);
   //ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
   ni_req_limits.max_cts = (cfg->maxentries)+PDHT_MAX_COUNTERS + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + 1;
   ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_COLLECTIVE_PTES + 1;

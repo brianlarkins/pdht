@@ -35,7 +35,7 @@
 #endif // pmi.h
 #include <portals4.h>
 
-#define PDHT_MAX_TABLES        20
+#define PDHT_MAX_TABLES         2
 #define PDHT_MAX_PTES          25
 #define PDHT_MAX_COUNTERS      20
 #define PDHT_MAX_REDUCE_ELEMS 128
