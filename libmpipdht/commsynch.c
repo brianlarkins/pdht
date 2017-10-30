@@ -15,7 +15,10 @@ void pdht_fence(pdht_t *dht){
 
 
 int pdht_counter_init(pdht_t *ht, int initval){
-  if(c->rank == 0){
+
+  assert(ht->counter_count < PDHT_MAX_COUNTERS);
+
+  if(c->rank == PDHT_COUNTER_HOLDER){
     ht->counters[ht->counter_count] = initval;
   }
   return ht->counter_count++;
