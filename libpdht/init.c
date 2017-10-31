@@ -71,7 +71,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   c->hts[c->dhtcount] = dht;
   c->dhtcount++; // register ourselves globally on this process
-   
+
   if (keysize > PDHT_MAXKEYSIZE) {
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
     pdht_eprintf(PDHT_DEBUG_NONE, "\t (update value in pdht_impl.h and recompile)\n");
@@ -100,6 +100,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   c->ptl.pt_nextfree    += 2*dht->ptl.nptes; // update global PTE index tracker
   dht->ptl.lni           = c->ptl.lni;
 
+
   // allocate array for hash table data
   if (dht->pmode == PdhtPendingPoll) 
     dht->entrysize = (sizeof(_pdht_ht_entry_t)) + dht->elemsize;
@@ -122,10 +123,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   }
 
   dht->ht = calloc(dht->maxentries, dht->entrysize);
-  if (!dht->ht) {
+  if (!dht->ht || errno != 0) {
     pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
     exit(1);
   }
+
 
   
   // use a byte pointer as iterator over variable-sized element array
@@ -139,7 +141,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
     iter += dht->entrysize; // pointer math, danger.
   }
-    
+
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
@@ -147,12 +149,14 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
 
+
   // allocate event queue
   ret = PtlEQAlloc(dht->ptl.lni, dht->pendq_size, &dht->ptl.lmdeq);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlEQAlloc failure\n");
     exit(1);
   }
+
 
   // create memory descriptor (MD) to allow for remote access of our memory
   md.start  = NULL;
@@ -189,6 +193,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       pdht_dprintf("pdht_create: PtlEQAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
+    
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],
         dht->ptl.getindex_base+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
