@@ -123,11 +123,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   }
 
   dht->ht = calloc(dht->maxentries, dht->entrysize);
-  if (!dht->ht || errno != 0) {
+  if (!dht->ht) {
     pdht_dprintf("pdht_create: calloc error: %s\n", strerror(errno));
     exit(1);
   }
-
+  
 
   
   // use a byte pointer as iterator over variable-sized element array
