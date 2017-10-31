@@ -93,7 +93,11 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->ptl.nptes         = cfg.nptes;
   dht->ptl.ptalloc_opts  = cfg.ptalloc_opts;
   assert(dht->ptl.nptes < PDHT_MAX_PTES);
-  dht->ptl.putindex_base = __PDHT_ACTIVE_INDEX + dht->ptl.nptes;
+
+  // setup PTE allocation ranges
+  dht->ptl.getindex_base = c->ptl.pt_nextfree; 
+  dht->ptl.putindex_base = dht->ptl.getindex_base + dht->ptl.nptes;
+  c->ptl.pt_nextfree    += 2*dht->ptl.nptes; // update global PTE index tracker
   dht->ptl.lni           = c->ptl.lni;
 
   // allocate array for hash table data
@@ -186,7 +190,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       exit(1);
     }
     
-    ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],__PDHT_ACTIVE_INDEX+ptindex, &dht->ptl.getindex[ptindex]);
+    ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],
+        dht->ptl.getindex_base+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_create: PtlPTAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
@@ -483,12 +488,16 @@ void pdht_fini(void) {
     free(__pdht_config);
 }
 
+
+
 //extern void print_madnode(void *node);
 static void pdht_exit_handler(void) {
    //pdht_print_active(c->hts[0], print_madnode);
    //pdht_print_stats(c->hts[0]);
    //;
 }
+
+
 
 static void print_fucking_mapping() {
   int i;

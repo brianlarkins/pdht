@@ -125,7 +125,7 @@ struct pdht_portals_s {
   ptl_size_t       barrier_count;       //!< barrier  count
   void            *collective_lscratch; //!< scratch space for collective ops
   void            *collective_rscratch; //!< scratch space for collective ops
-  u_int32_t        pt_entries;          //!< number of portals table entries per hash table
+  u_int32_t        pt_nextfree;         //!< next available PTE index
 };
 typedef struct pdht_portals_s pdht_portals_t;
 
@@ -195,7 +195,8 @@ struct pdht_htportals_s {
   ptl_handle_ni_t lni;                          //!< portals logical NI
   unsigned        ptalloc_opts;                 //!< options to PtlPTAlloc (for unordered matching)
   unsigned        nptes;                        //!< number of pending / active PTE pairs
-  ptl_pt_index_t  putindex_base;                //!< actve_base (1) + dht->nptes
+  ptl_pt_index_t  getindex_base;                //!< active_base 
+  ptl_pt_index_t  putindex_base;                //!< active_base + dht->nptes
   ptl_pt_index_t  getindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_pt_index_t  putindex[PDHT_MAX_PTES];      //!< portal table entry index
   ptl_handle_eq_t eq[PDHT_MAX_PTES];            //!< event queue for put PT entry
