@@ -189,7 +189,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       pdht_dprintf("pdht_create: PtlEQAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
-    
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],
         dht->ptl.getindex_base+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
@@ -340,7 +339,7 @@ void pdht_init(pdht_config_t *cfg) {
   ptl_ni_limits_t ni_req_limits;
   ptl_process_t me;
   int ret;
-
+  
 	
 
   // turn off output buffering for everyone's sanity
@@ -448,7 +447,7 @@ void pdht_init(pdht_config_t *cfg) {
    */
   pdht_collective_init(c);
   init_only_barrier(); // safe to use pdht_barrier() after this
-
+  
   // allocate global counter PTE (shared PTE amongst all HTs)
   ptl_pt_index_t index;
   ret = PtlPTAlloc(c->ptl.lni, 0, PTL_EQ_NONE, __PDHT_COUNTER_INDEX, &index);
@@ -456,6 +455,8 @@ void pdht_init(pdht_config_t *cfg) {
     pdht_dprintf("init: counter PTAlloc failed\n");
     exit(1);
   } 
+  
+  c->ptl.pt_nextfree = __PDHT_ACTIVE_INDEX;
 
   return;
 
