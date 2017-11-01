@@ -69,8 +69,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
 
-  c->hts[c->dhtcount] = dht;
-  c->dhtcount++; // register ourselves globally on this process
+
 
   if (keysize > PDHT_MAXKEYSIZE) {
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);
@@ -128,7 +127,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     exit(1);
   }
   
-
   
   // use a byte pointer as iterator over variable-sized element array
   iter = (char *)dht->ht;
@@ -141,6 +139,10 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
     iter += dht->entrysize; // pointer math, danger.
   }
+
+
+  c->hts[c->dhtcount] = dht;
+  c->dhtcount++; // register ourselves globally on this process
 
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
