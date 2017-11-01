@@ -196,11 +196,13 @@ int pdht_counter_init(pdht_t *ht, int initval);
 void pdht_counter_reset(pdht_t *ht, int counter);
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
 
+
 //util
 void pdht_print_all(pdht_t *dht);
 void pdht_print_stats(pdht_t *dht);
 int eprintf(const char *format, ...);
 void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *value));
+void pdht_get_average(pdht_timer_t *timer);
 
 //hash
 void pdht_sethash(pdht_t *dht,pdht_hashfunc hfun);
