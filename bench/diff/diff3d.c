@@ -927,7 +927,9 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
 
   // create output tree
   fprime = malloc(sizeof(func_t));
+  printf("%d: foo\n", c->rank);
   fprime->ftree = create_tree(); // safe to call eprintf() after this
+  printf("%d: +foo\n", c->rank);
   fprime->compressed = 0;
   fprime->k         = DEFAULT_K;
   fprime->npt       = DEFAULT_K;
@@ -1419,8 +1421,12 @@ int main(int argc, char **argv, char **envp) {
   // have to initialize fprime for differentiation
   //   - don't need to init_function entire tree
   //   - just create tree-top and add subtrees
-  //fprime =  par_diff(...);
 
+  pdht_barrier();
+  eprintf("diff.\n");
+  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
+  pdht_barrier();
+  eprintf("complete.\n");
   exit(0);
 }
 
