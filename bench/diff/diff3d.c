@@ -977,22 +977,23 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
       printf("%d: diff subtree pdht_get error.\n", c->rank);
       exit(1);
     }
+    
     //
     // fetch f' subtree node
     if (pdht_get(fprime->ftree, &fprime->subtrees[st], &stdnode) != PdhtStatusOK) {
       printf("%d: diff subtree pdht_get error.\n", c->rank);
       exit(1);
     }
-
+    
     // diff subtree 
     diff(f, wrtdim, &stnode, fprime, &stdnode); // recur to leaf nodes
-
+    
     // store modifications to f' subtree root (because it may have coeffs from diff)
     if (pdht_update(fprime->ftree, &fprime->subtrees[st], &stdnode) != PdhtStatusOK) {
       printf("%d: diff subtree pdht_update error.\n", c->rank);
       exit(1);
     }
-
+    
     printf("%d: completed difference %"PRIu64": <%ld,%ld,%ld> @ %ld\n",
         c->rank, st, f->subtrees[st].x, f->subtrees[st].y,
         f->subtrees[st].z, f->subtrees[st].level);
@@ -1015,10 +1016,8 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
   tensor_t *r, *sm, *sp, *s0 = NULL;
   madkey_t mk, pk, ckey;
   node_t cnode, cdnode;
-
   // if no scaling coeffs, keep recursing
   if ((node->valid != madCoeffScaling) && (node->valid != madCoeffBoth)) {
-
     // for each child of node
     for (ix=0;ix<2;ix++) {
       for (iy=0;iy<2;iy++) {
@@ -1094,7 +1093,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
 
       // XXX this needs fixed too
       void *tmp;
-      memcpy(&dnode->s, tmp, sizeof(tensor3dk_t));
+      memcpy(&dnode->s, r, sizeof(tensor3dk_t));
       dnode->valid = (dnode->valid == madCoeffWavelet) ? madCoeffBoth : madCoeffScaling;
 
       // pdht_put/update of dnode scaling coeffs is done by parent
