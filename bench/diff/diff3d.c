@@ -956,6 +956,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   fprime->stlen    = (int)pow(8,parlvl);
   fprime->subtrees = calloc(fprime->stlen, sizeof(madkey_t));
   pdhtcounter = pdht_counter_init(fprime->ftree, 0);
+  pdht_barrier();
   eprintf("  creating f' octree with initial projection depth of %d : %d nodes\n", parlvl, fprime->stlen);
   // initial function projection @ parlvl 
   // - need to project to subtrees[] level + 1, because refine requires children
@@ -970,7 +971,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   pdht_counter_reset(f->ftree, f->counter);
   st = pdht_counter_inc(f->ftree, f->counter, 1);
   while (st < f->stlen) {
-
+    
     // fetch f subtree node
     if (pdht_get(f->ftree, &f->subtrees[st], &stnode) != PdhtStatusOK) {
       printf("%d: diff subtree pdht_get error.\n", c->rank);
