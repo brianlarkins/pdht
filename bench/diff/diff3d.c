@@ -976,7 +976,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   pdhtcounter = pdht_counter_init(fprime->ftree, 0);
   pdht_barrier();
   pdht_fence(fprime->ftree);
-  printf("  creating f' octree with initial projection depth of %d : %d nodes\n", parlvl, fprime->stlen);
+  eprintf("  creating f' octree with initial projection depth of %d : %d nodes\n", parlvl, fprime->stlen);
   
   // initial function projection @ parlvl 
   // - need to project to subtrees[] level + 1, because refine requires children
