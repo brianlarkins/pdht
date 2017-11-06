@@ -8,8 +8,10 @@
 /********************************************************/
 
 #include <assert.h>
+#include <execinfo.h>
 #include <inttypes.h>
 #include <math.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +85,17 @@ static double test1(double x, double y, double z);
 
 void      usage(char **argv);
 int       main(int argc, char **argv, char **envp);
+
+
+void bthandler(int sig) {
+  void *a[100];
+  size_t size;
+
+  size = backtrace(a, 100);
+  fprintf(stderr, "Error: signal: %d:\n", sig);
+  backtrace_symbols_fd(a,size, STDERR_FILENO);
+  exit(1);
+}
 
 /*
  * initializes a new function octtree
@@ -1415,6 +1428,8 @@ int main(int argc, char **argv, char **envp) {
         exit(1);
     }
   }
+
+  signal(SIGSEGV, bthandler);
 
   test  = test1;
   //
