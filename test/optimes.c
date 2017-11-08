@@ -109,13 +109,14 @@ int main(int argc, char **argv) {
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
+/*
   if (c->size != 2) {
     if (c->rank == 1) {
       printf("requires two (and only two) processes to run\n");
     }
     goto done;
   }
-
+*/
 
   pdht_sethash(ht, localhash);
 
@@ -132,7 +133,6 @@ int main(int argc, char **argv) {
   // TIMING: latency for local not found elements
   // nothing should be in hash, so everything should be not found
   key = 1; // local uses odds
-
   if (c->rank == 0) {
     PDHT_START_ATIMER(lnotfound);
     for (int iter=0; iter < maxentries; iter++) {
