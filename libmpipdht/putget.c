@@ -144,7 +144,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   
 
   dht->hashfn(dht,key,&mbits,&ptindex,&rank);
-  rank.rank = rank.rank % c->size;
+
 
 
 #ifdef THREAD_MULTIPLE
@@ -183,8 +183,8 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
       }
     }
 
-    memcpy(&msg->key, key, dht->keysize);
-    memcpy(&msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
+    memcpy(msg->key, key, dht->keysize);
+    memcpy(msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
     // send command message to target
     MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, rank.rank,
              PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
@@ -193,6 +193,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   return PdhtStatusOK;
 #else
 
+  rank.rank = rank.rank % c->size;
   // prepare command message
   msg = (message_t *)sbuf;
   msg->type = pdhtPut;
@@ -206,9 +207,8 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
       msg->ht_index = i;
     }
   }
-  
-  memcpy(&msg->key, key, dht->keysize);
-  memcpy(&msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
+  memcpy(msg->key, key, dht->keysize);
+  memcpy(msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
   // send command message to target
   MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, target_rank,
            PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
