@@ -20,10 +20,12 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
   ht_t *instance;
   MPI_Status status;
   int ret;
-
+  int target_rank;
 
   dht->hashfn(dht,key,&mbits,&ptindex,&rank); //hashing
 
+
+#ifdef THREAD_MULTIPLE
   if (rank.rank == c->rank){
     // if i have the entry just get it
     pthread_mutex_lock(dht->uthash_lock);
@@ -41,12 +43,10 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
     memcpy(value,((char *)instance->value) + PDHT_MAXKEYSIZE, dht->elemsize);
 
   } else{
-    // element is not local, go get it
-    
-    // prepare request mesage
+
     msg = (message_t *)buf;
     msg->type = pdhtGet;
-
+    target_rank = (rank.rank);
     for(int i = 0;i < c->dhtcount;i++){
       if(dht == c->hts[i]){
         msg->ht_index = i;
@@ -55,11 +55,11 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
     msg->rank = c->rank;
     msg->mbits = mbits;
     // go ask remote for the element
-    MPI_Send(msg, sizeof(message_t), MPI_CHAR, rank.rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
+    MPI_Send(msg, sizeof(message_t), MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
 
     //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
 
-    ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, rank.rank, PDHT_TAG_REPLY,
+    ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, target_rank, PDHT_TAG_REPLY,
                    MPI_COMM_WORLD,&status);
     assert(ret == MPI_SUCCESS);
 
@@ -71,8 +71,52 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
       return PdhtStatusCollision;
       
     memcpy(value,&reply->value,dht->elemsize); 
+
+
   }
+    // element is not local, go get it
+    
   return PdhtStatusOK;
+    // prepare request mesage
+
+#else
+  
+
+
+  rank.rank = rank.rank % (c->size / 2);
+ 
+
+
+  msg = (message_t *)buf;
+  msg->type = pdhtGet;
+  target_rank = (rank.rank * 2) + 1;
+  for(int i = 0;i < c->dhtcount;i++){
+    if(dht == c->hts[i]){
+      msg->ht_index = i;
+    }
+  }
+  msg->rank = c->rank;
+  msg->mbits = mbits;
+
+  // go ask remote for the element
+  MPI_Send(msg, sizeof(message_t), MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
+  //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
+
+  ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, target_rank, PDHT_TAG_REPLY,
+                 MPI_COMM_WORLD,&status);
+  assert(ret == MPI_SUCCESS);
+
+  reply = (reply_t *)rbuf;
+  if (reply->status == 0) 
+    return PdhtStatusNotFound;
+
+  if (memcmp(&reply->key,key,dht->keysize) != 0)
+    return PdhtStatusCollision;
+    
+  memcpy(value,&reply->value,dht->elemsize); 
+
+  return PdhtStatusOK;
+#endif
 }
 
 
@@ -89,13 +133,21 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   uint64_t mbits;
   uint32_t ptindex;
   ht_t *instance;
+
   char sbuf[sizeof(message_t) + PDHT_MAXKEYSIZE + dht->elemsize];
+  
+
   message_t *msg;
   MPI_Status status;
   int flag;
+  int target_rank;
+  
 
   dht->hashfn(dht,key,&mbits,&ptindex,&rank);
+  rank.rank = rank.rank % c->size;
 
+
+#ifdef THREAD_MULTIPLE
   if (rank.rank == c->rank){
     // if i have the entry, just update directly
 
@@ -119,6 +171,7 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   } else{
     // entry not on me, get from remote
 
+
     // prepare command message
     msg = (message_t *)sbuf;
     msg->type = pdhtPut;
@@ -136,15 +189,33 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
     MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, rank.rank,
              PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
 
-    //reciveing confirmation
-    //MPI_Recv(&flag,sizeof(int),MPI_INT,rank.rank,PDHT_TAG_ACK,MPI_COMM_WORLD,&status);
-    /*
-    if (flag != 1){
-      return PdhtStatusError;
-    }
-    */
   }
   return PdhtStatusOK;
+#else
+
+  // prepare command message
+  msg = (message_t *)sbuf;
+  msg->type = pdhtPut;
+  msg->rank = c->rank;
+  msg->mbits= mbits;
+
+  target_rank = (rank.rank * 2) + 1;
+
+  for(int i = 0;i < c->dhtcount;i++){
+    if(dht == c->hts[i]){
+      msg->ht_index = i;
+    }
+  }
+  
+  memcpy(&msg->key, key, dht->keysize);
+  memcpy(&msg->key + PDHT_MAXKEYSIZE, value, dht->elemsize);
+  // send command message to target
+  MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, target_rank,
+           PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
+
+
+  return PdhtStatusOK;
+#endif
 }
 
 

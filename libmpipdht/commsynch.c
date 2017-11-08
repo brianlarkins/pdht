@@ -1,15 +1,15 @@
 #include <pdht.h>
 
-#define PDHT_COUNTER_HOLDER 0
+#define PDHT_COUNTER_HOLDER 1
 
 extern pdht_context_t *c;
 
 void pdht_barrier(void){
-  MPI_Barrier(c->barrier_comm);
+  MPI_Barrier(c->split_comm);
 }
 
 void pdht_fence(pdht_t *dht){
-  MPI_Barrier(c->barrier_comm);
+  MPI_Barrier(c->split_comm);
 }
 
 

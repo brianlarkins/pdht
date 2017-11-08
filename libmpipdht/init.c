@@ -1,5 +1,8 @@
 #include <pdht.h>
 
+#define MAIN_COLOR 0
+#define SERVER_COLOR 1
+
 /* local protos */
 void *pdht_comm(void *arg);
 void free_entries(pdht_t *dht);
@@ -12,7 +15,7 @@ pdht_context_t *c = NULL;
 /**
  * pdht_init - initializes PDHT system
  */
-void pdht_init(void) {
+void pdht_init() {
   int result;
   int my_rank;
   int size;
@@ -32,6 +35,12 @@ void pdht_init(void) {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
+
+
+  
+
+
+
 
 #if 0
   // define  message datatype for MPI
@@ -58,7 +67,8 @@ void pdht_init(void) {
  * pdht_create -- allocates a new dht
  * @returns the newly minted dht
  */
-pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
+pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
+
   pdht_t *dht;
   ht_t *ht = NULL;
   int htbuflen;
@@ -69,32 +79,72 @@ pdht_t *pdht_create(int keysize, int elemsize,pdht_mode_t mode) {
   pthread_mutex_init(lock,NULL);
 
   //printf("lock : %p\n",lock);
+
   dht = (pdht_t *)calloc(1,sizeof(pdht_t));
   dht->ht = ht;
   dht->elemsize = elemsize;
   dht->hashfn = pdht_hash;
   dht->keysize = keysize;
   dht->ptl.nptes = 1;
-
   dht->uthash_lock = lock;
+
   if (!c){
+
     pdht_init();
-  
 
   }
+#ifndef THREAD_MULTIPLE
+  else{
+    //send request to my comm process to make me a new ht
+    int target_rank = c->rank + 1;
+    //MPI_Ssend
+    //just a message to make me a new ht will there be concurrency issues?
+    //Ssend?
+    //
+    //MPI_Recv might be unnecessary with Ssend
+    //have to do an ack to make sure table is completed
+
+  }
+
+
+#endif
+
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
+
 
   htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
   c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
 
+#ifndef THREAD_MULTIPLE
+  if (c->rank % 2){
+    MPI_Comm s_comm;
+    MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &s_comm);
+    c->split_comm = s_comm;
+    pdht_comm(NULL);
+  }
+#endif
 
   if (c->dhtcount == 1){
+
+    
+    
+#ifdef THREAD_MULTIPLE
     pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
+#endif
+
+
     MPI_Comm b_comm;
-    MPI_Comm_split(MPI_COMM_WORLD, 0,c->rank, &b_comm);
-    c->barrier_comm = b_comm;
+    MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &b_comm);
+    
+    c->split_comm = b_comm;
+
+
   }
+
+
+
+
   return dht;
 }
 
@@ -137,8 +187,13 @@ void *pdht_comm(void *arg) {
     switch (msg->type) {
       case pdhtStop:
         // game over, go home
+#ifdef THREAD_MULTIPLE
         goto done;
         break;
+#else
+        MPI_Finalize();
+        goto done;
+#endif
 
       case pdhtGet:
         // get request, search for entry and send reply to requestor
@@ -152,14 +207,18 @@ void *pdht_comm(void *arg) {
             MPI_Abort(MPI_COMM_WORLD, -1);
           }
           buf = tbuf;
-          buflen = need;
+
         }
-
+        buflen = need;
+        
         reply = (reply_t *)buf; // cast so we can set header values
-
+#ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
+#endif        
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+#ifdef THREAD_MULTIPLE
         pthread_mutex_unlock(dht->uthash_lock);
+#endif
         if (instance) {
           // found entry
           reply->status = 1; 
@@ -169,7 +228,6 @@ void *pdht_comm(void *arg) {
           reply->status = 0;
         }
 
-        //printf("sending payload\n");
         MPI_Send(buf,buflen,MPI_CHAR,requester,PDHT_TAG_REPLY,MPI_COMM_WORLD);
         break;
 
@@ -177,19 +235,25 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
-
+#ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
+#endif         
         HASH_FIND_INT(dht->ht,&msg->mbits,instance);
+#ifdef THREAD_MULTIPLE       
         pthread_mutex_unlock(dht->uthash_lock);
-
+#endif
         if (!instance) {
           // new entry -- create new HT entry
           instance = (ht_t*)calloc(1,sizeof(ht_t));
           instance->key = msg->mbits;
           instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
+#ifdef THREAD_MULTIPLE
           pthread_mutex_lock(dht->uthash_lock); 
+#endif          
           HASH_ADD_INT(dht->ht,key,instance);  
+#ifdef THREAD_MULTIPLE
           pthread_mutex_unlock(dht->uthash_lock);
+#endif        
         }
 
         // update HT entry with PUT data
@@ -218,6 +282,9 @@ void *pdht_comm(void *arg) {
   }
 done:
   if (buf) free(buf);
+#ifndef THREAD_MULTIPLE
+  exit(1);
+#endif
 }
 
 
@@ -227,15 +294,20 @@ done:
  */
 void pdht_fini() {
   message_t msg;
-
+  int target_rank;
   // force comm thread out of service loop
   c->thread_active = 0;
   // send comm thread game over message
   msg.type = pdhtStop;
   msg.ht_index = 0;
   msg.rank = c->rank;
-  MPI_Send(&msg, sizeof(message_t), MPI_CHAR, c->rank, 1, MPI_COMM_WORLD);
-  pthread_join(c->comm_tid,NULL);
+#ifdef THREAD_MULTIPLE
+  target_rank = c->rank;
+#else
+  target_rank = c->rank + 1;
+#endif
+  
+  MPI_Send(&msg, sizeof(message_t), MPI_CHAR, target_rank, 1, MPI_COMM_WORLD);
   MPI_Finalize();
   free(c);
 }

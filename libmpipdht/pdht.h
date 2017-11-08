@@ -21,6 +21,8 @@ struct pdht_timer_s{
 };
 typedef struct pdht_timer_s pdht_timer_t;
 
+//#define THREAD_MULTIPLE 0
+
 #define PDHT_PTALLOC_OPTIONS PTL_PT_MATCH_UNORDERED
 #define PDHT_MAX_TABLES 20
 #define PDHT_MAXKEYSIZE 32
@@ -66,7 +68,7 @@ struct pdht_s; // forward ref
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank);
 
 // message types
-typedef enum { pdhtGet, pdhtPut, pdhtStop, pdhtCounterReset, pdhtCounterInc } msg_type;
+typedef enum { pdhtGet, pdhtPut, pdhtStop, pdhtCounterReset, pdhtCounterInc, pdhtCreateHt } msg_type;
 
 
 /* global context structure */
@@ -79,7 +81,7 @@ struct pdht_context_s {
   int            thread_active;        // comm thread status
   MPI_Datatype   msgType;              // registered MPI datatype for structured comms
   int            maxbufsize;           // maximum MPI receive buffer size for all HTs
-  MPI_Comm       barrier_comm;
+  MPI_Comm       split_comm;
   int            pid;
 };
 typedef struct pdht_context_s pdht_context_t;
@@ -115,10 +117,11 @@ struct reply_s {
 typedef struct reply_s reply_t;
 
 /* define PDHT-MPI message tags */
-#define PDHT_TAG_COMMAND 1
-#define PDHT_TAG_REPLY   2
-#define PDHT_TAG_ACK     3
-#define PDHT_COUNTER_REPLY 4
+#define PDHT_TAG_COMMAND    1
+#define PDHT_TAG_REPLY      2
+#define PDHT_TAG_ACK        3
+#define PDHT_COUNTER_REPLY  4
+#define PDHT_CREATE_HT      5 
 
 /* fake tuning structure to not break regular PDHT benches/apps */
 //tuning stuff that is not used
