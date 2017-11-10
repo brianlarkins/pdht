@@ -11,7 +11,6 @@ void free_entries(pdht_t *dht);
 // global pdht context
 pdht_context_t *c = NULL;
 
-
 /**
  * pdht_init - initializes PDHT system
  */
@@ -25,7 +24,7 @@ void pdht_init() {
   MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
   assert(result == MPI_THREAD_MULTIPLE);
 #else
-  MPI_Init(NULL,NULL);
+  MPI_Init(NULL, NULL);
 #endif
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
@@ -38,12 +37,6 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-
-
-  
-
-
-
 
 #if 0
   // define  message datatype for MPI
@@ -71,7 +64,6 @@ void pdht_init() {
  * @returns the newly minted dht
  */
 pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
-
   pdht_t *dht;
 
   ht_t *ht = NULL;
@@ -79,11 +71,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   pthread_mutex_t *lock = malloc(sizeof(pthread_mutex_t));
   
-  //printf("lock : %p\n",lock);
   pthread_mutex_init(lock,NULL);
-
-  //printf("lock : %p\n",lock);
-
 
   dht = (pdht_t *)calloc(1,sizeof(pdht_t));
   dht->ht = ht;
@@ -94,9 +82,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   dht->uthash_lock = lock;
 
   if (!c){
-
     pdht_init();
-
   }
 
 #ifndef THREAD_MULTIPLE
@@ -105,7 +91,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     int target_rank = c->rank + 1;
     int buflen = sizeof(message_t) + 2 * (sizeof(int));
     char buf[buflen];
-    
 
     message_t *msg;
     
@@ -121,14 +106,10 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     MPI_Ssend(buf, buflen, MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
 
   }
-
-
-
 #endif
 
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
-
 
   htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
   c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
@@ -143,19 +124,13 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   }
 #endif
 
-  if (c->dhtcount == 1){
-
-    
+  if (c->dhtcount == 1) {
     
 #ifdef THREAD_MULTIPLE
     pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
 #endif
-
-
     MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &(c->split_comm));
-    
-
-
+    c->split_comm = b_comm;
   }
 
   return dht;
