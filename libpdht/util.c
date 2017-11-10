@@ -420,7 +420,6 @@ void pdht_print_stats(pdht_t *dht) {
 
 double pdht_average_time(pdht_t *dht, pdht_timer_t timer){
   double local_time = PDHT_READ_ATIMER_MSEC(timer);
-  printf("local_time : %f \n",local_time);
   double result[1];
   pdht_allreduce(&local_time, result, PdhtReduceOpSum, DoubleType, 1);
   return result[0] / c->size;
