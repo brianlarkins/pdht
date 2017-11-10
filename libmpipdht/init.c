@@ -130,7 +130,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
 #endif
     MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &(c->split_comm));
-    c->split_comm = b_comm;
   }
 
   return dht;
