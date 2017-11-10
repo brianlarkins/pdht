@@ -1,0 +1,14 @@
+#!/bin/bash
+#cd $HOME/pdht/libev-4.22
+#./pdht.configure
+#make -j 10 install
+#LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/opt/lib
+#cd $HOME
+#git clone https://github.com/Portals4/portals4.git
+cd $HOME/portals4
+#git remote add dblarkins https://github.com/dblarkins/portals4.git
+#git fetch dblarkins
+#git checkout dev/pdht-portals
+#./autogen.sh
+./configure --prefix=$HOME/opt/portals_nopmi --with-ev=$HOME/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-transport-shmem --enable-unordered-matching --disable-pmi-from-portals 
+#./configure --prefix=$HOME/src/pdht/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --disable-arg-checking
