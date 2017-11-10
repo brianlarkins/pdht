@@ -1,5 +1,4 @@
 
-
 #define _XOPEN_SOURCE 600
 
 #include <unistd.h>
@@ -25,7 +24,12 @@ void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptinde
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
+#if MPI
+  (*rank).rank = 2;
+#else
   (*rank).rank = 1;
+#endif
+  
   *mbits = *(unsigned long *)key;
   *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   //*ptindex = 1;
@@ -106,9 +110,11 @@ int main(int argc, char **argv) {
   val = malloc(elemsize);
   memset(val,0,elemsize);
 
+
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
+  pdht_barrier();
 /*
   if (c->size != 2) {
     if (c->rank == 1) {

@@ -57,9 +57,8 @@ ohb_memlat: pdhtlibs ohb_memlat.c
 optimes: pdhtlibs optimes.c
 	$(CC) $(CFLAGS) -o optimes optimes.c $(PDHT_LIBS)
 
-
 optimesMPI: pdhtmpilibs optimes.c
-	$(MPICC) $(CFLAGSMPI) -o optimesMPI optimes.c $(PDHT_MPILIBS)
+	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o optimesMPI optimes.c $(PDHT_MPILIBS)
 
 oshbench: pdhtlibs oshbench.c
 	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)
