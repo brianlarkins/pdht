@@ -325,6 +325,7 @@ pdht_status_t        pdht_add(pdht_t *dht, void *key, void *value);
 pdht_status_t        pdht_update(pdht_t *dht, void *key, void *value);
 pdht_status_t        pdht_get(pdht_t *dht, void *key, void *value);
 pdht_status_t        pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, void * key, void *value);
+pdht_status_t        pdht_persistent_get(pdht_t *dht, void *key, void *value);
 
 // Asynchronous Put / Get Operations -- nbputget.c
 pdht_handle_t        pdht_nbput(pdht_t *dht, void *key, void *value);
@@ -357,5 +358,6 @@ void print_count(pdht_t *dht, char *msg);
 //util.c
 void   pdht_print_stats(pdht_t *dht);
 void   pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val));
+double pdht_average_time(pdht_t *dht, pdht_timer_t timer);
 
 #include <pdht_inline.h>

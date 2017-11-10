@@ -94,15 +94,16 @@ int main(int argc, char **argv) {
 
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
+  
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
-
+  
   eprintf("starting run with %d processes, each with %d entries (total reads == %d)\n", c->size, numentries,iters*numentries);
+  
   pdht_barrier();
 
   PDHT_START_ATIMER(total);
 
 //  pdht_sethash(ht, ahash);
-
   // each process puts numentries elements into distributed hash
   key = c->rank;
   for (int iter=0; iter < numentries; iter++) {
@@ -130,14 +131,14 @@ int main(int argc, char **argv) {
     pdht_barrier();
   }
 
-  printf("%d: %12.7f ms\n", c->rank,  PDHT_READ_ATIMER_MSEC(gtimer));
-
+//  printf("%d: %12.7f ms\n", c->rank,  PDHT_READ_ATIMER_MSEC(gtimer));
+  eprintf("average time : %12.7f ms\n", pdht_average_time(ht, gtimer));
   pdht_barrier();
 
   PDHT_STOP_ATIMER(total);
   eprintf("total elapsed time: %12.7f\n", PDHT_READ_ATIMER_SEC(total));
-
-  pdht_print_stats(ht);
+  //pdht_average_time(ht, gtimer);
+  //pdht_print_stats(ht);
 
 done:
   pdht_free(ht);
