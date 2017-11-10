@@ -83,13 +83,11 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
   
 
 
-  rank.rank = rank.rank % (c->size / 2);
- 
+  target_rank = rank.rank + (1 - rank.rank % 2);
 
 
   msg = (message_t *)buf;
   msg->type = pdhtGet;
-  target_rank = (rank.rank * 2) + 1;
   for(int i = 0;i < c->dhtcount;i++){
     if(dht == c->hts[i]){
       msg->ht_index = i;
@@ -193,15 +191,14 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   return PdhtStatusOK;
 #else
 
-  rank.rank = rank.rank % c->size;
   // prepare command message
   msg = (message_t *)sbuf;
   msg->type = pdhtPut;
   msg->rank = c->rank;
   msg->mbits= mbits;
+  
 
-  target_rank = (rank.rank * 2) + 1;
-
+  target_rank = rank.rank + (1 - rank.rank % 2);
   for(int i = 0;i < c->dhtcount;i++){
     if(dht == c->hts[i]){
       msg->ht_index = i;

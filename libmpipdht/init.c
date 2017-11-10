@@ -136,6 +136,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 #ifndef THREAD_MULTIPLE
   if (c->rank % 2){
     MPI_Comm s_comm;
+
     MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &s_comm);
     c->split_comm = s_comm;
     pdht_comm(NULL);
@@ -150,16 +151,12 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
 #endif
 
-    MPI_Comm b_comm;
-    MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &b_comm);
+
+    MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &(c->split_comm));
     
-    c->split_comm = b_comm;
 
 
   }
-
-
-
 
   return dht;
 }

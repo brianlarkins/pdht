@@ -51,13 +51,10 @@ void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void
 }
 
 
-void pdht_get_average(pdht_timer_t *timer){
+double pdht_average_time(pdht_t *dht, pdht_timer_t timer){
   double global_sum;
   
-  MPI_Reduce(&(timer->total), &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  if(c->rank == 0){
-    printf("Average time = %f \n",global_sum * 1000 / c->size);
-  }
-
+  MPI_Reduce(&(timer.total), &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  return global_sum * 1000 / c->size;
 }
 
