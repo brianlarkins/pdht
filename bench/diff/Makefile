@@ -20,3 +20,6 @@ all: diff
 
 diff: pdhtlibs $(OBJS) diff3d.o 
 	$(CC) $(CFLAGS) -o diff diff3d.o $(OBJS) $(PDHT_LIBS)
+
+diffMPI: pdhtmpilibs $(OBJS) diff3d.o
+	$(MPICC) $(CFLAGSMPI) -o diffmpi diff3d.o $(OBJS) $(PDHT_MPILIBS)
