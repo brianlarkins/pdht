@@ -178,8 +178,8 @@ enum pdht_status_e {
 typedef enum pdht_status_e pdht_status_t;
 
 enum pdht_local_gets_e{
-  PdhtOptimized,
-  PdhtRegular
+  PdhtRegular,
+  PdhtSearchLocal
 };
 typedef enum pdht_local_gets_e pdht_local_gets_t;
 #define PDHT_DEFAULT_LOCAL_GETS PdhtRegular

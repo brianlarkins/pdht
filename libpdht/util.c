@@ -393,6 +393,16 @@ void pdht_print_stats(pdht_t *dht) {
   
   }
 
+
+double pdht_average_time(pdht_t *dht, pdht_timer_t timer){
+  double local_time = PDHT_READ_ATIMER_MSEC(timer);
+  double result[1];
+  pdht_allreduce(&local_time, result, PdhtReduceOpSum, DoubleType, 1);
+  return result[0] / c->size;
+
+}
+
+
 #if 0
   for (int p=0; p<c->size; p++)  {
     u_int64_t total = 0;
@@ -417,13 +427,4 @@ void pdht_print_stats(pdht_t *dht) {
   } 
 #endif 
 }
-
-double pdht_average_time(pdht_t *dht, pdht_timer_t timer){
-  double local_time = PDHT_READ_ATIMER_MSEC(timer);
-  double result[1];
-  pdht_allreduce(&local_time, result, PdhtReduceOpSum, DoubleType, 1);
-  return result[0] / c->size;
-
-}
-
 
