@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
         setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
         break;
       case 'l':
-        cfg.local_gets = PdhtOptimized;
+        cfg.local_gets = PdhtSearchLocal;
         break;
     } 
   }

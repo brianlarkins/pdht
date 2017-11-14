@@ -12,6 +12,7 @@ extern pdht_context_t *c;
 int eprintf(const char *format, ...);
 
 int main(int argc, char **argv);
+
 /*
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
@@ -26,38 +27,49 @@ void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptind
   ptindex = *(unsigned long *)key % dht->ptl.nptes;
   *ptindex = 0;
 }
+*/
 
+
+/*
+ * bench specific hash function
+ *   - key is expected to be a long integer
+ *   - key % P == target rank
+ */
 void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   *mbits = *(unsigned long *)key;
   *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   (*rank).rank = *(unsigned long *)key % c->size;
 }
-*/
+
+
 
 int main(int argc, char **argv) {
   pdht_t *ht;
   pdht_status_t ret;
   size_t elemsize = sizeof(unsigned long);
-  pdht_timer_t ltimer;
   unsigned long key = 0; // whatever, just increasing monotonically
   void *val = NULL;
   int opt;
   int iters = 1, numentries = NITER;
-  pdht_timer_t gtimer,total;
+  pdht_timer_t gtimer, ptimer, total;
+  double local[3], avg[3], min[3], max[3];
 
   pdht_config_t cfg;
   cfg.nptes        = 1;
   cfg.pendmode     = PdhtPendingTrig;
-  cfg.maxentries   = 250000;
-  cfg.pendq_size   = 100000;
+  cfg.maxentries   = 100000; // 250000;
+  cfg.pendq_size   =  25000; // 100000;
   cfg.ptalloc_opts = 0;
   cfg.local_gets = 0;
-  setenv("PTL_PROGRESS_NOSLEEP","1",1);
-  //setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
-  while ((opt = getopt(argc, argv, "hi:s:puv:lU")) != -1) {
+
+  while ((opt = getopt(argc, argv, "hi:ls:puv:U")) != -1) {
     switch (opt) {
+      case 'd':
+        cfg.quiet = 1;
+        break;
       case 'h':
         printf("usage: scaling -htu -i <iters> -s <elemsize> -v <numentries>\n");
+        printf("\t-d be quieter\n");
         printf("\t-h this message\n");
         printf("\t-i # iterations\n");
         printf("\t-s element size\n");
@@ -68,10 +80,14 @@ int main(int argc, char **argv) {
         break;
       case 'i':
         iters = atoi(optarg);
+        break;
+      case 'l':
+        cfg.local_gets = PdhtSearchLocal;
+        break;
       case 's':
         elemsize = atoi(optarg);
         break;
-      case 't':
+      case 'p':
         cfg.pendmode = PdhtPendingPoll;
         break;
       case 'u':
@@ -80,38 +96,41 @@ int main(int argc, char **argv) {
       case 'v':
         numentries = atoi(optarg);
         break;
-      case 'l':
-        cfg.local_gets = PdhtOptimized;
-        break;
       case 'U':
         setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
-      case 'd':
-        cfg.quiet = 1;
-
+        break;
     } 
   }
-  val = malloc(elemsize);
+
+
+  val = malloc(elemsize); // alloc our token value object
 
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
   
-  eprintf("starting run with %d processes, each with %d entries (total reads == %d)\n", c->size, numentries,iters*numentries);
+  eprintf("starting run with %d processes, each with %d entries (total reads == %d)\n", 
+      c->size, numentries,iters*numentries);
   
   pdht_barrier();
 
   PDHT_START_ATIMER(total);
 
-//  pdht_sethash(ht, ahash);
+  pdht_sethash(ht, ahash);
+
   // each process puts numentries elements into distributed hash
   key = c->rank;
+  memset(&ptimer, 0, sizeof(ptimer));
+  PDHT_START_ATIMER(ptimer);
   for (int iter=0; iter < numentries; iter++) {
     //val = key + 10;
     pdht_put(ht, &key, val);
     key += c->size;
     if ((iter % 1000) == 0) eprintf(".");
   }
+  PDHT_STOP_ATIMER(ptimer);
+
   pdht_fence(ht);
   eprintf(".\n");
 
@@ -121,7 +140,9 @@ int main(int argc, char **argv) {
   // now we time getting numentries
   for (int it=0; it<iters; it++) {
     
+    // set starting key to be our left neighbor
     key = (c->rank != 0) ? c->rank-1 : c->size - 1;
+
     PDHT_START_ATIMER(gtimer);
     for (int iter=0; iter < numentries; iter++) {
       pdht_get(ht, &key, val);
@@ -130,15 +151,32 @@ int main(int argc, char **argv) {
     PDHT_STOP_ATIMER(gtimer);
     pdht_barrier();
   }
-
-//  printf("%d: %12.7f ms\n", c->rank,  PDHT_READ_ATIMER_MSEC(gtimer));
-  eprintf("average time : %12.7f ms\n", pdht_average_time(ht, gtimer));
-  pdht_barrier();
-
   PDHT_STOP_ATIMER(total);
-  eprintf("total elapsed time: %12.7f\n", PDHT_READ_ATIMER_SEC(total));
-  //pdht_average_time(ht, gtimer);
-  //pdht_print_stats(ht);
+
+  local[0] = PDHT_READ_ATIMER_MSEC(ptimer);
+  local[1] = PDHT_READ_ATIMER_MSEC(gtimer);
+  local[2] = PDHT_READ_ATIMER_MSEC(total);
+
+  pdht_allreduce(&local[0], &avg[0], PdhtReduceOpSum, DoubleType, 1);
+  pdht_allreduce(&local[0], &min[0], PdhtReduceOpMin, DoubleType, 1);
+  pdht_allreduce(&local[0], &max[0], PdhtReduceOpMax, DoubleType, 1);
+
+  pdht_allreduce(&local[1], &avg[1], PdhtReduceOpSum, DoubleType, 1);
+  pdht_allreduce(&local[1], &min[1], PdhtReduceOpMin, DoubleType, 1);
+  pdht_allreduce(&local[1], &max[1], PdhtReduceOpMax, DoubleType, 1);
+
+  pdht_allreduce(&local[2], &avg[2], PdhtReduceOpSum, DoubleType, 1);
+  pdht_allreduce(&local[2], &min[2], PdhtReduceOpMin, DoubleType, 1);
+  pdht_allreduce(&local[2], &max[2], PdhtReduceOpMax, DoubleType, 1);
+
+  eprintf("put times         : %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+      avg[0], min[0], max[0]);
+
+  eprintf("get times         : %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+      avg[1], min[1], max[1]);
+
+  eprintf("total elapsed time: %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+      avg[2], min[2], max[2]);
 
 done:
   pdht_free(ht);
