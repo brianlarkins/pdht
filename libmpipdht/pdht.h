@@ -55,8 +55,8 @@ typedef struct pdht_ptl_s { int nptes; } pdht_ptl_t;
 
 // options for local access optimizations
 enum pdht_local_gets_e{
-  PdhtOptimized,
-  PdhtRegular
+  PdhtRegular,
+  PdhtSearchLocal
 };
 typedef enum pdht_local_gets_e pdht_local_gets_t;
 
