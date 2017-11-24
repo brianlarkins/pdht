@@ -96,11 +96,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
   msg->rank = c->rank;
   msg->mbits = mbits;
   // go ask remote for the element
-  /*
-  if(msg->mbits == 4832973924997861739){
-    printf("here\n");
-  }
-  */
   MPI_Send(msg, sizeof(message_t), MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
 
   //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want

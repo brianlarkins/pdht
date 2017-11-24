@@ -203,7 +203,6 @@ void *pdht_comm(void *arg) {
 #ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
 #endif  
-        //seg fault here
        
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
 
@@ -211,12 +210,6 @@ void *pdht_comm(void *arg) {
         pthread_mutex_unlock(dht->uthash_lock);
 #endif
         if (instance) {
-/*
-          if(msg->mbits == 4832973924997861739){
-            printf("get : %ld \n", *(long *)((instance->value)+PDHT_MAXKEYSIZE+48));
-            fflush(stdout);
-          }
-*/
       // found entry
           reply->status = 1; 
           memcpy(&reply->key, instance->value, PDHT_MAXKEYSIZE + dht->elemsize);
@@ -259,12 +252,6 @@ void *pdht_comm(void *arg) {
         // update HT entry with PUT data
 
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
-/*        
-        if(msg->mbits == 4832973924997861739){
-          printf("put : %ld \n", *(long *)((msg->key)+PDHT_MAXKEYSIZE+48));
-          fflush(stdout);
-        }
-*/
         
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
@@ -290,9 +277,8 @@ void *pdht_comm(void *arg) {
         initval = *(uint64_t *)(msg->key);
         dht->counters[dht->counter_count] = initval;
         dht->counter_count++;
-
-        printf("pdhtcounterinit \n");
-        fflush(stdout);
+        
+        break;
       case pdhtCreateHt:
 
         
