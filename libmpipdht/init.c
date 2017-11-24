@@ -31,6 +31,7 @@ void pdht_init() {
 
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
+  memset(c, 0, sizeof(pdht_context_t));
   c->thread_active = 1;
   c->dhtcount = 0;
   c->size = size;
@@ -110,10 +111,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
-
   htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
   c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
-
 #ifndef THREAD_MULTIPLE
   if (c->rank % 2){
     MPI_Comm s_comm;
@@ -157,20 +156,19 @@ void *pdht_comm(void *arg) {
   int need;
   int *counter_index;
   uint64_t increment;
+  unsigned long counter_value;
+  uint64_t initval;
 
   int *keysize;
   int *elemsize;
   int htbuflen;
 
   while(c->thread_active) {
-
     MPI_Recv(msgbuf, c->maxbufsize, MPI_CHAR, MPI_ANY_SOURCE,
         PDHT_TAG_COMMAND, MPI_COMM_WORLD, &status);
 
     msg = (message_t *)msgbuf; // cast to access message fields
-
     dht = c->hts[msg->ht_index];
-
     requester = msg->rank;
 
     switch (msg->type) {
@@ -187,6 +185,7 @@ void *pdht_comm(void *arg) {
       case pdhtGet:
         // get request, search for entry and send reply to requestor
         
+
         // make sure MPI send buffer is big enough
         need = sizeof(reply_t) + dht->elemsize;
         if ((!buf) || (buflen < need)) {
@@ -199,17 +198,26 @@ void *pdht_comm(void *arg) {
 
         }
         buflen = need;
-        
+
         reply = (reply_t *)buf; // cast so we can set header values
 #ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
-#endif        
+#endif  
+        //seg fault here
+       
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+
 #ifdef THREAD_MULTIPLE
         pthread_mutex_unlock(dht->uthash_lock);
 #endif
         if (instance) {
-          // found entry
+/*
+          if(msg->mbits == 4832973924997861739){
+            printf("get : %ld \n", *(long *)((instance->value)+PDHT_MAXKEYSIZE+48));
+            fflush(stdout);
+          }
+*/
+      // found entry
           reply->status = 1; 
           memcpy(&reply->key, instance->value, PDHT_MAXKEYSIZE + dht->elemsize);
         } else {
@@ -223,6 +231,7 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
+
 #ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
 #endif         
@@ -250,8 +259,12 @@ void *pdht_comm(void *arg) {
         // update HT entry with PUT data
 
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
-        
-
+/*        
+        if(msg->mbits == 4832973924997861739){
+          printf("put : %ld \n", *(long *)((msg->key)+PDHT_MAXKEYSIZE+48));
+          fflush(stdout);
+        }
+*/
         
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
@@ -262,17 +275,24 @@ void *pdht_comm(void *arg) {
         //reset counter
         counter_index = (int *)(msg->key);
         dht->counters[*counter_index] = 0;
+        break;
 
       case pdhtCounterInc:
         increment = msg->mbits;
         counter_index = (int *)(msg->key);
-        int counter_value = dht->counters[*counter_index];
-        
-        MPI_Send(&counter_value, sizeof(int), MPI_INT, msg->rank, PDHT_COUNTER_REPLY, MPI_COMM_WORLD);
-
+        counter_value = dht->counters[*counter_index];
+        MPI_Send(&counter_value, 1, MPI_UNSIGNED_LONG, msg->rank, PDHT_COUNTER_REPLY, MPI_COMM_WORLD);
         dht->counters[*counter_index] += increment;
+        break;
 
-        
+
+      case pdhtCounterInit:
+        initval = *(uint64_t *)(msg->key);
+        dht->counters[dht->counter_count] = initval;
+        dht->counter_count++;
+
+        printf("pdhtcounterinit \n");
+        fflush(stdout);
       case pdhtCreateHt:
 
         
@@ -297,6 +317,7 @@ void *pdht_comm(void *arg) {
 
         htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + *elemsize;
         c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
+        break;
     }
   }
 done:
@@ -304,6 +325,7 @@ done:
 
 
 #ifndef THREAD_MULTIPLE
+//  MPI_Finalize();
   exit(0);
 #endif
 
