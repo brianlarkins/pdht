@@ -223,6 +223,7 @@ void    pdht_print_stats(pdht_t *dht);
 int     eprintf(const char *format, ...);
 void    pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *value));
 double  pdht_average_time(pdht_t *dht, pdht_timer_t timer);
+void    pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems);
 
 //hash
 void pdht_sethash(pdht_t *dht,pdht_hashfunc hfun);
