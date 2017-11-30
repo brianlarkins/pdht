@@ -1,7 +1,9 @@
 #include <pdht.h>
-
-#define PDHT_COUNTER_HOLDER 1
-
+#ifdef THREAD_MULTIPLE
+  #define PDHT_COUNTER_HOLDER 0
+#else
+  #define PDHT_COUNTER_HOLDER 1
+#endif
 extern pdht_context_t *c;
 
 void pdht_barrier(void){
@@ -14,13 +16,28 @@ void pdht_fence(pdht_t *dht){
 
 
 
-int pdht_counter_init(pdht_t *ht, int initval){
-
+int pdht_counter_init(pdht_t *ht, uint64_t initval){
+  char sendBuf[sizeof(message_t) + sizeof(uint64_t)];
+  message_t *msg_init = (message_t *)sendBuf;
   assert(ht->counter_count < PDHT_MAX_COUNTERS);
 
+  msg_init->type = pdhtCounterInit;
+  memcpy(&msg_init->key, &initval, sizeof(uint64_t));
+  msg_init->rank = c->rank;
+  printf("init \n");
+  fflush(stdout);
+  int i;
+  for(i = 0; i < c->dhtcount; i++){
+    if(c->hts[i] == ht) break;
+  }
+  
+  msg_init->ht_index = i;
   if(c->rank == PDHT_COUNTER_HOLDER){
     ht->counters[ht->counter_count] = initval;
   }
+#ifndef THREAD_MULTIPLE
+  MPI_Ssend(msg_init, sizeof(message_t) + sizeof(uint64_t), MPI_CHAR, PDHT_COUNTER_HOLDER, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
+#endif
   return ht->counter_count++;
 }
 
@@ -32,8 +49,9 @@ void pdht_counter_reset(pdht_t *ht, int counter){
   msg_reset->type = pdhtCounterReset;
   msg_reset->rank = c->rank;
   
+
   int i;
-  for(i = 0; i < c->size; i++){
+  for(i = 0; i < c->dhtcount; i++){
     if(c->hts[i] == ht) break;
   }
   
@@ -50,6 +68,7 @@ void pdht_counter_reset(pdht_t *ht, int counter){
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val){
   //preparing message
   char sendBuf[sizeof(message_t) + sizeof(int)];
+  long unsigned counter_val;
   MPI_Status status;
 
   message_t *inc_message;
@@ -58,24 +77,19 @@ uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val){
   inc_message->type = pdhtCounterInc;
   inc_message->rank = c->rank;
   
-
   int i;
-  for(i = 0; i < c->size; i++){
+  for(i = 0; i < c->dhtcount; i++){
     if(c->hts[i] == ht) break;
   }
-  
   inc_message->ht_index = i;
   inc_message->mbits = val; //yea i get this isn't the best but it'll work without wasting that space
-  
   memcpy(inc_message->key, &counter, sizeof(int));
-
+  
   MPI_Send(inc_message, sizeof(sendBuf), MPI_CHAR, PDHT_COUNTER_HOLDER, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
   
-  int counter_val;
+  MPI_Recv(&counter_val, 1, MPI_UNSIGNED_LONG, PDHT_COUNTER_HOLDER, PDHT_COUNTER_REPLY, MPI_COMM_WORLD, &status);
 
-  MPI_Recv(&counter, sizeof(int), MPI_INT, PDHT_COUNTER_HOLDER, PDHT_COUNTER_REPLY, MPI_COMM_WORLD, &status);
-  
-  return counter;
+  return counter_val;
 }
 
 

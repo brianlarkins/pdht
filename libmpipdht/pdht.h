@@ -51,7 +51,6 @@ typedef struct pdht_ptl_s { int nptes; } pdht_ptl_t;
 
 
 
-
 /* MPI impementation details */
 
 // options for local access optimizations
@@ -68,7 +67,23 @@ struct pdht_s; // forward ref
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank);
 
 // message types
-typedef enum { pdhtGet, pdhtPut, pdhtStop, pdhtCounterReset, pdhtCounterInc, pdhtCreateHt } msg_type;
+typedef enum { pdhtGet, pdhtPut, pdhtStop, pdhtCounterInit, pdhtCounterReset, pdhtCounterInc, pdhtCreateHt } msg_type;
+
+enum pdht_datatype_e {
+  IntType,
+  LongType,
+  DoubleType,
+  CharType,
+  BoolType
+};
+typedef enum pdht_datatype_e pdht_datatype_t;
+
+enum pdht_reduceop_e{
+  PdhtReduceOpSum,
+  PdhtReduceOpMin,
+  PdhtReduceOpMax
+};
+typedef enum pdht_reduceop_e pdht_reduceop_t;
 
 
 /* global context structure */
@@ -86,6 +101,7 @@ struct pdht_context_s {
 };
 typedef struct pdht_context_s pdht_context_t;
 
+extern pdht_context_t *c;
 
 /* MPI private UTHASH HT entry structure */
 struct ht_s{
@@ -191,11 +207,12 @@ void pdht_tune(unsigned opts, pdht_config_t *config);
 pdht_status_t pdht_put(pdht_t *dht, void *key, void *value);
 pdht_status_t pdht_get(pdht_t *dht, void *key, void *value);
 pdht_status_t pdht_update(pdht_t *dht, void *key, void *value);
+pdht_status_t pdht_persistent_get(pdht_t *dht, void *key, void *value);
 
 //commsynch
 void pdht_barrier(void);
 void pdht_fence(pdht_t *dht);
-int pdht_counter_init(pdht_t *ht, int initval);
+int pdht_counter_init(pdht_t *ht, uint64_t initval);
 void pdht_counter_reset(pdht_t *ht, int counter);
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
 

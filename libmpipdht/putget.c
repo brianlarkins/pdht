@@ -24,7 +24,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
   dht->hashfn(dht,key,&mbits,&ptindex,&rank); //hashing
 
-
 #ifdef THREAD_MULTIPLE
   if (rank.rank == c->rank){
     // if i have the entry just get it
@@ -55,12 +54,14 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
     msg->rank = c->rank;
     msg->mbits = mbits;
     // go ask remote for the element
+
     MPI_Send(msg, sizeof(message_t), MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
 
     //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
 
     ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, target_rank, PDHT_TAG_REPLY,
                    MPI_COMM_WORLD,&status);
+
     assert(ret == MPI_SUCCESS);
 
     reply = (reply_t *)rbuf;
@@ -81,13 +82,12 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
 #else
   
-
-
   target_rank = rank.rank + (1 - rank.rank % 2);
-
 
   msg = (message_t *)buf;
   msg->type = pdhtGet;
+  
+
   for(int i = 0;i < c->dhtcount;i++){
     if(dht == c->hts[i]){
       msg->ht_index = i;
@@ -95,13 +95,15 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
   }
   msg->rank = c->rank;
   msg->mbits = mbits;
-
   // go ask remote for the element
   MPI_Send(msg, sizeof(message_t), MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD); 
+
   //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
+
 
   ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, target_rank, PDHT_TAG_REPLY,
                  MPI_COMM_WORLD,&status);
+
   assert(ret == MPI_SUCCESS);
 
   reply = (reply_t *)rbuf;
@@ -111,7 +113,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
   if (memcmp(&reply->key,key,dht->keysize) != 0)
     return PdhtStatusCollision;
     
+
   memcpy(value,&reply->value,dht->elemsize); 
+
 
   return PdhtStatusOK;
 #endif
@@ -142,8 +146,6 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   
 
   dht->hashfn(dht,key,&mbits,&ptindex,&rank);
-
-
 
 #ifdef THREAD_MULTIPLE
   if (rank.rank == c->rank){
@@ -196,7 +198,6 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   msg->type = pdhtPut;
   msg->rank = c->rank;
   msg->mbits= mbits;
-  
 
   target_rank = rank.rank + (1 - rank.rank % 2);
   for(int i = 0;i < c->dhtcount;i++){
@@ -215,7 +216,10 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
 #endif
 }
 
-
+pdht_status_t pdht_persistent_get(pdht_t *dht, void *key, void *value){
+  while(pdht_get(dht, key, value) != PdhtStatusOK);
+  return PdhtStatusOK;
+}
 
 pdht_status_t pdht_update(pdht_t *dht, void *key, void *value){
   return pdht_put(dht,key,value);
