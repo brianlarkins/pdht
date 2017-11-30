@@ -1,4 +1,5 @@
 
+
 #define _XOPEN_SOURCE 600
 
 #include <unistd.h>
@@ -24,12 +25,7 @@ void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptinde
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
-#if MPI
-  (*rank).rank = 2;
-#else
   (*rank).rank = 1;
-#endif
-  
   *mbits = *(unsigned long *)key;
   *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   //*ptindex = 1;
@@ -45,21 +41,22 @@ int main(int argc, char **argv) {
   void *val = NULL;
   int opt, maxentries, maxiters;
   int rawmode = 0;
-  int mlistentry[] = { 1, 10, 100, 1000, 10000, 50000 };
-  pdht_timer_t rgets[6];
-  pdht_timer_t lgets[6];
+  int mlistentry[] = { 1, 10, 100, 1000, 5000, 10000, 20000, 30000, 40000, 50000 };
+  pdht_timer_t rgets[10];
+  pdht_timer_t lgets[10];
   pdht_timer_t lnotfound, rnotfound;
   pdht_timer_t lput, rput;
   pdht_timer_t lupdate, rupdate;
   pdht_timer_t total;
   pdht_config_t cfg;
 
-  maxentries = NITER;
+  maxentries = 50000;
   maxiters   = NITER;
   cfg.nptes        = 1;
   cfg.pendmode     = PdhtPendingTrig;
   cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
-  cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
+  //cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
+  cfg.pendq_size   = 5000;
   cfg.ptalloc_opts = 0;
   cfg.quiet        = 0;
   cfg.local_gets   = PdhtRegular;
@@ -110,7 +107,6 @@ int main(int argc, char **argv) {
   val = malloc(elemsize);
   memset(val,0,elemsize);
 
-
   // create hash table
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
@@ -147,6 +143,7 @@ int main(int argc, char **argv) {
     } 
     PDHT_STOP_ATIMER(lnotfound);
   }
+
 
   // TIMING: latency for remote not found elements
   pdht_barrier();
@@ -226,7 +223,7 @@ int main(int argc, char **argv) {
   pdht_barrier();
 
   // for 1, 10, 100, 1000, 10000, 100000
-  for (int e=0; e<6; e++) {
+  for (int e=0; e<10; e++) {
     PDHT_INIT_ATIMER(rgets[e]);
     PDHT_INIT_ATIMER(lgets[e]);
 
@@ -302,7 +299,7 @@ int main(int argc, char **argv) {
     eprintf("  unit: local update:   %12.7f us remote update:  %12.7f us\n",
         (PDHT_READ_ATIMER_USEC(lupdate)/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
-    for (int e=0; e<6; e++) {
+    for (int e=0; e<10; e++) {
       eprintf("  [%7d]: local get: %12.7f us remote get:     %12.7f us\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
@@ -318,7 +315,7 @@ int main(int argc, char **argv) {
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
 #endif
     // { 1, 10, 100, 1000, 10000, 50000 }
-    for (int e=0; e<6; e++) {
+    for (int e=0; e<10; e++) {
       eprintf(" %7d %9.5f %9.5f\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));

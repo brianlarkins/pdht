@@ -15,6 +15,8 @@
  * portals distributed hash table synchronization ops
  */
 
+static int barrier_landing = 0;
+
 static void reduce_zip(void *dest, void *src, pdht_reduceop_t op, pdht_datatype_t ty, int s);
 static void reduce_sum(void *dest, void *src, pdht_datatype_t ty, int s);
 static void reduce_min(void *dest, void *src, pdht_datatype_t ty, int s);
@@ -80,8 +82,8 @@ void pdht_collective_init(pdht_context_t *c) {
   } 
 
   // allocate matchlist entry for barriers
-  me.start      = NULL;
-  me.length     = 0;
+  me.start      = &barrier_landing;
+  me.length     = sizeof(barrier_landing);
   me.ct_handle  = c->ptl.barrier_ct;
   me.uid        = PTL_UID_ANY;
   me.options    = PTL_ME_OP_PUT | PTL_ME_ACK_DISABLE | PTL_ME_EVENT_CT_COMM | PTL_ME_EVENT_LINK_DISABLE;
@@ -143,33 +145,55 @@ void pdht_barrier(void) {
   ptl_size_t     test;
   ptl_ct_event_t cval, cval2;
   int ret; 
+  int x = 1;
   // use binary tree of processes
   p.rank = ((c->rank + 1) >> 1) - 1;
   l.rank = ((c->rank + 1) << 1) - 1;
   r.rank = l.rank + 1;
 
-  //pdht_dprintf("**** p: %lu l: %lu r: %lu\n", p.rank, l.rank, r.rank);
-  //PtlCTGet(c->ptl.barrier_ct, &cval2);
-  //pdht_dprintf("before: %lu\n", cval2.success);
+  PtlCTGet(c->ptl.barrier_ct, &cval2);
+  //pdht_dprintf("**** p: %lu l: %lu r: %lu barrier_count: %d counter: %lu\n", p.rank, l.rank, r.rank, c->ptl.barrier_count, cval2.success);
 
   // wait for children to enter barrier
-  if (l.rank < c->size) {
+  int orig = c->ptl.barrier_count;
+
+  if (l.rank < c->size) 
     test = c->ptl.barrier_count++;
-    if (r.rank < c->size) 
-      test = c->ptl.barrier_count++;
-    pdht_lprintf(PDHT_DEBUG_VERBOSE, "waiting for %d messages from l: %lu r: %lu\n", test, l.rank, r.rank);
-    ret = PtlCTWait(c->ptl.barrier_ct, test, &cval);
+  if (r.rank < c->size) 
+    test = c->ptl.barrier_count++;
+
+  if (test > orig) {
+    //pdht_dprintf("waiting for %d messages from l: %lu r: %lu \n", test, l.rank, r.rank);
+
+    ret = PtlCTWait(c->ptl.barrier_ct, orig+1, &cval);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: CTWait failed (children)\n");
       exit(1);
     }
-    pdht_lprintf(PDHT_DEBUG_VERBOSE, "children have entered barrier\n");
+    //pdht_dprintf("got one message: s:%d f:%d\n",cval.success, cval.failure);
+
+    if ((orig+2) == test) {
+      ret = PtlCTWait(c->ptl.barrier_ct, test, &cval);
+      if (ret != PTL_OK) {
+        pdht_dprintf("barrier: CTWait failed (children)\n");
+        exit(1);
+      }
+      //pdht_dprintf("got other message: s:%d f:%d\n",cval.success, cval.failure);
+    }
   }
+  ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "children have entered barrier\n");
+
   // children tell parents that they have entered
   if (c->rank > 0)  {
-    pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", p.rank);
-    ret = PtlPut(c->ptl.collective_md, 0, 0, PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
+    //pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", p.rank);
+    PtlCTGet(c->ptl.barrier_ct, &cval2);
+    //pdht_dprintf("notifying %lu : ct: %d count: %d\n", p.rank, cval2.success, c->ptl.barrier_count);
+    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
+    if (ret != PTL_OK) {
+      pdht_dprintf("barrier: Put failed (put parent): %s\n", pdht_ptl_error(ret));
+      exit(1);
+    }
     test = c->ptl.barrier_count++;
 
     ret = PtlCTWait(c->ptl.barrier_ct, test, &cval);
@@ -181,21 +205,23 @@ void pdht_barrier(void) {
 
   // wake up waiting children
   if (l.rank < c->size) {
-    pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", l.rank);
-    ret = PtlPut(c->ptl.collective_md, 0, 0, PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX, 
+    //pdht_lprintf(PDHT_DEBUG_VERBOSE, "waking %lu\n", l.rank);
+    //pdht_dprintf("waking left: %lu\n", l.rank);
+    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
-      pdht_dprintf("barrier: Put failed (wake left)\n");
+      pdht_dprintf("barrier: Put failed (wake left): %s\n", pdht_ptl_error(ret));
       exit(1);
     }
   }
 
   if (r.rank < c->size) {
-    pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", r.rank);
-    ret = PtlPut(c->ptl.collective_md, 0, 0, PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX, 
+    ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", r.rank);
+    //pdht_dprintf("waking right: %lu\n", l.rank);
+    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
-      pdht_dprintf("barrier: Put failed (wake right)\n");
+      pdht_dprintf("barrier: Put failed (wake right): %s\n", pdht_ptl_error(ret));
       exit(1);
     }
   }

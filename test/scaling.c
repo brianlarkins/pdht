@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE 600
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -6,7 +7,7 @@
 
 #include <pdht.h>
 
-#define NITER 2000
+#define NITER 1000
 
 extern pdht_context_t *c;
 int eprintf(const char *format, ...);
@@ -42,7 +43,6 @@ void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, p
 }
 
 
-
 int main(int argc, char **argv) {
   pdht_t *ht;
   pdht_status_t ret;
@@ -57,12 +57,12 @@ int main(int argc, char **argv) {
   pdht_config_t cfg;
   cfg.nptes        = 1;
   cfg.pendmode     = PdhtPendingTrig;
-  cfg.maxentries   = 100000; // 250000;
+  cfg.maxentries   =  50000; // 250000;
   cfg.pendq_size   =  25000; // 100000;
   cfg.ptalloc_opts = 0;
   cfg.local_gets = 0;
 
-  while ((opt = getopt(argc, argv, "hi:ls:puv:U")) != -1) {
+  while ((opt = getopt(argc, argv, "hi:ls:pquv:U")) != -1) {
     switch (opt) {
       case 'd':
         cfg.quiet = 1;
@@ -84,11 +84,14 @@ int main(int argc, char **argv) {
       case 'l':
         cfg.local_gets = PdhtSearchLocal;
         break;
-      case 's':
-        elemsize = atoi(optarg);
-        break;
       case 'p':
         cfg.pendmode = PdhtPendingPoll;
+        break;
+      case 'q':
+        cfg.quiet = 1;
+        break;
+      case 's':
+        elemsize = atoi(optarg);
         break;
       case 'u':
         cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
@@ -102,7 +105,6 @@ int main(int argc, char **argv) {
     } 
   }
 
-
   val = malloc(elemsize); // alloc our token value object
 
   // create hash table
@@ -112,7 +114,6 @@ int main(int argc, char **argv) {
   
   eprintf("starting run with %d processes, each with %d entries (total reads == %d)\n", 
       c->size, numentries,iters*numentries);
-  
   pdht_barrier();
 
   PDHT_START_ATIMER(total);
@@ -153,30 +154,32 @@ int main(int argc, char **argv) {
   }
   PDHT_STOP_ATIMER(total);
 
-  local[0] = PDHT_READ_ATIMER_MSEC(ptimer);
-  local[1] = PDHT_READ_ATIMER_MSEC(gtimer);
-  local[2] = PDHT_READ_ATIMER_MSEC(total);
+  local[0] = PDHT_READ_ATIMER_SEC(ptimer);
+  local[1] = PDHT_READ_ATIMER_SEC(gtimer);
+  local[2] = PDHT_READ_ATIMER_SEC(total);
 
-  pdht_allreduce(&local[0], &avg[0], PdhtReduceOpSum, DoubleType, 1);
-  pdht_allreduce(&local[0], &min[0], PdhtReduceOpMin, DoubleType, 1);
-  pdht_allreduce(&local[0], &max[0], PdhtReduceOpMax, DoubleType, 1);
+  pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 3);
+  pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 3);
+  pdht_allreduce(local, &max, PdhtReduceOpMax, DoubleType, 3);
 
-  pdht_allreduce(&local[1], &avg[1], PdhtReduceOpSum, DoubleType, 1);
-  pdht_allreduce(&local[1], &min[1], PdhtReduceOpMin, DoubleType, 1);
-  pdht_allreduce(&local[1], &max[1], PdhtReduceOpMax, DoubleType, 1);
+  // fix up averages
+  for (int i=0; i<3; i++) 
+    avg[i] = avg[i] / (double)c->size;
 
-  pdht_allreduce(&local[2], &avg[2], PdhtReduceOpSum, DoubleType, 1);
-  pdht_allreduce(&local[2], &min[2], PdhtReduceOpMin, DoubleType, 1);
-  pdht_allreduce(&local[2], &max[2], PdhtReduceOpMax, DoubleType, 1);
-
-  eprintf("put times         : %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+  eprintf("put times         : %12.7f / %12.7f / %12.7f  sec (avg/min/max)\n", 
       avg[0], min[0], max[0]);
 
-  eprintf("get times         : %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+  eprintf("get times         : %12.7f / %12.7f / %12.7f  sec (avg/min/max)\n", 
       avg[1], min[1], max[1]);
 
-  eprintf("total elapsed time: %12.7f / %12.7f / %12.7f  (avg/min/max)", 
+  eprintf("total elapsed time: %12.7f / %12.7f / %12.7f  sec (avg/min/max)\n", 
       avg[2], min[2], max[2]);
+
+  eprintf("put throughput    : %12.3f MBps\n", (c->size*elemsize*numentries)/(avg[0]*10e6));
+  eprintf("get throughput    : %12.3f MBps %12.3f reads/sec\n", 
+	(c->size*elemsize*numentries*iters)/(avg[1]*10e6),
+	(c->size*numentries*iters)/(avg[1]));
+  //pdht_print_stats(ht);
 
 done:
   pdht_free(ht);

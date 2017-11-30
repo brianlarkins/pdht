@@ -8,6 +8,9 @@
 /********************************************************/
 
 #define _XOPEN_SOURCE 700
+#include <execinfo.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <time.h>
 #include <pdht_impl.h>
 #include <sys/stat.h>
@@ -17,6 +20,7 @@ pdht_config_t   *__pdht_config = NULL; // another one. i'm over it. (used only d
 
 static void pdht_exit_handler(void);
 static void print_fucking_mapping(void);
+void pdht_bthandler(int sig);
 
 /**
  * @file
@@ -45,7 +49,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
 
   //setenv("PTL_LOG_LEVEL","3",1);
-  //setenv("PTL_DEBUG","1",1);
+  setenv("PTL_DEBUG","1",1);
   //setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   if (!__pdht_config) {
@@ -345,9 +349,8 @@ void pdht_clear(pdht_t *dht) {
 void pdht_init(pdht_config_t *cfg) {
   ptl_ni_limits_t ni_req_limits;
   ptl_process_t me;
+  int stderrfd = dup2(STDERR_FILENO,stderrfd);
   int ret;
-  
-	
 
   // turn off output buffering for everyone's sanity
   setbuf(stdout, NULL);
@@ -355,10 +358,14 @@ void pdht_init(pdht_config_t *cfg) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
-  if (!cfg->quiet)
+  if (!cfg->quiet) {
     c->dbglvl = PDHT_DEBUG_WARN;
-  else 
+  } else {
     c->dbglvl = PDHT_DEBUG_NONE;
+    int devnull = open("/dev/null", O_WRONLY);
+    ret = dup2(devnull,STDERR_FILENO);
+    assert((ret != -1) && (devnull != -1));
+  }
 
   atexit(pdht_exit_handler);
 	
@@ -465,6 +472,15 @@ void pdht_init(pdht_config_t *cfg) {
   
   c->ptl.pt_nextfree = __PDHT_ACTIVE_INDEX;
 
+  // register backtrace handler
+  signal(SIGSEGV, pdht_bthandler);
+
+  // okay, we've survived the ummunotify warnings, turn on stderr again
+  if (cfg->quiet) {
+    ret = dup2(stderrfd, STDERR_FILENO);
+    assert(ret != -1);
+  }
+
   return;
 
 error:
@@ -513,4 +529,18 @@ static void print_fucking_mapping() {
     printf("process %d: map[%u] nid: %u pid: %u\n", c->rank, i, c->ptl.mapping[i].phys.nid, c->ptl.mapping[i].phys.pid);
     fflush(stdout);
   }
+}
+
+
+/* 
+ * backtrace handler
+ */
+void pdht_bthandler(int sig) {
+  void *a[100];
+  size_t size;
+
+  size = backtrace(a, 100);
+  fprintf(stderr, "Error: signal: %d:\n", sig);
+  backtrace_symbols_fd(a,size, STDERR_FILENO);
+  exit(1);
 }

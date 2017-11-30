@@ -378,6 +378,7 @@ void pdht_print_stats(pdht_t *dht) {
     printf("\tt6:    min: %10.4f sec\t max:%10.4f sec avg: %10.4f\n", 
                   dmin[7]/(double)1e9, dmax[7]/(double)1e9, dsum[7]/(double)(c->size * 1e9));
   }
+#if 0
 
   // hash distribution data
   pdht_allreduce(dht->stats.rankputs, iglobal, PdhtReduceOpSum, LongType, PDHT_MAX_RANKS);
@@ -389,21 +390,6 @@ void pdht_print_stats(pdht_t *dht) {
   }
   pdht_barrier();
 
-  for (int p=0; p<c->size; p++) {
-  
-  }
-
-
-double pdht_average_time(pdht_t *dht, pdht_timer_t timer){
-  double local_time = PDHT_READ_ATIMER_MSEC(timer);
-  double result[1];
-  pdht_allreduce(&local_time, result, PdhtReduceOpSum, DoubleType, 1);
-  return result[0] / c->size;
-
-}
-
-
-#if 0
   for (int p=0; p<c->size; p++)  {
     u_int64_t total = 0;
     if (p == c->rank) {
