@@ -10,7 +10,7 @@
 
 // Options
 #define FILL_RATE .1  // Pecentage of blocks to be filled with data
-#define MATRIX_SIZE 1000 // total number of elements in a row
+#define MATRIX_SIZE 100 // total number of elements in a row
 #define BLOCK_SIZE 2 // Number of elements in each row/col in blocks
 
 // Helpful Constants
@@ -210,8 +210,8 @@ int main(int argc, char **argv) {
     cfg.nptes        = 1;
     cfg.pendmode     = PdhtPendingTrig;
     //cfg.pendmode     = PdhtPendingTriggered;
-    cfg.maxentries   = 25000;
-    cfg.pendq_size   = 10000;
+    cfg.maxentries   = 250000;
+    cfg.pendq_size   = 100000;
     cfg.ptalloc_opts = 0;
     //cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
     pdht_tune(PDHT_TUNE_ALL, &cfg);
