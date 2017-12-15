@@ -163,7 +163,6 @@ void pdht_barrier(void) {
   if (r.rank < c->size) 
     test = c->ptl.barrier_count++;
 
-  
   if (test > orig) {
     //pdht_dprintf("waiting for %d messages from l: %lu r: %lu \n", test, l.rank, r.rank);
 
@@ -183,9 +182,6 @@ void pdht_barrier(void) {
       //pdht_dprintf("got other message: s:%d f:%d\n",cval.success, cval.failure);
     }
   }
-
-
-  
   ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "children have entered barrier\n");
 
   // children tell parents that they have entered
