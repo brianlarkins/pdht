@@ -9,8 +9,8 @@
 #include <city.h>
 
 // Options
-#define FILL_RATE .5  // Pecentage of blocks to be filled with data
-#define MATRIX_SIZE 8 // total number of elements in a row
+#define FILL_RATE .1  // Pecentage of blocks to be filled with data
+#define MATRIX_SIZE 1000 // total number of elements in a row
 #define BLOCK_SIZE 2 // Number of elements in each row/col in blocks
 
 // Helpful Constants
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
     
     pdht_t *ht;
 	  //printf("number of blocks %d\n",TOTAL_BLOCKS);
-    printf("Starting\n");
+    //printf("Starting\n");
     srand(0);
     pdht_status_t ret;
     size_t elemsize = sizeof(Block_t);
@@ -196,7 +196,8 @@ int main(int argc, char **argv) {
     Block_t outBlockA;
     Block_t outBlockB;
     Block_t *resultBlock;
-    
+    int mine;
+
     val = malloc(elemsize);
     memset(val,0,elemsize);
     
@@ -209,24 +210,24 @@ int main(int argc, char **argv) {
     cfg.nptes        = 1;
     cfg.pendmode     = PdhtPendingTrig;
     //cfg.pendmode     = PdhtPendingTriggered;
-    cfg.maxentries   = 250000;
-    cfg.pendq_size   = 100000;
+    cfg.maxentries   = 25000;
+    cfg.pendq_size   = 10000;
     cfg.ptalloc_opts = 0;
     //cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
     pdht_tune(PDHT_TUNE_ALL, &cfg);
     
     // create hash table
     ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
-    
+
     //resultBlock = 
     pdht_sethash(ht, localhash);
-    
     pdht_fence(ht);
     Block_t *filledBlockHolder;
     filledBlockHolder = calloc(sizeof(Block_t),1);
+    
+
     // Store rows in hash table
     if (c->rank == 0) {
-        printf("Filling blocks\n");
         for (int row = 0; row < BLOCKS_PER_ROW; row++) {
             for (int col = 0; col < BLOCKS_PER_ROW; col++) {
                 if (rand_double() < FILL_RATE) {
@@ -246,26 +247,30 @@ int main(int argc, char **argv) {
     pdht_fence(ht);
     if (c->rank == 0) {
         printf("Matrix A\n");
-        printMatrix(&KEY2_A,ht);
+        //printMatrix(&KEY2_A,ht);
         
         printf("Matrix B\n");
-        printMatrix(&KEY2_B,ht);
+        //printMatrix(&KEY2_B,ht);
     }
     
     pdht_fence(ht);
     PDHT_START_ATIMER(total);
-    
-    
+       
     resultBlock = calloc(sizeof(Block_t),1);
     for (int row = 0; row < BLOCKS_PER_ROW; row++) {
         for (int col = 0; col < BLOCKS_PER_ROW; col++) {
-            if ((row * BLOCKS_PER_ROW + col) % c->size == c->rank) {
+            mine = (row * BLOCKS_PER_ROW + col) % c->size;
+#ifdef MPI
+            if(mine % 2 == 1)
+              mine--;
+#endif
+            if (mine == c->rank) {
                 KeyOut = KEY2_OUT(row, col);
 
                 multiplyBlocks(row, col,ht,resultBlock);
                 pdht_put(ht, &KeyOut, resultBlock);
 
-                printf("Processor: %d calculating block: (%d, %d)\n", c->rank, row, col);
+                //printf("Processor: %d calculating block: (%d, %d)\n", c->rank, row, col);
             }
         }
     }
@@ -278,11 +283,11 @@ int main(int argc, char **argv) {
     
     if (c->rank == 0) {
         printf("Result Matrix\n");
-        printMatrix(&KEY2_OUT,ht);
+        //printMatrix(&KEY2_OUT,ht);
     }
     
     
-    pdht_print_stats(ht);
+    //pdht_print_stats(ht);
     
     eprintf("total elapsed time: %12.7f ns\n", (double)PDHT_READ_ATIMER(total));
     
