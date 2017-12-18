@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
   cfg.pendmode     = PdhtPendingTrig;
   cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
   //cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
-  cfg.pendq_size   = 5000;
+  cfg.pendq_size   = 50000;
   cfg.ptalloc_opts = 0;
   cfg.quiet        = 0;
   cfg.local_gets   = PdhtRegular;

@@ -9,7 +9,7 @@ PDHT_TOP=..
 include $(PDHT_TOP)/pdht.mk
 
 .PHONY: all
-all: pointPractice
+all: scaling
 
 
 barrier: pdhtlibs barrier.c
@@ -73,7 +73,7 @@ scaling: pdhtlibs scaling.c
 	$(CC) $(CFLAGS) -o scaling scaling.c $(PDHT_LIBS)
 
 scalingMPI: pdhtmpilibs scaling.c
-	$(MPICC) $(CFLAGSMPI) -o scalingMPI scaling.c $(PDHT_MPILIBS)
+	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o scalingMPI scaling.c $(PDHT_MPILIBS)
 
 simple: pdhtlibs simple.c
 	$(CC) $(CFLAGS) -o simple simple.c $(PDHT_LIBS)
