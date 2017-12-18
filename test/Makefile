@@ -86,3 +86,6 @@ trigmult: pdhtlibs trigmult.c
 
 sparse_matrix: pdhtlibs sparse_matrix.c
 	$(CC) $(CFLAGS) -o sparse_matrix sparse_matrix.c $(PDHT_LIBS)
+
+sparse_matrix_mpi: pdhtmpilibs sparse_matrix.c
+	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o sparse_matrix_mpi sparse_matrix.c $(PDHT_MPILIBS)

@@ -55,7 +55,6 @@ void pdht_collective_init(pdht_context_t *c) {
     pdht_dprintf("collective_init: MD Bind failed: %s\n", pdht_ptl_error(ret));
     exit(1);
   }
-
   // create portals table entry
   ret = PtlPTAlloc(c->ptl.lni, 0, PTL_EQ_NONE, __PDHT_COLLECTIVE_INDEX, &index);
   if ((ret != PTL_OK) || (index != __PDHT_COLLECTIVE_INDEX)) {
@@ -156,6 +155,8 @@ void pdht_barrier(void) {
 
   // wait for children to enter barrier
   int orig = c->ptl.barrier_count;
+
+  test = 0;
 
   if (l.rank < c->size) 
     test = c->ptl.barrier_count++;
@@ -377,7 +378,7 @@ pdht_status_t pdht_allreduce(void *in, void *out, pdht_reduceop_t op, pdht_datat
 
    if (ret != PdhtStatusOK)
       return ret;
-   pdht_barrier(); 
+   pdht_barrier();
    ret = pdht_broadcast(out, type, elems);
    return ret;
 }
