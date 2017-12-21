@@ -291,10 +291,16 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     me.match_bits    = mbits;
     me.ignore_bits   = 0;
 
-    pthread_mutex_lock(&dht->completion_mutex);
+
+    pthread_mutex_lock(&dht->local_gets_flag_mutex);
     dht->local_get_flag = 0;
+    pthread_mutex_unlock(&dht->local_gets_flag_mutex);
+
+
     
     PtlMESearch(dht->ptl.lni, dht->ptl.getindex[ptindex],&me,PTL_ACTIVE_SEARCH_ONLY,&pt);
+    
+    pthread_mutex_lock(&dht->completion_mutex);
 
     if (dht->local_get_flag == 0){
       pdht_finalize_puts(dht);

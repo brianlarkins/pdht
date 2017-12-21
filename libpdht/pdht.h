@@ -76,7 +76,6 @@ struct pdht_stats_s {
 };
 typedef struct pdht_stats_s pdht_stats_t;
 
-
 /**********************************************/
 /* sub structures contained in global context */
 /**********************************************/
@@ -139,7 +138,7 @@ struct pdht_context_s {
   int              size;         //!< process count
   int              dbglvl;       //!< debug level for error printing
   pdht_portals_t   ptl;          //!< Portals 4 ADTs
-  pthread_t       progress_tid; //!< progress thread id
+  pthread_t        progress_tid; //!< progress thread id
 };
 typedef struct pdht_context_s pdht_context_t;
 
@@ -237,6 +236,7 @@ struct pdht_s {
   int               countercount; // :)
   int               gameover; // signal for progress thread to die
   pthread_mutex_t   completion_mutex;    //!< thread mutex to synch between progress thread and fence
+  pthread_mutex_t   local_gets_flag_mutex;
   pdht_htportals_t  ptl;
   pdht_status_t   (*put)(struct pdht_s *dht, void *k, void *v);
   pdht_status_t   (*get)(struct pdht_s *dht, void *k, void **v);
