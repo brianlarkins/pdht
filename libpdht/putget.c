@@ -130,7 +130,6 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     }
 
 
-
     // wait for local completion
     ret = PtlCTWait(dht->ptl.lmdct, current.success+1, &ctevent);
     if (ret != PTL_OK) {
@@ -240,7 +239,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   
   
 
-  ptl_match_bits_t mbits; 
+  ptl_match_bits_t mbits, mbits2; 
   unsigned long roffset = 0;
   uint32_t ptindex;
   ptl_ct_event_t ctevent;
@@ -252,11 +251,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   PDHT_START_TIMER(dht, gtimer);
 
-
   dht->stats.gets++;
 
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
-  
 
   dht->stats.ptcounts[ptindex]++;
   
@@ -274,8 +271,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     ptl_event_t ev;
     int which;
     int ret; 
+    //char pt[PDHT_MAXKEYSIZE + dht->elemsize];
     void *pt;
-    dht->local_get_flag = 0;
+
     
     _pdht_ht_entry_t *hte;
     index = (char *)dht->ht;
@@ -295,20 +293,19 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     me.match_bits    = mbits;
     me.ignore_bits   = 0;
 
-
-
-
-    PtlMESearch(dht->ptl.lni, dht->ptl.getindex[ptindex],&me,PTL_ACTIVE_SEARCH_ONLY,&pt);
-    
     pthread_mutex_lock(&dht->completion_mutex);
+    dht->local_get_flag = 0;
+    
+    PtlMESearch(dht->ptl.lni, dht->ptl.getindex[ptindex],&me,PTL_ACTIVE_SEARCH_ONLY,&pt);
 
-    if (!dht->local_get_flag){
+    if (dht->local_get_flag == 0){
       pdht_finalize_puts(dht);
     }
     pthread_mutex_unlock(&dht->completion_mutex);
     //printf("pt : %d \n",*(int *)pt);
     //printf("key : %d \n",*(int *)key);
-    if (pt == NULL){
+
+    if (dht->local_get_flag){
       dht->stats.notfound++;
       rval = PdhtStatusNotFound;
       goto done;
@@ -316,13 +313,12 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     if (memcmp(pt, key, dht->keysize) != 0) {
       // keys don't match, this must be a collision
       dht->stats.collisions++;
-      pdht_dprintf("pdht_get: found collision. %d\n");
+      pdht_dprintf("pdht_get: found local collision. %d\n");
       pdht_dump_entry(dht, key, buf);
       rval = PdhtStatusCollision;
       PDHT_STOP_TIMER(dht,t4);
       goto done;
     }
-
     memcpy(value, pt + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
 
     goto done;
@@ -382,17 +378,28 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   // skipping over the embedded key data (for collision detection)
 
   memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
+
 done:
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type
   // ni_fail_type should be: PTL_NI_DROPPED
 
+  c->last = mbits;
   PDHT_STOP_TIMER(dht, gtimer);
   return rval;
 
 error:
   PDHT_STOP_TIMER(dht, gtimer);
   return PdhtStatusError;
+}
+
+
+pdht_status_t pdht_persistent_get(pdht_t *dht, void *key, void *value){
+    pdht_status_t ret;
+    while(1){
+      ret = pdht_get(dht, key, value);
+      if (ret == PdhtStatusOK) return ret;
+    }
 }
 
 
