@@ -142,7 +142,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
  */
 void *pdht_comm(void *arg) {
   pdht_t *dht = NULL;
-  char msgbuf[c->maxbufsize];
+  //char msgbuf[c->maxbufsize];
   MPI_Status status;
   int requester;
   char *iter;
@@ -154,23 +154,37 @@ void *pdht_comm(void *arg) {
   reply_t *reply = NULL;
   int buflen;
   int need;
+  int offset;
+  int index;
   int *counter_index;
   uint64_t increment;
   unsigned long counter_value;
   uint64_t initval;
-
+  
+  int target;
   int *keysize;
   int *elemsize;
   int htbuflen;
+  int last;
 
+  MPI_Request *requests = calloc(sizeof(MPI_Request), c->size / 2);
+  char *bufs = calloc(c->maxbufsize, c->size / 2);
+  
+  char *msgbuf = calloc(c->maxbufsize, 1);
+
+  for(int i = 0; i < c->size / 2; i++){
+    offset = i * c->maxbufsize;
+    target = i * 2;
+    MPI_Irecv(bufs + offset, c->maxbufsize, MPI_CHAR, target, PDHT_TAG_COMMAND, MPI_COMM_WORLD, &requests[i]);
+  }
   while(c->thread_active) {
-    MPI_Recv(msgbuf, c->maxbufsize, MPI_CHAR, MPI_ANY_SOURCE,
-        PDHT_TAG_COMMAND, MPI_COMM_WORLD, &status);
-
+    MPI_Waitany(c->size / 2, requests, &index, &status);
+    offset = index * c->maxbufsize;
+    last = index;
+    msgbuf = bufs + offset;
     msg = (message_t *)msgbuf; // cast to access message fields
     dht = c->hts[msg->ht_index];
     requester = msg->rank;
-
     switch (msg->type) {
       case pdhtStop:
         // game over, go home
@@ -303,8 +317,11 @@ void *pdht_comm(void *arg) {
 
         htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + *elemsize;
         c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
+        bufs = realloc(bufs, c->size / 2 * c->maxbufsize);
+        msgbuf = realloc(msgbuf, c->maxbufsize);
         break;
     }
+    MPI_Irecv(bufs + offset, c->maxbufsize, MPI_CHAR, last * 2, PDHT_TAG_COMMAND, MPI_COMM_WORLD, &requests[last]);
   }
 done:
   if (buf) free(buf);

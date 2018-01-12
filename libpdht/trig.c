@@ -45,7 +45,6 @@ void pdht_trig_init(pdht_t *dht) {
       pdht_dprintf("pdht_trig_init: PtlEQAlloc failure\n");
       exit(1);
     }
-
     // allocate PTE for pending put
     ret = PtlPTAlloc(dht->ptl.lni, PTL_PT_ONLY_USE_ONCE | PTL_PT_FLOWCTRL,
         dht->ptl.eq[ptindex], dht->ptl.putindex_base+ptindex, &dht->ptl.putindex[ptindex]);
@@ -208,7 +207,6 @@ void *pdht_trig_progress(void *arg) {
 
       // count up link events from appending things to the active queue
       pthread_mutex_lock(&dht->completion_mutex);
-      dht->local_get_flag = 1;
       pdht_finalize_puts(dht);
       pthread_mutex_unlock(&dht->completion_mutex);
 

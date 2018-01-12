@@ -426,8 +426,8 @@ pdht_status_t pdht_finalize_puts(pdht_t *dht) {
   ptl_time_t timeout;
 
   // NOTE: this function may be called by the polling/trigger progress threads 
-  // _or_ during the fence operation. it should be protected by a mutex in the 
-  // caller
+  // _or_ during the fence operation _or_ in get when something  is local. 
+  // it should be protected by a mutex in the caller
 
   timeout = 10; // only block the polling progress thread or fence operation for up to 10 ms
      
@@ -438,14 +438,15 @@ pdht_status_t pdht_finalize_puts(pdht_t *dht) {
       dht->stats.tappends[ptindex]++;
     }
     else if (ev.type == PTL_EVENT_SEARCH){
+      pthread_mutex_lock(&dht->local_gets_flag_mutex);
       dht->local_get_flag = 1;
       if(ev.ni_fail_type == PTL_NI_NO_MATCH){
-       *(void **)ev.user_ptr = NULL;
+        dht->local_get_flag = -1;
       }
       else{
-               
         *(ptl_event_t **)ev.user_ptr = ev.start;
       }
+      pthread_mutex_unlock(&dht->local_gets_flag_mutex);
       return ret;
     }
   }
