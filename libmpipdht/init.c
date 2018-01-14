@@ -192,6 +192,11 @@ void *pdht_comm(void *arg) {
         goto done;
         break;
 #else
+        for(int i = 0; i < c->size / 2; i++){
+          if(i != index){
+            MPI_Cancel(&requests[i]);
+          }
+        }
         MPI_Finalize();
         goto done;
 #endif
