@@ -349,13 +349,14 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
     exit(1);
   }
 
+  // ss = self.filter(ss)
   sf = filter(f,ss);
 
   // fill(ss, 0.0);
   for (i=0;i<f->k;i++) {
     for (j=0;j<f->k;j++) {
       for (k=0;k<f->k;k++) {
-        tensor_set3d(ss,i,j,k,0.0); // XXX need to double check against madness source
+        tensor_set3d(sf,i,j,k,0.0); // fill scaling part of tensor with zeros
       }
     }
   }

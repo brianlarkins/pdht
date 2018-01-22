@@ -189,7 +189,7 @@ void pdht_barrier(void) {
     //pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", p.rank);
     PtlCTGet(c->ptl.barrier_ct, &cval2);
     //pdht_dprintf("notifying %lu : ct: %d count: %d\n", p.rank, cval2.success, c->ptl.barrier_count);
-    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (put parent): %s\n", pdht_ptl_error(ret));
@@ -208,7 +208,7 @@ void pdht_barrier(void) {
   if (l.rank < c->size) {
     //pdht_lprintf(PDHT_DEBUG_VERBOSE, "waking %lu\n", l.rank);
     //pdht_dprintf("waking left: %lu\n", l.rank);
-    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (wake left): %s\n", pdht_ptl_error(ret));
@@ -219,7 +219,7 @@ void pdht_barrier(void) {
   if (r.rank < c->size) {
     ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", r.rank);
     //pdht_dprintf("waking right: %lu\n", l.rank);
-    ret = PtlPut(c->ptl.collective_md, &x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX, 
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (wake right): %s\n", pdht_ptl_error(ret));

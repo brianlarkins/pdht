@@ -117,7 +117,7 @@ tensor_t *transform(tensor_t *t, tensor_t *c) {
     // inner() allocates new tensors
     result = temp[i+1] = inner(temp[i],c,0,0,NULL);
   }
-  
+
   for (i=1;i<4;i++) {
     if (!temp[i] && (result != temp[i])) 
       free(temp[i]);
@@ -187,7 +187,7 @@ tensor_t *transform3d_inplace(func_t *f, tensor_t *s, tensor_t *c, tensor_t *wor
   for (i=0;i<k2cu;i++) wptr[i] = 0.0;
   mTxm(k2sq, k2, k2, wptr, sptr, cptr);
   for (i=0;i<k2cu;i++) sptr[i] = 0.0;
-  
+
   return s;
 }
 
@@ -198,32 +198,32 @@ double normf(tensor_t *t) {
   long i,j,k;
 
   switch (t->h.ndim) {
-  case 1:
-    for (i=0;i<t->h.dim[0];i++) {
-      temp = tensor_get1d(t,i);
-      result += temp * temp;
-    }
-    break;
-
-  case 2:
-    for (i=0;i<t->h.dim[0];i++) {
-      for (j=0;j<t->h.dim[1];j++) {
-	temp = tensor_get2d(t,i,j);
-	result += temp * temp;
+    case 1:
+      for (i=0;i<t->h.dim[0];i++) {
+        temp = tensor_get1d(t,i);
+        result += temp * temp;
       }
-    }
-    break;
+      break;
 
-  case 3:
-    for (i=0;i<t->h.dim[0];i++) {
-      for (j=0;j<t->h.dim[1];j++) {
-	for (k=0;k<t->h.dim[2];k++) {
-	  temp = tensor_get3d(t,i,j,k);
-	  result += temp * temp;
-	}
+    case 2:
+      for (i=0;i<t->h.dim[0];i++) {
+        for (j=0;j<t->h.dim[1];j++) {
+          temp = tensor_get2d(t,i,j);
+          result += temp * temp;
+        }
       }
-    }
-    break;
+      break;
+
+    case 3:
+      for (i=0;i<t->h.dim[0];i++) {
+        for (j=0;j<t->h.dim[1];j++) {
+          for (k=0;k<t->h.dim[2];k++) {
+            temp = tensor_get3d(t,i,j,k);
+            result += temp * temp;
+          }
+        }
+      }
+      break;
   }
   return sqrt(result);
 }
@@ -242,7 +242,7 @@ tensor_t *inner(tensor_t *left, tensor_t *right, long k0, long k1, tensor_t *inp
   if (k1 < 0) k1 += right->h.ndim;
 
   nd = left->h.ndim + right->h.ndim - 2;
-  
+
   // ndim !=0 && left.dim[k0] == right.dim[k1] && nd > 0 && nd < 3
 
   // transform3d() k0,k1 == 0,0
@@ -261,15 +261,15 @@ tensor_t *inner(tensor_t *left, tensor_t *right, long k0, long k1, tensor_t *inp
 
   if (!inplace) {
     switch (nd) {
-    case 1:
-      result = tensor_create1d(d[0],TENSOR_ZERO);
-      break;
-    case 2:
-      result = tensor_create2d(d[0],d[1],TENSOR_ZERO);
-      break;
-    case 3:
-      result = tensor_create3d(d[0],d[1],d[2],TENSOR_ZERO);
-      break;
+      case 1:
+        result = tensor_create1d(d[0],TENSOR_ZERO);
+        break;
+      case 2:
+        result = tensor_create2d(d[0],d[1],TENSOR_ZERO);
+        break;
+      case 3:
+        result = tensor_create3d(d[0],d[1],d[2],TENSOR_ZERO);
+        break;
     }
   } else
     result = inplace;
@@ -292,13 +292,13 @@ tensor_t *inner(tensor_t *left, tensor_t *right, long k0, long k1, tensor_t *inp
   for (i=0;i<left->h.dim[0];i++) {
     for (j=0;j<right->h.dim[0];j++) {
       for (k=0;k<right->h.dim[2];k++) {
-	sum = 0;
-	// left iterates over dim 1
-	// right iterates over dim 0
-	for (kk=0;kk<right->h.dim[1];kk++) {
-	  sum += tensor_get2d(left,i,kk) * tensor_get3d(right,kk,j,k);
-	}
-	tensor_set3d(result, i, j, k, sum);
+        sum = 0;
+        // left iterates over dim 1
+        // right iterates over dim 0
+        for (kk=0;kk<right->h.dim[1];kk++) {
+          sum += tensor_get2d(left,i,kk) * tensor_get3d(right,kk,j,k);
+        }
+        tensor_set3d(result, i, j, k, sum);
       }
     }
   }
@@ -322,16 +322,16 @@ void mTxm(long dimi, long dimj, long dimk, double *c, double *a, double *b) {
   double ak0i, ak1i, ak2i, ak3i, aki;
   double bk0, bk1, bk2, bk3, bk;
   /*
-    c(i,j) = c(i,j) + sum(k) a(k,i)*b(k,j)
-          
-    where it is assumed that the last index in each array is has unit
-    stride and the dimensions are as provided.
-          
-    i loop might be long in anticpated application
-          
-    4-way unrolled k loop ... empirically fastest on PIII compared to
-    2/3 way unrolling (though not by much).
-  */
+     c(i,j) = c(i,j) + sum(k) a(k,i)*b(k,j)
+
+     where it is assumed that the last index in each array is has unit
+     stride and the dimensions are as provided.
+
+     i loop might be long in anticpated application
+
+     4-way unrolled k loop ... empirically fastest on PIII compared to
+     2/3 way unrolling (though not by much).
+     */
   dimk4 = (dimk/4)*4;
   for (i=0;i<dimi;i++,c+=dimj) {
     ai = a+i;
@@ -346,14 +346,14 @@ void mTxm(long dimi, long dimj, long dimk, double *c, double *a, double *b) {
       bk2  = p+dimj+dimj;
       bk3  = p+dimj+dimj+dimj;
       for (j=0;j<dimj;j++) {
-	c[j] += ak0i*bk0[j] + ak1i*bk1[j] + ak2i*bk2[j] + ak3i*bk3[j];
+        c[j] += ak0i*bk0[j] + ak1i*bk1[j] + ak2i*bk2[j] + ak3i*bk3[j];
       }
     }
     for (k=dimk4;k<dimk;k++) {
       aki = a[k*dimi+i];
       bk  = b+k*dimj;
       for (j=0;j<dimj;j++) {
-	c[j] += aki*bk[j];
+        c[j] += aki*bk[j];
       }
     }
   }
@@ -365,7 +365,7 @@ void mTxm(long dimi, long dimj, long dimk, double *c, double *a, double *b) {
   for (k=0;k<dimk;k++) {
     for (j=0;j<dimj;j++) {
       for (i=0;i<dimi;i++) {
-	c[i*dimj+j] += a[k*dimi+i]*b[k*dimj+j];
+        c[i*dimj+j] += a[k*dimi+i]*b[k*dimj+j];
       }
     }
   }
@@ -379,7 +379,7 @@ void fcube(func_t *f, long n, double lx, double  ly, double lz, double h, double
   tensor_t *quad_x = f->quad_x;
   int i,j,k, npt;
   double x,y,z;
-  
+
   npt = f->npt;
 
   for (i=0;i<npt;i++) {
@@ -389,8 +389,8 @@ void fcube(func_t *f, long n, double lx, double  ly, double lz, double h, double
     for (j=0;j<npt;j++) {
       y = ly + h*tensor_get1d(quad_x,j);
       for (k=0;k<npt;k++) {
-	z = lz + h*tensor_get1d(quad_x,k);
-	tensor_set3d(fcube,i,j,k,fn(x,y,z));
+        z = lz + h*tensor_get1d(quad_x,k);
+        tensor_set3d(fcube,i,j,k,fn(x,y,z));
       }	
     }
   }
@@ -409,7 +409,7 @@ void math_test(void) {
 
   tensor_fillindex(a);
   //tensor_print(a);
-  
+
   tensor_scale(a,2.0);
   //tensor_print(a);
 
@@ -431,7 +431,7 @@ void math_test(void) {
   tensor_print(r,0);
 
   printf("norms: l: %f r: %f\n", normf(l), normf(r));
-  
+
   bb = inner(l,r,1,0,NULL);
   tensor_print(bb,1);
 }
