@@ -49,7 +49,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
 
   //setenv("PTL_LOG_LEVEL","3",1);
-  setenv("PTL_DEBUG","1",1);
+//  setenv("PTL_DEBUG","1",1);
   //setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   if (!__pdht_config) {
@@ -146,7 +146,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
 
   c->hts[c->dhtcount] = dht;
-  c->dhtcount++; // register ourselves globally on this process
+
 
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
@@ -199,7 +199,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
       pdht_dprintf("pdht_create: PtlEQAlloc failure [%d] (%s)\n", ptindex, pdht_ptl_error(ret));
       exit(1);
     }
-    
     ret = PtlPTAlloc(dht->ptl.lni, dht->ptl.ptalloc_opts, dht->ptl.aeq[ptindex],
         dht->ptl.getindex_base+ptindex, &dht->ptl.getindex[ptindex]);
     if (ret != PTL_OK) {
@@ -215,6 +214,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pdht_trig_init(dht);
   }
 
+  c->dhtcount++; // register ourselves globally on this process
   return dht;
 }
 
