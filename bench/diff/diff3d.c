@@ -178,7 +178,9 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 
     pdht_fence(fun->ftree);
     // timing!
+#ifdef DIFF_UPDATES
     printf("   refinement done: %d nodes\n", totcount);
+#endif
   }
   return fun;
 }
@@ -644,9 +646,10 @@ void par_reconstruct(func_t *f, int limit) {
       printf("%d: reconstruct root pdht_get error.\n", c->rank);
       exit(1);
     }
-
+#ifdef DIFF_UPDATES
     tensor_print((tensor_t *)&root.d,1);
     tensor_print((tensor_t *)&root.s,0);
+#endif
     // modifies root, but doesn't store into PDHT
     reconstruct(f, &root, limit);
 
@@ -1344,7 +1347,9 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
           ckey.y = y+ly;
           ckey.z = z+lz;
           ckey.level = nkey->level+1;
+#ifdef DIFF_UPDATES
           print_subtree(f, &ckey, indent+2, c);
+#endif          
           c++;
         }
       }
@@ -1399,7 +1404,10 @@ int main(int argc, char **argv, char **envp) {
   double min[4], max[4], avg[4];
   pdht_config_t cfg;
   pdht_timer_t compress, reconstruct, initialization, diff;
-
+  PDHT_INIT_ATIMER(compress);
+  PDHT_INIT_ATIMER(reconstruct);
+  PDHT_INIT_ATIMER(initialization);
+  PDHT_INIT_ATIMER(diff);
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
@@ -1456,17 +1464,20 @@ int main(int argc, char **argv, char **envp) {
   //print_tree(f);
 
   pdht_barrier();
-  PDHT_START_ATIMER(compress);
+
   eprintf("compress.\n");
-  PDHT_STOP_ATIMER(compress);
+
+  PDHT_START_ATIMER(compress);
   par_compress(f, defaultparlvl);
-
+  PDHT_STOP_ATIMER(compress);
+  
   pdht_barrier();
-  PDHT_START_ATIMER(reconstruct);
-  eprintf("reconstruct.\n");
-  PDHT_STOP_ATIMER(reconstruct);
-  par_reconstruct(f, defaultparlvl);
 
+  eprintf("reconstruct.\n");
+
+  PDHT_START_ATIMER(reconstruct);
+  par_reconstruct(f, defaultparlvl);
+  PDHT_STOP_ATIMER(reconstruct);
   // have to initialize fprime for differentiation
   //   - don't need to init_function entire tree
   //   - just create tree-top and add subtrees
