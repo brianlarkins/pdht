@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 //#include "diffconst.h" 
-#include <pdht.h>
+//#include <pdht.h>
 
 #include "tensor.h"
 #include "diff3d.h"
@@ -94,7 +94,7 @@ void bthandler(int sig) {
   size_t size;
 
   size = backtrace(a, 100);
-  fprintf(stderr, "Error: signal: %d:\n", sig);
+  fprintf(stderr, "c->rank : %d Error: signal: %d:\n", c->rank, sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
   exit(1);
 }
@@ -108,7 +108,6 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   int     parlvl = initial_level; // for now, parallel traversals are same as initial projection
   madkey_t root = { 0, 0, 0, 0 };
   uint64_t st;
-
 
   fun = malloc(sizeof(func_t));
   fun->ftree = create_tree(); // safe to call eprintf() after this
@@ -355,7 +354,7 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
     exit(1);
   }
 
-  // ss = self.filter(ss)
+  //ss = self.filter(ss);
   sf = filter(f,ss);
 
   // fill(ss, 0.0);
@@ -490,9 +489,12 @@ void par_compress(func_t *f, int limit) {
 
   // bottom up parallel compression, seeding
   //   parallel tasks using subtrees setup in tree creation
+
   pdht_counter_reset(f->ftree, f->counter);
 
+
   st = pdht_counter_inc(f->ftree, f->counter, 1);
+  
   while (st < f->stlen) {
     compress(f,  &f->subtrees[st], MAX_TREE_DEPTH+1, 1); // recur to leaf nodes
     //printf("%d: completed compress %ld: <%ld,%ld,%ld> @ %ld\n", 
@@ -622,7 +624,9 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
 
   // zero scaling coeffs at this node, unless root of tree or subtree
   if (!keep) {
-    memset(&node.s, 0, sizeof(tensor3dk_t));
+    //memset(&node.s, 0, sizeof(tensor3dk_t));
+    //only zero coeffs not the whole thing
+    memset(node.s.array, 0, TENSOR_DEFAULT_K * TENSOR_DEFAULT_K * TENSOR_DEFAULT_K * sizeof(double));
   }
 
   // update global copy of our node
@@ -1402,6 +1406,8 @@ int main(int argc, char **argv, char **envp) {
   double expected, actual;
   double local[4];
   double min[4], max[4], avg[4];
+  
+
   pdht_config_t cfg;
   pdht_timer_t compress, reconstruct, initialization, diff;
   PDHT_INIT_ATIMER(compress);
@@ -1411,7 +1417,6 @@ int main(int argc, char **argv, char **envp) {
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
-
 
   // deal with cli args
   while ((arg = getopt(argc, argv, "ehsmlt:C:c")) != -1) {
@@ -1455,18 +1460,16 @@ int main(int argc, char **argv, char **envp) {
   cfg.maxentries = 30000;
   cfg.pendq_size = 10000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+  
   pdht_tune(PDHT_TUNE_ALL, &cfg);
-  PDHT_START_ATIMER(initialization);
+//  PDHT_START_ATIMER(initialization);
   f = init_function(k, threshold, test1, defaultparlvl);
-  PDHT_STOP_ATIMER(initialization);
+//  PDHT_STOP_ATIMER(initialization);
   eprintf("function tree initialization complete.\n");
-
   //print_tree(f);
 
   pdht_barrier();
-
   eprintf("compress.\n");
-
   PDHT_START_ATIMER(compress);
   par_compress(f, defaultparlvl);
   PDHT_STOP_ATIMER(compress);
