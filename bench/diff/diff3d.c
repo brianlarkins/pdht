@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 //#include "diffconst.h" 
-//#include <pdht.h>
+#include <pdht.h>
 
 #include "tensor.h"
 #include "diff3d.h"
