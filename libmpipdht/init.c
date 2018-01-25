@@ -1,4 +1,7 @@
 #include <pdht.h>
+#include <execinfo.h>
+#include <fcntl.h>
+#include <signal.h>
 
 #define MAIN_COLOR 0
 #define SERVER_COLOR 1
@@ -130,7 +133,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 #endif
     MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &(c->split_comm));
   }
-
   return dht;
 }
 
@@ -170,7 +172,7 @@ void *pdht_comm(void *arg) {
   MPI_Request *requests = calloc(sizeof(MPI_Request), c->size / 2);
   char *bufs = calloc(c->maxbufsize, c->size / 2);
   
-  char *msgbuf = calloc(c->maxbufsize, 1);
+  char *msgbuf;// = calloc(c->maxbufsize, 1);
 
   for(int i = 0; i < c->size / 2; i++){
     offset = i * c->maxbufsize;
@@ -293,10 +295,11 @@ void *pdht_comm(void *arg) {
 
 
       case pdhtCounterInit:
-        initval = *(uint64_t *)(msg->key);
-        dht->counters[dht->counter_count] = initval;
-        dht->counter_count++;
-        
+        if(msg->rank == 0){
+          initval = *(uint64_t *)(msg->key);
+          dht->counters[dht->counter_count] = initval;
+          dht->counter_count++;
+        }
         break;
       case pdhtCreateHt:
 
@@ -323,7 +326,7 @@ void *pdht_comm(void *arg) {
         htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + *elemsize;
         c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
         bufs = realloc(bufs, c->size / 2 * c->maxbufsize);
-        msgbuf = realloc(msgbuf, c->maxbufsize);
+        //msgbuf = realloc(msgbuf, c->maxbufsize);
         break;
     }
     MPI_Irecv(bufs + offset, c->maxbufsize, MPI_CHAR, last * 2, PDHT_TAG_COMMAND, MPI_COMM_WORLD, &requests[last]);
@@ -412,4 +415,13 @@ void pdht_free(pdht_t *dht) {
  */
 void pdht_tune(unsigned opts, pdht_config_t *config) {
   ;
+}
+void pdht_bthandler(int sig) {
+  void *a[100];
+  size_t size;
+
+  size = backtrace(a, 100);
+  fprintf(stderr, "Error: signal: %d:\n", sig);
+  backtrace_symbols_fd(a,size, STDERR_FILENO);
+  exit(1);
 }
