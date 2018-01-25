@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 //#include "diffconst.h" 
-#include <pdht.h>
+//#include <pdht.h>
 
 #include "tensor.h"
 #include "diff3d.h"
@@ -39,6 +39,10 @@
 #define TASK_AFFINITY_HIGH 0
 #define TASK_AFFINITY_LOW  1
 #define TASK_PRIORITY      0
+
+// need to make timers global so we a. dont get destroyed by MPI
+// and b. so we can actually time MPI
+pdht_timer_t compress_timer, reconstruct_timer, initialization_timer, diff_timer;
 
 //#define DIFF_UPDATES 
 
@@ -111,6 +115,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 
   fun = malloc(sizeof(func_t));
   fun->ftree = create_tree(); // safe to call eprintf() after this
+  PDHT_START_ATIMER(initialization_timer);
   fun->compressed = 0;
   fun->k         = k;
   fun->npt       = k;
@@ -444,7 +449,7 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
           printf("%d: gather: pdht_get error\n", c->rank);
           return NULL;
         }
-
+        
         if ((cnode.valid == madCoeffScaling) || (cnode.valid == madCoeffBoth))
           childsc = tensor_copy((tensor_t *)&cnode.s);
         else
@@ -539,6 +544,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
     printf("%d: compress: pdht_get error\n", c->rank);
     exit(1);
   }
+
 
   // check to see if we're a leaf 
   // or interior node is at the limit depth
@@ -644,12 +650,13 @@ void par_reconstruct(func_t *f, int limit) {
 
   //   rank 0 does top of tree (limit = PAR_LEVEL)
   if (c->rank == 0) {
-
+    
     // get root tree node
     if (pdht_get(f->ftree, &rootkey, &root) != PdhtStatusOK) {
       printf("%d: reconstruct root pdht_get error.\n", c->rank);
       exit(1);
     }
+    //XXX check stuff out here
 #ifdef DIFF_UPDATES
     tensor_print((tensor_t *)&root.d,1);
     tensor_print((tensor_t *)&root.s,0);
@@ -971,6 +978,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   // create output tree
   fprime = (func_t *)malloc(sizeof(func_t));
   fprime->ftree = create_tree(); // safe to call eprintf() after this
+  PDHT_START_ATIMER(diff_timer);
   fprime->compressed = 0;
   fprime->k         = DEFAULT_K;
   fprime->npt       = DEFAULT_K;
@@ -1409,11 +1417,11 @@ int main(int argc, char **argv, char **envp) {
   
 
   pdht_config_t cfg;
-  pdht_timer_t compress, reconstruct, initialization, diff;
-  PDHT_INIT_ATIMER(compress);
-  PDHT_INIT_ATIMER(reconstruct);
-  PDHT_INIT_ATIMER(initialization);
-  PDHT_INIT_ATIMER(diff);
+
+  PDHT_INIT_ATIMER(compress_timer);
+  PDHT_INIT_ATIMER(reconstruct_timer);
+  PDHT_INIT_ATIMER(initialization_timer);
+  PDHT_INIT_ATIMER(diff_timer);
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
@@ -1462,54 +1470,67 @@ int main(int argc, char **argv, char **envp) {
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
   
   pdht_tune(PDHT_TUNE_ALL, &cfg);
-//  PDHT_START_ATIMER(initialization);
+  //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
-//  PDHT_STOP_ATIMER(initialization);
+  PDHT_STOP_ATIMER(initialization_timer);
   eprintf("function tree initialization complete.\n");
   //print_tree(f);
-
+  
   pdht_barrier();
+  
   eprintf("compress.\n");
-  PDHT_START_ATIMER(compress);
+  PDHT_START_ATIMER(compress_timer);
   par_compress(f, defaultparlvl);
-  PDHT_STOP_ATIMER(compress);
+  PDHT_STOP_ATIMER(compress_timer);
   
   pdht_barrier();
 
   eprintf("reconstruct.\n");
 
-  PDHT_START_ATIMER(reconstruct);
+  PDHT_START_ATIMER(reconstruct_timer);
   par_reconstruct(f, defaultparlvl);
-  PDHT_STOP_ATIMER(reconstruct);
+  PDHT_STOP_ATIMER(reconstruct_timer);
   // have to initialize fprime for differentiation
   //   - don't need to init_function entire tree
   //   - just create tree-top and add subtrees
-
+  
   pdht_barrier();
+  
   eprintf("diff.\n");
-  PDHT_START_ATIMER(diff);
+  //diff timer gets started in diff
   fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
-  PDHT_STOP_ATIMER(diff);
+  PDHT_STOP_ATIMER(diff_timer);
+  
   pdht_barrier();
 
-  local[0] = PDHT_READ_ATIMER_SEC(initialization);
-  local[1] = PDHT_READ_ATIMER_SEC(compress);
-  local[2] = PDHT_READ_ATIMER_SEC(reconstruct);
-  local[3] = PDHT_READ_ATIMER_SEC(diff);
+  local[0] = PDHT_READ_ATIMER_SEC(initialization_timer);
+  local[1] = PDHT_READ_ATIMER_SEC(compress_timer);
+  local[2] = PDHT_READ_ATIMER_SEC(reconstruct_timer);
+  local[3] = PDHT_READ_ATIMER_SEC(diff_timer);
 
   pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 4);
   pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 4);
   pdht_allreduce(local, &max, PdhtReduceOpMax, DoubleType, 4);
 
-
+  
   if(c->rank == 0){
+
     printf("MADNESS TIMING : \n");
+#ifndef MPI
     printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
     printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] / c->size, max[2]);
     printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] / c->size, max[3]);
+#else
+    printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] * 2 / c->size, max[0]);
+    printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] * 2 / c->size, max[1]);
+    printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] * 2 / c->size, max[2]);
+    printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] * 2 / c->size, max[3]);
+#endif
   }
   eprintf("complete.\n");
+  pdht_free(f->ftree);
+  pdht_free(fprime->ftree);
   exit(0);
 }
 
