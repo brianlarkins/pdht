@@ -24,8 +24,6 @@ int pdht_counter_init(pdht_t *ht, uint64_t initval){
   msg_init->type = pdhtCounterInit;
   memcpy(&msg_init->key, &initval, sizeof(uint64_t));
   msg_init->rank = c->rank;
-  printf("init \n");
-  fflush(stdout);
   int i;
   for(i = 0; i < c->dhtcount; i++){
     if(c->hts[i] == ht) break;
@@ -45,24 +43,25 @@ void pdht_counter_reset(pdht_t *ht, int counter){
   
   char sendBuf[sizeof(message_t) + sizeof(int)];
   
-  message_t *msg_reset = (message_t *)sendBuf;
-  msg_reset->type = pdhtCounterReset;
-  msg_reset->rank = c->rank;
-  
+  if(c->rank == 0){
+    message_t *msg_reset = (message_t *)sendBuf;
+    msg_reset->type = pdhtCounterReset;
+    msg_reset->rank = c->rank;
+    
 
-  int i;
-  for(i = 0; i < c->dhtcount; i++){
-    if(c->hts[i] == ht) break;
+    int i;
+    for(i = 0; i < c->dhtcount; i++){
+      if(c->hts[i] == ht) break;
+    }
+    
+
+    msg_reset->ht_index = i;
+    msg_reset->mbits = 0;
+    memcpy(&msg_reset->key, &counter, sizeof(int));
+    
+    MPI_Ssend(msg_reset, sizeof(sendBuf), MPI_CHAR, PDHT_COUNTER_HOLDER, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
   }
-  
-
-  msg_reset->ht_index = i;
-  msg_reset->mbits = 0;
-  memcpy(&msg_reset->key, &counter, sizeof(int));
-  
-  MPI_Ssend(msg_reset, sizeof(sendBuf), MPI_CHAR, PDHT_COUNTER_HOLDER, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
-  
-
+  pdht_barrier();
 }
 
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val){

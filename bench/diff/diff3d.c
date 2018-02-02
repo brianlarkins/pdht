@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 //#include "diffconst.h" 
-#include <pdht.h>
+//#include <pdht.h>
 
 #include "tensor.h"
 #include "diff3d.h"
@@ -39,6 +39,12 @@
 #define TASK_AFFINITY_HIGH 0
 #define TASK_AFFINITY_LOW  1
 #define TASK_PRIORITY      0
+
+// need to make timers global so we a. dont get destroyed by MPI
+// and b. so we can actually time MPI
+pdht_timer_t compress_timer, reconstruct_timer, initialization_timer, diff_timer;
+
+//#define DIFF_UPDATES 
 
 /********************************/
 /* global shared variables      */
@@ -92,7 +98,7 @@ void bthandler(int sig) {
   size_t size;
 
   size = backtrace(a, 100);
-  fprintf(stderr, "Error: signal: %d:\n", sig);
+  fprintf(stderr, "c->rank : %d Error: signal: %d:\n", c->rank, sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
   exit(1);
 }
@@ -107,9 +113,9 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
   madkey_t root = { 0, 0, 0, 0 };
   uint64_t st;
 
-
   fun = malloc(sizeof(func_t));
   fun->ftree = create_tree(); // safe to call eprintf() after this
+  PDHT_START_ATIMER(initialization_timer);
   fun->compressed = 0;
   fun->k         = k;
   fun->npt       = k;
@@ -166,15 +172,19 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     while (st < fun->stlen) {
       stcount = 0;
       refine_fine_scale_project(fun,  &fun->subtrees[st]);
+#ifdef DIFF_UPDATES
       printf("%d: completed subtree %"PRIu64": <%ld,%ld,%ld> @ %ld - %d nodes\n",
           c->rank, st, fun->subtrees[st].x, fun->subtrees[st].y,
           fun->subtrees[st].z, fun->subtrees[st].level, stcount);
+#endif
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
 
     pdht_fence(fun->ftree);
     // timing!
+#ifdef DIFF_UPDATES
     printf("   refinement done: %d nodes\n", totcount);
+#endif
   }
   return fun;
 }
@@ -349,13 +359,14 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
     exit(1);
   }
 
+  //ss = self.filter(ss);
   sf = filter(f,ss);
 
   // fill(ss, 0.0);
   for (i=0;i<f->k;i++) {
     for (j=0;j<f->k;j++) {
       for (k=0;k<f->k;k++) {
-        tensor_set3d(ss,i,j,k,0.0); // XXX need to double check against madness source
+        tensor_set3d(sf,i,j,k,0.0); // fill scaling part of tensor with zeros
       }
     }
   }
@@ -438,7 +449,7 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
           printf("%d: gather: pdht_get error\n", c->rank);
           return NULL;
         }
-
+        
         if ((cnode.valid == madCoeffScaling) || (cnode.valid == madCoeffBoth))
           childsc = tensor_copy((tensor_t *)&cnode.s);
         else
@@ -483,9 +494,12 @@ void par_compress(func_t *f, int limit) {
 
   // bottom up parallel compression, seeding
   //   parallel tasks using subtrees setup in tree creation
+
   pdht_counter_reset(f->ftree, f->counter);
 
+
   st = pdht_counter_inc(f->ftree, f->counter, 1);
+  
   while (st < f->stlen) {
     compress(f,  &f->subtrees[st], MAX_TREE_DEPTH+1, 1); // recur to leaf nodes
     //printf("%d: completed compress %ld: <%ld,%ld,%ld> @ %ld\n", 
@@ -530,6 +544,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
     printf("%d: compress: pdht_get error\n", c->rank);
     exit(1);
   }
+
 
   // check to see if we're a leaf 
   // or interior node is at the limit depth
@@ -615,7 +630,9 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
 
   // zero scaling coeffs at this node, unless root of tree or subtree
   if (!keep) {
-    memset(&node.s, 0, sizeof(tensor3dk_t));
+    //memset(&node.s, 0, sizeof(tensor3dk_t));
+    //only zero coeffs not the whole thing
+    memset(node.s.array, 0, TENSOR_DEFAULT_K * TENSOR_DEFAULT_K * TENSOR_DEFAULT_K * sizeof(double));
   }
 
   // update global copy of our node
@@ -633,15 +650,17 @@ void par_reconstruct(func_t *f, int limit) {
 
   //   rank 0 does top of tree (limit = PAR_LEVEL)
   if (c->rank == 0) {
-
+    
     // get root tree node
     if (pdht_get(f->ftree, &rootkey, &root) != PdhtStatusOK) {
       printf("%d: reconstruct root pdht_get error.\n", c->rank);
       exit(1);
     }
-
+    //XXX check stuff out here
+#ifdef DIFF_UPDATES
     tensor_print((tensor_t *)&root.d,1);
     tensor_print((tensor_t *)&root.s,0);
+#endif
     // modifies root, but doesn't store into PDHT
     reconstruct(f, &root, limit);
 
@@ -673,11 +692,11 @@ void par_reconstruct(func_t *f, int limit) {
       printf("%d: reconstruct subtree pdht_update error.\n", c->rank);
       exit(1);
     }
-
+#ifdef DIFF_UPDATES
     printf("%d: completed reconstruct %"PRIu64": <%ld,%ld,%ld> @ %ld\n",
         c->rank, st, f->subtrees[st].x, f->subtrees[st].y,
         f->subtrees[st].z, f->subtrees[st].level);
-
+#endif
     st = pdht_counter_inc(f->ftree, f->counter, 1);
   }
 
@@ -710,9 +729,9 @@ void reconstruct(func_t *f, node_t *node, int limit) {
 
   // don't walk too far down the tree
   if (node->a.level >= limit) return;
-
+#ifdef DIFF_UPDATES
   printf("%d reconstruct: %ld : %ld %ld %ld\n", c->rank, node->a.level, node->a.x,node->a.y,node->a.z);
-
+#endif
   // if have both coeffs, then we must be an interior node
   if (node->valid == madCoeffBoth) {
     d = tensor_copy((tensor_t *)&node->d);
@@ -958,9 +977,8 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
 
   // create output tree
   fprime = (func_t *)malloc(sizeof(func_t));
-  printf("%d: foo\n", c->rank);
   fprime->ftree = create_tree(); // safe to call eprintf() after this
-  printf("%d: +foo\n", c->rank);
+  PDHT_START_ATIMER(diff_timer);
   fprime->compressed = 0;
   fprime->k         = DEFAULT_K;
   fprime->npt       = DEFAULT_K;
@@ -1028,11 +1046,11 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
       printf("%d: diff subtree pdht_update error.\n", c->rank);
       exit(1);
     }
-    
+#ifdef DIFF_UPDATES    
     printf("%d: completed difference %"PRIu64": <%ld,%ld,%ld> @ %ld\n",
         c->rank, st, f->subtrees[st].x, f->subtrees[st].y,
         f->subtrees[st].z, f->subtrees[st].level);
-
+#endif
     st = pdht_counter_inc(f->ftree, f->counter, 1);
   }
 
@@ -1151,7 +1169,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
             ckey.level = node->a.level + 1;
 
             // fetch f subtree node
-            if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+            if (pdht_persistent_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
               printf("%d: diff f pdht_get error- may be race condition.\n", c->rank);
               exit(1);
             }
@@ -1341,7 +1359,9 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
           ckey.y = y+ly;
           ckey.z = z+lz;
           ckey.level = nkey->level+1;
+#ifdef DIFF_UPDATES
           print_subtree(f, &ckey, indent+2, c);
+#endif          
           c++;
         }
       }
@@ -1392,11 +1412,19 @@ int main(int argc, char **argv, char **envp) {
   double threshold = THRESHOLD_TEST;
   double t_compress = 0.0, t_reconstruct = 0.0, t_diff = 0.0;
   double expected, actual;
+  double local[4];
+  double min[4], max[4], avg[4];
+  
+
   pdht_config_t cfg;
+
+  PDHT_INIT_ATIMER(compress_timer);
+  PDHT_INIT_ATIMER(reconstruct_timer);
+  PDHT_INIT_ATIMER(initialization_timer);
+  PDHT_INIT_ATIMER(diff_timer);
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
-
 
   // deal with cli args
   while ((arg = getopt(argc, argv, "ehsmlt:C:c")) != -1) {
@@ -1437,33 +1465,72 @@ int main(int argc, char **argv, char **envp) {
   //
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
-  cfg.maxentries = 100000;
-  cfg.pendq_size = 20000;
+  cfg.maxentries = 30000;
+  cfg.pendq_size = 10000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+  
   pdht_tune(PDHT_TUNE_ALL, &cfg);
-
+  //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
+  PDHT_STOP_ATIMER(initialization_timer);
   eprintf("function tree initialization complete.\n");
-
   //print_tree(f);
-
+  
   pdht_barrier();
+  
   eprintf("compress.\n");
+  PDHT_START_ATIMER(compress_timer);
   par_compress(f, defaultparlvl);
-
+  PDHT_STOP_ATIMER(compress_timer);
+  
   pdht_barrier();
-  eprintf("reconstruct.\n");
-  par_reconstruct(f, defaultparlvl);
 
+  eprintf("reconstruct.\n");
+
+  PDHT_START_ATIMER(reconstruct_timer);
+  par_reconstruct(f, defaultparlvl);
+  PDHT_STOP_ATIMER(reconstruct_timer);
   // have to initialize fprime for differentiation
   //   - don't need to init_function entire tree
   //   - just create tree-top and add subtrees
-
+  
   pdht_barrier();
+  
   eprintf("diff.\n");
+  //diff timer gets started in diff
   fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
+  PDHT_STOP_ATIMER(diff_timer);
+  
   pdht_barrier();
+
+  local[0] = PDHT_READ_ATIMER_SEC(initialization_timer);
+  local[1] = PDHT_READ_ATIMER_SEC(compress_timer);
+  local[2] = PDHT_READ_ATIMER_SEC(reconstruct_timer);
+  local[3] = PDHT_READ_ATIMER_SEC(diff_timer);
+
+  pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 4);
+  pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 4);
+  pdht_allreduce(local, &max, PdhtReduceOpMax, DoubleType, 4);
+
+  
+  if(c->rank == 0){
+
+    printf("MADNESS TIMING : \n");
+#ifndef MPI
+    printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
+    printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
+    printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] / c->size, max[2]);
+    printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] / c->size, max[3]);
+#else
+    printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] * 2 / c->size, max[0]);
+    printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] * 2 / c->size, max[1]);
+    printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] * 2 / c->size, max[2]);
+    printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] * 2 / c->size, max[3]);
+#endif
+  }
   eprintf("complete.\n");
+  pdht_free(f->ftree);
+  pdht_free(fprime->ftree);
   exit(0);
 }
 

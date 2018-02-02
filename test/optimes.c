@@ -25,7 +25,11 @@ void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptinde
 }
 
 void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
+#ifndef MPI
   (*rank).rank = 1;
+#else
+  (*rank).rank = 2;
+#endif
   *mbits = *(unsigned long *)key;
   *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   //*ptindex = 1;
