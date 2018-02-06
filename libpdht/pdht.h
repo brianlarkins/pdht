@@ -253,6 +253,7 @@ typedef struct pdht_s pdht_t;
 #define PDHT_TUNE_PTOPT      0x10
 #define PDHT_TUNE_QUIET      0x20
 #define PDHT_TUNE_GETS       0x40
+#define PDHT_TUNE_RANK       0x80
 #define PDHT_TUNE_ALL        0xffffffff
 struct pdht_config_s {
   unsigned      nptes;
@@ -261,6 +262,8 @@ struct pdht_config_s {
   unsigned      pendq_size;
   unsigned      ptalloc_opts;
   unsigned      quiet;
+ #define PDHT_DEFAULT_RANK_HINT -1 // use PMI-defined rank
+  int           rank;
   pdht_local_gets_t local_gets;
 };
 typedef struct pdht_config_s pdht_config_t;

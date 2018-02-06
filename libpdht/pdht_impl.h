@@ -109,7 +109,7 @@ void                 pdht_collective_fini();
 pdht_status_t        pdht_finalize_puts(pdht_t *dht);
 
 // pmi.c
-void init_pmi();
+void init_pmi(pdht_config_t *cfg);
 void init_only_barrier(void);
 
 // util.c

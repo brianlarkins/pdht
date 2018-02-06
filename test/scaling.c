@@ -60,7 +60,8 @@ int main(int argc, char **argv) {
   cfg.maxentries   =  50000; // 250000;
   cfg.pendq_size   =  25000; // 100000;
   cfg.ptalloc_opts = 0;
-  cfg.local_gets = 0;
+  cfg.local_gets   = 0;
+  cfg.rank         = PDHT_DEFAULT_RANK_HINT;
 
   while ((opt = getopt(argc, argv, "hi:ls:pquv:U")) != -1) {
     switch (opt) {

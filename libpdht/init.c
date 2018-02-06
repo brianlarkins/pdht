@@ -61,6 +61,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
      cfg.ptalloc_opts = PDHT_PTALLOC_OPTIONS;
      cfg.quiet        = PDHT_DEFAULT_QUIET;
      cfg.local_gets   = PDHT_DEFAULT_LOCAL_GETS;
+     cfg.rank         = PDHT_DEFAULT_RANK_HINT;
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
@@ -311,7 +312,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
      __pdht_config->maxentries   = PDHT_DEFAULT_TABLE_SIZE;
      __pdht_config->pendq_size   = PDHT_PENDINGQ_SIZE;
      __pdht_config->ptalloc_opts = PDHT_PTALLOC_OPTIONS;
-     __pdht_config->ptalloc_opts = PDHT_DEFAULT_QUIET;
+     __pdht_config->quiet        = PDHT_DEFAULT_QUIET;
+     __pdht_config->rank         = PDHT_DEFAULT_RANK_HINT;
   }
   if (opts & PDHT_TUNE_NPTES) 
     __pdht_config->nptes        = config->nptes;
@@ -327,6 +329,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->quiet        = config->quiet;
   if (opts & PDHT_TUNE_GETS)
     __pdht_config->local_gets   = config->local_gets;
+  if (opts & PDHT_TUNE_RANK)
+    __pdht_config->rank         = config->rank;
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
 }
@@ -428,7 +432,7 @@ void pdht_init(pdht_config_t *cfg) {
     goto error;
   }
 
-  init_pmi();
+  init_pmi(cfg);
 
 
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
