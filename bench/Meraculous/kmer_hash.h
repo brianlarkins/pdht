@@ -228,7 +228,14 @@ shared[] list_t* lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned ch
    packSequence(kmer, packed_key, KMER_LENGTH);
    shared[] list_t *result;
    bucket_t local_buc;
-   
+
+   // XXX - need to figure out how to get local pointer to shared[] list_t * 
+   //       without re-writing all of this
+   if (use_pdht) {
+     list_t lresult;
+     pdht_get(pdht, &hashval, &lresult);
+     result = &lresult;
+   }
    local_buc = hashtable->table[hashval];
    result = local_buc.head;
    

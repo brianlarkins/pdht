@@ -249,15 +249,23 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
    for (heap_entry = 0; heap_entry < memory_heap.heap_indices[MYTHREAD]; heap_entry++) {
    
       unpackSequence((unsigned char*) &(local_filled_heap[heap_entry].packed_key), (unsigned char*) unpacked_kmer, KMER_LENGTH);
-      hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
-      local_filled_heap[heap_entry].next = dist_hashtable->table[hashval].head;
-      dist_hashtable->table[hashval].head =  (shared[] list_t*) &(shared_local_filled_heap[heap_entry]);
-
+      if (!use_pdht) {
+        hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
+        local_filled_heap[heap_entry].next = dist_hashtable->table[hashval].head;
+        dist_hashtable->table[hashval].head =  (shared[] list_t*) &(shared_local_filled_heap[heap_entry]);
+      } else {
+        hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
+        pdht_insert(pdht, hashval, hashval % pdht->ptl.nptes, &hashval, &(local_filled_heap[heap_entry]));
+      }
    }
    
    upc_barrier;
    upc_fence;
    upc_barrier;
+
+   if (use_pdht) {
+     pdht_fence(pdht);
+   }
 
    end_storing = UPC_TICKS_NOW();
 #ifdef DETAILED_BUILD_PROFILE

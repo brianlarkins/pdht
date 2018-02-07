@@ -22,6 +22,7 @@ FILE *mylog;
 #if defined USE_BUPC
 #   define UPC_POLL bupc_poll()
 #   define UPC_INT64_T int64_t
+#   define UPC_ATOMIC_INIT /* noop */
 #   define UPC_ATOMIC_FADD_I64 bupc_atomicI64_fetchadd_strict
 #   define UPC_ATOMIC_CSWAP_I64 bupc_atomicI64_cswap_strict
 #   define USED_FLAG_TYPE int32_t
@@ -34,9 +35,11 @@ FILE *mylog;
 #   define UPC_TICK_T upc_tick_t
 #   define UPC_TICKS_NOW upc_ticks_now
 #   define UPC_TICKS_TO_SECS( t ) (upc_ticks_to_ns( t ) / 1000000000.0)
+
 #elif defined USE_CRAY_UPC
 #   define UPC_POLL /* noop */
 #   define UPC_INT64_T int64_t
+#   define UPC_ATOMIC_INIT /* noop */
 #   define UPC_ATOMIC_FADD_I64 _amo_afadd_upc
 #   define UPC_ATOMIC_CSWAP_I64 _amo_acswap_upc
 #   define USED_FLAG_TYPE UPC_INT64_T
@@ -45,7 +48,37 @@ FILE *mylog;
 #   define UPC_TICK_T upc_tick_t
 #   define UPC_TICKS_NOW upc_ticks_now
 #   define UPC_TICKS_TO_SECS( t ) (upc_ticks_to_ns( t ) / 1000000000.0)
+
+#elif defined USE_GUPC
+#include <upc_atomic.h>
+extern upc_atomicdomain_t *atomicdomain, *cswapdomain;
+#   define UPC_POLL /* noop */
+#   define UPC_INT64_T int64_t
+#   define UPC_ATOMIC_INIT do { atomicdomain = upc_all_atomicdomain_alloc(UPC_INT64, UPC_CSWAP | UPC_INC, 0); } while(0)
+static inline UPC_INT64_T UPC_ATOMIC_FADD_I64(shared void *ptr, UPC_INT64_T op) {
+  UPC_INT64_T ret, op1;  // operands/return vals passed by pointer but may be constants
+  op1 = op;
+  upc_atomic_strict(atomicdomain, &ret, UPC_ADD, ptr, &op, 0); 
+  return ret;
+}
+#   define USED_FLAG_TYPE int64_t
+static inline UPC_INT64_T UPC_ATOMIC_CSWAP_I64(shared void *ptr, UPC_INT64_T old, UPC_INT64_T new) {
+  UPC_INT64_T ret, op1, op2; // operands/return vals passed by pointer but may be constants
+  op1 = old; op2 = new;
+  upc_atomic_strict(atomicdomain, &ret, UPC_CSWAP, ptr, &op1, &op2);
+  return ret;
+}
+#   define UPC_ATOMIC_CSWAP_USED_FLAG UPC_ATOMIC_CSWAP_I64 
+#include <upc_tick.h>
+#   define UPC_TICK_T upc_tick_t
+#   define UPC_TICKS_NOW upc_ticks_now
+#   define UPC_TICKS_TO_SECS( t ) (upc_ticks_to_ns( t ) / 1000000000.0)
 #endif
+
+// PDHT support
+#include <pdht.h>
+extern int use_pdht;
+extern pdht_t *pdht;
 
 #ifndef REMOTE_ASSERT
 #define REMOTE_ASSERT 0

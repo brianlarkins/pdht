@@ -8,6 +8,8 @@
 
 #include <upc.h>
 
+#include <pdht.h>
+
 #include "meraculous.h"
 
 #ifdef LHS_PERF
@@ -54,6 +56,10 @@ shared int64_t contig_id;
 shared long contig_id;
 #endif
 
+#ifdef USE_GUPC
+shared int64_t contig_id;
+#endif
+
 shared[BS] contig_ptr_t *contig_list;
 
 shared int64_t timestamp;
@@ -71,6 +77,13 @@ double UU_time = 0.0;
 #ifdef CONTIG_LOCK_ALLOC_PROFILE
 double lockAllocTime = 0.0;
 #endif
+
+upc_atomicdomain_t *atomicdomain = NULL;
+int llookups = 0;
+int rlookups = 0;
+
+int use_pdht = 0;
+pdht_t *pdht;
 
 int main(int argc, char **argv) {
    int fileNo = 0;
@@ -113,10 +126,12 @@ int main(int argc, char **argv) {
    char *input_UFX_name, *output_name, *read_files_name;
    int minimum_contig_length=MINIMUM_CONTIG_SIZE, dmin=10;
    int chunk_size = 1;
-   
+
+   UPC_ATOMIC_INIT;
+
    option_t *optList, *thisOpt;
    optList = NULL;
-   optList = GetOptList(argc, argv, "i:o:m:d:c:s:l:f:");
+   optList = GetOptList(argc, argv, "i:o:m:d:c:s:l:f:p");
    
    char *string_size;
    int load_factor = 1;
@@ -150,11 +165,28 @@ int main(int argc, char **argv) {
          case 'f':
             oracle_file = thisOpt->argument;
             break;
+         case 'p':
+            use_pdht = 1;
+            break;
          default:
             break;
       }
       
       free(thisOpt);
+   }
+
+   if (use_pdht) {
+     pdht_config_t cfg;
+     cfg.nptes = 1;
+     cfg.pendmode = PdhtPendingTrig;
+     cfg.maxentries = 100000;
+     cfg.pendq_size = 5000;
+     cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+     cfg.quiet = 0;
+     cfg.local_gets = PdhtSearchLocal;
+     cfg.rank = MYTHREAD;
+     pdht_tune(PDHT_TUNE_ALL, &cfg);
+     pdht = pdht_create(sizeof(int64_t), sizeof(list_t), PdhtModeStrict);
    }
    
    UPC_TICK_T start, end;
@@ -173,7 +205,7 @@ int main(int argc, char **argv) {
    double con_time, trav_time, blastmap_time;
    char outputfile_name[255];
    sprintf(outputfile_name,"output_%d_%s", MYTHREAD, output_name);
-   
+
 #if VERBOSE > 0
    char logfile_name[255];
    sprintf(logfile_name,"log_%d_%s", MYTHREAD, output_name);
@@ -464,6 +496,7 @@ int main(int argc, char **argv) {
 #endif
    
    upc_barrier;
+   printf("%d: local: %d remote: %d\n", MYTHREAD, llookups, rlookups);
 
    return 0;
 }
