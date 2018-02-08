@@ -208,6 +208,9 @@ struct pdht_htportals_s {
   ptl_handle_md_t countmds[PDHT_MAX_COUNTERS];  //!< MDs for initiator counter ops (initiator, all ranks)
   ptl_handle_ct_t countcts[PDHT_MAX_COUNTERS];  //!< CTs for initiator counter ops (initiator, all ranks)
   ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
+  ptl_handle_md_t atomic_md;                   //!< atomic MD handle
+  ptl_handle_ct_t atomic_ct;                   //!< atomic CT handle
+  void           *atomic_scratch;              //!< atomic scratch space
   ptl_size_t      lfail;                        //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
@@ -353,6 +356,9 @@ void                *pdht_getnext(pdht_iter_t *it);
 int                  pdht_counter_init(pdht_t *ht, int initval);
 uint64_t             pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
 void                 pdht_counter_reset(pdht_t *ht, int counter);
+int                  pdht_atomic_init(pdht_t *ht);
+void                 pdht_atomic_free(pdht_t *ht);
+pdht_status_t        pdht_atomic_cswap(pdht_t *ht, void *key, size_t offset, int64_t *old, int64_t new);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);

@@ -11,6 +11,8 @@ include $(PDHT_TOP)/pdht.mk
 .PHONY: all
 all: pointPractice
 
+atomic: pdhtlibs atomic.c
+	$(CC) $(CFLAGS) -o atomic atomic.c $(PDHT_LIBS)	
 
 barrier: pdhtlibs barrier.c
 	$(CC) $(CFLAGS) -o barrier barrier.c $(PDHT_LIBS)	
