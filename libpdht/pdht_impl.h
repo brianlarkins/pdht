@@ -43,6 +43,7 @@
 #define PDHT_COMPLETION_CTS 1
 #define PDHT_COLLECTIVE_PTES 1
 #define PDHT_COLLECTIVE_CTS 2
+#define PDHT_ATOMIC_CTS PDHT_MAX_TABLES
 
 #define PDHT_MAXKEYSIZE 32 // size in bytes (32 for MADNESS)
 
@@ -109,7 +110,7 @@ void                 pdht_collective_fini();
 pdht_status_t        pdht_finalize_puts(pdht_t *dht);
 
 // pmi.c
-void init_pmi();
+void init_pmi(pdht_config_t *cfg);
 void init_only_barrier(void);
 
 // util.c

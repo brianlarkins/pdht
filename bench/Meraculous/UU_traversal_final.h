@@ -109,51 +109,26 @@ void reallocateContigIfNeeded(contig_ptr_t cur_contig ) {
 }
 
 
-shared[] list_t *getNextHashTableEntry(hash_table_t *hashtable, int64_t *seed_index, shared[] list_t *old_kmer_seed_ptr)
+htentry_t *getNextHashTableEntry()
 {
 	/***********************************************************************************************/
 	/* Pick a kmer as seed from local kmers' buckets. We assume cyclic distribution of the buckets */
 	/***********************************************************************************************/
-	assert( upc_threadof( &(hashtable->table[*seed_index]) ) == MYTHREAD);
-	assert( *seed_index < hashtable->size );
-	
-	if (old_kmer_seed_ptr != NULL && VERBOSE > 2) {
-		kmer_and_ext_t kmer_and_ext;
-		unpackKmerAndExtensions(old_kmer_seed_ptr, &kmer_and_ext);
-		LOG("Thread %d: getNextHashTableEntry(%ld): starting with %s %d\n", MYTHREAD, *seed_index, getLeft(&kmer_and_ext), old_kmer_seed_ptr->used_flag);
-	}
-	
-	shared[] list_t *new_kmer_seed_ptr = old_kmer_seed_ptr;
-	
-	if (new_kmer_seed_ptr == NULL) {
-		new_kmer_seed_ptr = hashtable->table[*seed_index].head;
-	} else {
-		new_kmer_seed_ptr = new_kmer_seed_ptr->next;
-	}
-	
-	while (new_kmer_seed_ptr == NULL && (*seed_index + THREADS) < hashtable->size) {
-		*seed_index += THREADS;
-		new_kmer_seed_ptr = hashtable->table[*seed_index].head;
-	}
-	
-	if (VERBOSE > 2) {
-		if (new_kmer_seed_ptr != NULL) {
-			kmer_and_ext_t kmer_and_ext;
-			unpackKmerAndExtensions(new_kmer_seed_ptr, &kmer_and_ext);
-			LOG("Thread %d: getNextHashTableEntry(%ld): ending with %s %d\n", MYTHREAD, *seed_index, getLeft(&kmer_and_ext), new_kmer_seed_ptr->used_flag);
-		} else {
-			LOG("Thread %d: getNextHashTableEntry(%ld): reached the end\n", MYTHREAD, *seed_index);
-		}
-	}
-	assert( new_kmer_seed_ptr == NULL || upc_threadof( new_kmer_seed_ptr ) == MYTHREAD );
-	
-	return new_kmer_seed_ptr;
+	//assert( upc_threadof( &(hashtable->table[*seed_index]) ) == MYTHREAD);
+	//assert( *seed_index < hashtable->size );
+  htentry_t *result = NULL;
+
+  if (pdht_hasnext(&pdht_iter)) {
+    result = pdht_getnext(&pdht_iter, NULL);
+  }
+
+  return result;
 }
 
 
 int isLeftKmerUU(hash_table_t *hashtable, kmer_and_ext_t *kmer_and_ext) {
 	char seed_le, seed_re;
-	shared[] list_t *lookup_res;
+	htentry_t *lookup_res;
 	if (!isACGT(kmer_and_ext->left_ext)) {
 		if (VERBOSE > 1) LOG("Thread %d: isLeftKmerUU(%s): not unique left ext\n", MYTHREAD, getLeft(kmer_and_ext));
 		return 0;
@@ -172,7 +147,7 @@ int isLeftKmerUU(hash_table_t *hashtable, kmer_and_ext_t *kmer_and_ext) {
 /* expects KMER_LENGTH+2 string kmer_and_ext: le-kmer-re */
 int isRightKmerUU(hash_table_t *hashtable, kmer_and_ext_t *kmer_and_ext) {
 	char seed_le, seed_re;
-	shared[] list_t *lookup_res;
+	htentry_t *lookup_res;
 	if (!isACGT (kmer_and_ext->right_ext)) {
 		if (VERBOSE > 1) LOG("Thread %d: isRightKmerUU(%s): not unique right ext\n", MYTHREAD, getLeft(kmer_and_ext));
 		return 0;
@@ -188,7 +163,7 @@ int isRightKmerUU(hash_table_t *hashtable, kmer_and_ext_t *kmer_and_ext) {
 	return 1;
 }
 
-int isKmerUULocalCopy(hash_table_t *hashtable, list_t *copy, char *new_seed_le, char *new_seed_re ) {
+int isKmerUULocalCopy(hash_table_t *hashtable, htentry_t *copy, char *new_seed_le, char *new_seed_re ) {
 	kmer_and_ext_t kmer_and_ext;
 	
 	unpackKmerAndExtensionsLocalCopy(copy, &kmer_and_ext);
@@ -197,38 +172,32 @@ int isKmerUULocalCopy(hash_table_t *hashtable, list_t *copy, char *new_seed_le, 
 	return isLeftKmerUU(hashtable, &kmer_and_ext) && isRightKmerUU(hashtable, &kmer_and_ext);
 }
 
-int isKmerUU(hash_table_t *hashtable, shared[] list_t *new_kmer_seed_ptr, char *new_seed_le, char *new_seed_re )
+int isKmerUU(hash_table_t *hashtable, htentry_t *new_kmer_seed_ptr, char *new_seed_le, char *new_seed_re )
 {
-	list_t copy = *new_kmer_seed_ptr;
+	htentry_t copy = *new_kmer_seed_ptr;
 	return isKmerUULocalCopy(hashtable, &copy, new_seed_le, new_seed_re);
 }
 
-shared[] list_t *getNextUnusedUUKmer(hash_table_t *hashtable, int64_t *seed_index, shared[] list_t *new_kmer_seed_ptr, char *new_seed_le, char *new_seed_re)
+htentry_t *getNextUnusedUUKmer(hash_table_t *hashtable, int64_t *seed_index, htentry_t *new_kmer_seed_ptr, char *new_seed_le, char *new_seed_re)
 {
 	kmer_and_ext_t kmer_and_ext;
-	list_t copy;
-	shared[] list_t *lookup_res = NULL;
-	int seed_used_flag = USED;
+  htentry_t *entry;
+	int64_t seed_used_flag = USED;
+  int64_t hashval;
 	
-	while (seed_used_flag == USED) {
-		new_kmer_seed_ptr = getNextHashTableEntry(hashtable, seed_index, new_kmer_seed_ptr);
+
+  while (seed_used_flag == USED) {
+    entry = getNextHashTableEntry();
+
+    if (entry == NULL) {
+      break;
+    }
+
+    if (entry->used_flag == USED) {
+      continue;
+    }
 		
-		if (new_kmer_seed_ptr == NULL) {
-			break;
-		}
-		
-		copy = *new_kmer_seed_ptr;
-		seed_used_flag = copy.used_flag;
-		
-		if (seed_used_flag == USED) {
-			if (VERBOSE > 1) {
-				unpackKmerAndExtensionsLocalCopy(&copy, &kmer_and_ext);
-				LOG( "Thread %d: getNextUnusedUUKmer already used kmer_and_ext: %s\n", MYTHREAD, getLeft(&kmer_and_ext));
-			}
-			continue;
-		}
-		
-		unpackKmerAndExtensionsLocalCopy(&copy, &kmer_and_ext);
+		unpackKmerAndExtensionsLocalCopy(entry, &kmer_and_ext);
 		*new_seed_le = kmer_and_ext.left_ext;
 		*new_seed_re = kmer_and_ext.right_ext;
 		
@@ -245,7 +214,10 @@ shared[] list_t *getNextUnusedUUKmer(hash_table_t *hashtable, int64_t *seed_inde
 		/*********************************************************************************************/
 		
 		if (seed_used_flag == UNUSED){
-			seed_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(new_kmer_seed_ptr->used_flag), UNUSED, USED);
+      // used_flag is at zero-byte offset from beginning of entry
+      // seed_used_flag is UNUSED for CSWAP operation
+      pdht_atomic_cswap(pdht, entry->packed_key, 0, &seed_used_flag, USED);
+		  //seed_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(new_kmer_seed_ptr->used_flag), UNUSED, USED);
 		}
 		if (VERBOSE > 1) {
 			if (seed_used_flag == UNUSED) {
@@ -257,8 +229,7 @@ shared[] list_t *getNextUnusedUUKmer(hash_table_t *hashtable, int64_t *seed_inde
 		upc_fence;
 		
 	}
-	return new_kmer_seed_ptr;
-	
+	return entry;
 }
 
 
@@ -267,8 +238,8 @@ shared[] list_t *getNextUnusedUUKmer(hash_table_t *hashtable, int64_t *seed_inde
 int walk_right(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_re, char *last_right_extension_found, contig_ptr_t *right_contig)
 {
 	kmer_and_ext_t kmer_and_ext;
-	shared[] list_t *lookup_res = NULL, *right_kmer_ptr = NULL;
-	list_t copy, right_copy;
+	htentry_t *lookup_res = NULL, *right_kmer_ptr = NULL;
+	htentry_t copy, right_copy;
 	int is_least, is_right_least;
 	int64_t kmer_used_flag;
 	char new_seed_re, new_seed_le, right_le, right_re;
@@ -394,15 +365,20 @@ int walk_right(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_
 		}
 		
 		/* Now attempt to lock this kmer as used by this contig and add the base */
+
+    // used_flag is at zero-byte offset from beginning of entry
+    // seed_used_flag is UNUSED for CSWAP operation
+    kmer_used_flag = UNUSED;
+    pdht_atomic_cswap(pdht, lookup_res->packed_key, 0, &kmer_used_flag, USED);
 		
-		kmer_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(lookup_res->used_flag), UNUSED, USED);
+		//kmer_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(lookup_res->used_flag), UNUSED, USED);
 		if (kmer_used_flag != UNUSED) {
 			if (VERBOSE > 1) {
 				LOG( "Thread %d: walk_right kmer %s is now used! ... expecting a lock in my future\n", MYTHREAD, getLeft(&kmer_and_ext));
 			}
 			break;
 		}
-		
+
 		/* Fix the kmer to point to current contig box */
 		assert( upc_threadof( contig_ptr_box ) == MYTHREAD );
 		assert( contig_ptr_box->contig != NULL );
@@ -412,6 +388,23 @@ int walk_right(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_
 		assert( copy.my_contig == NULL );
 		remote_assert( lookup_res->my_contig == NULL );
 		lookup_res->my_contig = contig_ptr_box;
+
+    pdht_status_t ret;
+    ret = pdht_update(pdht, &lookup_res->packed_key, lookup_res);
+    if (ret != PdhtStatusOK) {
+      switch (ret) {
+        case PdhtStatusNotFound:
+          LOG("pdht entry not found\n");
+          break;
+        case PdhtStatusCollision:
+          LOG("pdht lookup collision\n");
+          break;
+        default:
+          LOG("pdht lookup error\n");
+          break;
+      }
+      return NULL;
+    }
 		
 		/* Add the next base */
 		reallocateContigIfNeeded(cur_contig);
@@ -468,8 +461,8 @@ int walk_right(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_
 int walk_left(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_le, char *last_left_extension_found, contig_ptr_t *left_contig)
 {
 	kmer_and_ext_t kmer_and_ext;
-	shared[] list_t *lookup_res = NULL, *left_kmer_ptr = NULL;
-	list_t copy, left_copy;
+	htentry_t *lookup_res = NULL, *left_kmer_ptr = NULL;
+	htentry_t copy, left_copy;
 	int is_least, is_left_least;
 	int64_t kmer_used_flag;
 	char new_seed_re, new_seed_le, left_le, left_re;
@@ -594,13 +587,18 @@ int walk_left(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_l
 			if (VERBOSE > 1) LOG( "Thread %d: walk_left kmer %s is used by %ld!\n", MYTHREAD, getLeft(&kmer_and_ext), copy.my_contig == NULL ? -1 : (copy.my_contig->contig == NULL ? -2 : IS_VALID_UPC_PTR(copy.my_contig->contig) ? copy.my_contig->contig->contig_id : -3));
 			break;
 		}
+    
 		
-		kmer_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(lookup_res->used_flag), UNUSED, USED);
+    // used_flag is at zero-byte offset from beginning of entry
+    // seed_used_flag is UNUSED for CSWAP operation
+    kmer_used_flag = UNUSED;
+    pdht_atomic_cswap(pdht, lookup_res->packed_key, 0, &kmer_used_flag, USED);
+		//kmer_used_flag = UPC_ATOMIC_CSWAP_USED_FLAG(&(lookup_res->used_flag), UNUSED, USED);
 		if (kmer_used_flag != UNUSED) {
 			if (VERBOSE > 1) LOG( "Thread %d: walk_left kmer %s is now used! ... expecting a lock in my future!\n", MYTHREAD, getLeft(&kmer_and_ext));
 			break;
 		}
-		remote_assert( kmer_used_flag == UNUSED && lookup_res->used_flag == USED );
+		//remote_assert( kmer_used_flag == UNUSED && lookup_res->used_flag == USED );
 		
 		/* Fix the kmer to point to current contig box */
 		assert( upc_threadof( contig_ptr_box ) == MYTHREAD );
@@ -610,7 +608,25 @@ int walk_left(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_l
 		assert( contig_ptr_box->next == NULL );
 		assert( copy.my_contig == NULL );
 		remote_assert( lookup_res->my_contig == NULL );
+
+    pdht_status_t ret;
+    ret = pdht_update(pdht, &lookup_res->packed_key, lookup_res);
 		lookup_res->my_contig = contig_ptr_box;
+    if (ret != PdhtStatusOK) {
+      switch (ret) {
+        case PdhtStatusNotFound:
+          LOG("pdht entry not found\n");
+          break;
+        case PdhtStatusCollision:
+          LOG("pdht lookup collision\n");
+          break;
+        default:
+          LOG("pdht lookup error\n");
+          break;
+      }
+      return NULL;
+    }
+
 		
 		/* Add the next base */
 		reallocateContigIfNeeded(cur_contig);
@@ -646,7 +662,7 @@ int walk_left(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_l
 	/* Return pointer to the left contig as well (needed for the synchronization protocol) */
 	if (kmer_used_flag == USED) {
 		if (VERBOSE>0) LOG("Thread %d: walk_left Kmer is used %s\n", MYTHREAD, getLeft(&kmer_and_ext));
-		(*left_contig) = get_contig_of_kmer(lookup_res, 0);
+		(*left_contig) = get_contig_of_kmer(lookup_res, 0); 
 		if (result == FINISHED) {
 			// the last base was not added because the kmer was not acquired
 			result = UNFINISHED;
@@ -661,6 +677,8 @@ int walk_left(hash_table_t *dist_hashtable, contig_ptr_t cur_contig, char seed_l
 
 	return result;
 }
+
+
 
 /* unsafe in parallel; use only on local thread or when locked */
 void add_contig_to_box_list(shared[] contig_ptr_box_list_t **contig_list, shared[] contig_ptr_box_list_t *new_box) {
@@ -765,75 +783,60 @@ void assign_contig_to_box_list( shared[] contig_ptr_box_list_t *head, contig_ptr
 
 void clean_kmer_contig_ptr(hash_table_t *hashtable) {
 	/* cleanup kmer boxes */
+  pdht_iter_t clniter;
 	int64_t seed_index = MYTHREAD;
-	shared[] list_t *new_kmer_seed_ptr = NULL, *kmer_iterator = NULL;
-	list_t copy;
+	htentry_t *new_kmer_seed_ptr = NULL, *kmer_iterator = NULL;
+	htentry_t copy;
 	kmer_and_ext_t kmer_and_ext;
 	contig_t contig_copy;
+
+  // XXX PDHT check to make sure this is collective. making local modifications to PDHT HT entries
 	
-	while ((kmer_iterator = getNextHashTableEntry(hashtable, &seed_index, kmer_iterator)) != NULL) {
-		new_kmer_seed_ptr = kmer_iterator;
-		
-		assert( upc_threadof( new_kmer_seed_ptr ) == MYTHREAD );
-		copy = *new_kmer_seed_ptr;
-		unpackKmerAndExtensionsLocalCopy(&copy, &kmer_and_ext);
-		
+  pdht_iterate(pdht, &clniter); // get a new iterator for all the local entries
+
+  while (pdht_hasnext(&clniter)) {
+
+    new_kmer_seed_ptr = kmer_iterator = pdht_getnext(&clniter, NULL);
+    copy = *new_kmer_seed_ptr;
+
+    unpackKmerAndExtensionsLocalCopy(&copy, &kmer_and_ext);
+
 		if (copy.used_flag == USED) {
 			assert(copy.my_contig != NULL);
-			if (VERBOSE>0) LOG("Thread %d: clean_kmer_contig_ptr, kmer is used %s\n", MYTHREAD, getLeft(&kmer_and_ext));
-			contig_ptr_t best_contig = get_contig_of_kmer(new_kmer_seed_ptr, 0);
+			contig_ptr_t best_contig = get_contig_of_kmer(new_kmer_seed_ptr, 0); // PDHT suspect, used
+                                                                           // to rely on shared list_t *
 			assert(best_contig != NULL);
 			contig_copy = *best_contig;
-			
-			remote_assert(contig_copy.myself->original == best_contig);
 			assert(contig_copy.state == COMPLETE);
-			
+
 			// To be used at least one direction needs to be UU
 			if ( !( isLeftKmerUU(hashtable, &kmer_and_ext) || isRightKmerUU(hashtable, &kmer_and_ext) ) ) {
-				LOG("Thread %d: ERROR! Kmer is used in contig %ld but is not UU to the left or the right! %s\n", MYTHREAD, best_contig->contig_id, getLeft(&kmer_and_ext));
-			}
-			remote_assert( isLeftKmerUU(hashtable, &kmer_and_ext) && isRightKmerUU(hashtable, &kmer_and_ext) );
-			
-#ifdef DEBUG
-			// test the tail of the contig pointer box
-			contig_ptr_t best_contig2 = get_contig_of_kmer( new_kmer_seed_ptr, 1 );
-			assert(best_contig == best_contig2);
-			assert(best_contig2 != NULL);
-			remote_assert(best_contig2 == best_contig->myself->contig);
-			remote_assert(best_contig2->myself->next == NULL);
-			remote_assert(best_contig2->myself->original == best_contig);
-			remote_assert(best_contig2->state == COMPLETE);
-#endif
-			
+				LOG("Thread %d: ERROR! Kmer is used in contig %ld but is not UU to the left or the right! %s\n", 
+            MYTHREAD, best_contig->contig_id, getLeft(&kmer_and_ext));
+      }
 			// assign the proper pointer box to this kmer
 			if (copy.my_contig != best_contig->myself) {
-				new_kmer_seed_ptr->my_contig = best_contig->myself;
+        copy.my_contig = best_contig->myself; // XXX
+        pdht_update(pdht, &copy.packed_key, &copy); // should block until update is completed
 			}
-			
-			if ( VERBOSE > 2 ) {
-				LOG( "Thread %d: state for kmer %s contig: %ld (%ld)\n", MYTHREAD, getLeft(&kmer_and_ext), new_kmer_seed_ptr->my_contig->contig->state, new_kmer_seed_ptr->my_contig->contig->contig_id );
-			}
-			
-		} else { // UNUSED
-			assert(copy.my_contig == NULL);
-		}
-	}
-	
+    } else {
+      assert(copy.my_contig == NULL);
+    }
+  }
 	upc_fence;
 	upc_barrier;
-	if (VERBOSE > 0 && MYTHREAD == 0) LOG( "Thread %d: Cleaned all kmer contig references\n", MYTHREAD);
-
+  pdht_fence(pdht);
 }
 
 void validate_kmers_and_contigs(hash_table_t *hashtable) {
 	int64_t seed_index = MYTHREAD;
-	shared[] list_t *kmer_iterator = NULL;
+	htentry_t *kmer_iterator = NULL;
 	kmer_and_ext_t kmer_and_ext;
 	
-	while ((kmer_iterator = getNextHashTableEntry(hashtable, &seed_index, kmer_iterator)) != NULL) {
+	while ((kmer_iterator = getNextHashTableEntry(hashtable, &seed_index, kmer_iterator)) != NULL) { // PDHT not used
 		assert( upc_threadof( kmer_iterator ) == MYTHREAD );
 		
-		list_t copy = *kmer_iterator;
+		htentry_t copy = *kmer_iterator;
 		if (copy.used_flag != USED)
 			continue;
 		
@@ -858,7 +861,7 @@ void validate_kmers_and_contigs(hash_table_t *hashtable) {
 }
 
 
-contig_ptr_t initialize_new_contig(shared[] list_t *new_kmer_seed_ptr)
+contig_ptr_t initialize_new_contig(htentry_t *new_kmer_seed_ptr)
 {
 	kmer_and_ext_t kne;
 	remote_assert(new_kmer_seed_ptr != NULL && new_kmer_seed_ptr->used_flag == USED);
@@ -1035,8 +1038,8 @@ void canonicalize_contig(contig_ptr_t cur_contig) {
 			reverseComplementINPLACE( (char*) &( cur_contig->sequence[ cur_contig->start ] ), cur_length );
 		}
 	}
-
 }
+
 
 void finish_contig(contig_ptr_t cur_contig, FILE *output_file, int min_contig_length, shared[] contig_ptr_box_list_t **written, shared[] contig_ptr_box_list_t **notWritten)
 {
@@ -1086,7 +1089,9 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 	char auxiliary_unpacked_kmer[KMER_LENGTH+1];
 	char packed_extensions;
 	shared[] char *prev_buffer;
-	shared[] list_t *kmer_iterator, *new_kmer_seed_ptr, *lookup_res;
+	htentry_t *new_kmer_seed_ptr, *lookup_res, *kmer_iterator;
+  htentry_t copy;
+  pdht_status_t ret;
 	contig_ptr_t cur_contig;
 	int64_t myThreadContigId;
 	int64_t v, first, second, third;
@@ -1127,7 +1132,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 	while ((kmer_iterator = getNextHashTableEntry(hashtable, &seed_index, kmer_iterator)) != NULL) {
 		assert(kmer_iterator->used_flag == UNUSED);
 		assert(kmer_iterator->my_contig == NULL);
-		assert( upc_threadof( kmer_iterator ) == MYTHREAD );
+		//assert( upc_threadof( kmer_iterator ) == MYTHREAD );
 		numKmers++;
 	}
 	if (VERBOSE>0) LOG( "Thread %d: Has %ld kmers in my part of the hashtable\n", MYTHREAD, numKmers);
@@ -1143,14 +1148,15 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 	/* initialze seed_index and new_kmer_seed_ptr */
 	seed_index = MYTHREAD;
 	kmer_iterator = NULL;
+
+  pdht_iterate(pdht, &pdht_iter);
 	
 	while (1) {
-		kmer_iterator = getNextUnusedUUKmer(hashtable, &seed_index, kmer_iterator, &seed_le, &seed_re);
+		new_kmer_seed_ptr = kmer_iterator = getNextUnusedUUKmer(hashtable, &seed_index, kmer_iterator, &seed_le, &seed_re);
 		if (kmer_iterator == NULL)
 			break;
-		assert( upc_threadof( kmer_iterator ) == MYTHREAD );
-		new_kmer_seed_ptr = kmer_iterator;
-		
+		//assert( upc_threadof( kmer_iterator ) == MYTHREAD );
+    
 		/**********************************************/
 		/* Start building contig using the found seed */
 		/**********************************************/
@@ -1163,8 +1169,22 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 		cur_contig->contig_id = myThreadContigId;
 		myThreadContigId -= THREADS;
 		
-		new_kmer_seed_ptr->my_contig = cur_contig->myself;
-		upc_fence;
+    copy = *new_kmer_seed_ptr;
+		copy.my_contig = cur_contig->myself; // was shared HT entry update
+    if (pdht_update(pdht, &copy.packed_key, &copy) != PdhtStatusOK) {
+      switch (ret) {
+        case PdhtStatusNotFound:
+          LOG("pdht entry not found\n");
+          break;
+        case PdhtStatusCollision:
+          LOG("pdht lookup collision\n");
+          break;
+        default:
+          LOG("pdht lookup error\n");
+          break;
+      }
+    }
+		upc_fence; // not necessary?
 		
 		/* Initialize a walk */
 		walking = TRUE;
@@ -1173,10 +1193,10 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 		walking = (right_ret_value == UNFINISHED) | (left_ret_value == UNFINISHED);
 		while ( walking == TRUE ) {
 			assert(upc_threadof(cur_contig) == MYTHREAD);
-			assert(upc_threadof(new_kmer_seed_ptr) == MYTHREAD);
-			assert(new_kmer_seed_ptr->used_flag == USED);
+			//assert(upc_threadof(new_kmer_seed_ptr) == MYTHREAD);
+			//assert(new_kmer_seed_ptr->used_flag == USED);
 			assert(upc_threadof(cur_contig->myself) == MYTHREAD);
-			assert(new_kmer_seed_ptr->my_contig->contig == cur_contig);
+			//assert(new_kmer_seed_ptr->my_contig->contig == cur_contig);
 			assert(cur_contig->state == ACTIVE);
 			
 			if (VERBOSE > 1) LOG( "Thread %d: Walking with contig sized %ld. %d %d\n", MYTHREAD, (cur_contig->end - cur_contig->start + 1), left_ret_value, right_ret_value);
@@ -1185,6 +1205,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 #if defined(UU_TRAV_PROFILE) || defined(DETAILED_UU_TRAV_PROFILE)
 			start_walking = UPC_TICKS_NOW();
 #endif
+
 			/* Walk right */
 			if (right_ret_value == UNFINISHED) {
 				right_contig = NULL;
@@ -1213,7 +1234,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 			if ((right_ret_value == FINISHED) && (left_ret_value == FINISHED)) {
 				
 				upc_lock(cur_contig->state_lock);
-            finish_contig(cur_contig, output_file, min_contig_length, &my_contigs, &my_short_contigs);
+        finish_contig(cur_contig, output_file, min_contig_length, &my_contigs, &my_short_contigs);
             
 #ifdef MARK_POS_IN_CONTIG
 				markPosInContig(cur_contig, hashtable);
@@ -1467,14 +1488,17 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 							for (v = 0; v < KMER_LENGTH; v++ )	
 								scratchpad[v] = cur_contig->sequence[cur_contig->start+v];
 							scratchpad[KMER_LENGTH] = '\0';
+
+              // PDHT XXX needs checked
 							lookup_res = lookup_and_get_ext_of_kmer(hashtable, scratchpad, &seed_le, &foo);
 
 							if (lookup_res == NULL) printf("FATAL ERROR in left CONCAT protocol from thread %d\n", MYTHREAD);
 							assert(lookup_res != NULL);
-							remote_assert(lookup_res->used_flag == USED);
+							remote_assert(lookup_res->used_flag == USED); // ignore
 							
 							left_contig->state = CLAIMED;
 							upc_fence;
+              // XXX PDHT
 							do {
 								if (VERBOSE>0) LOG("Thread %d: attach left changing kmer %s from %ld to %ld\n", MYTHREAD, scratchpad, left_contig->contig_id, cur_contig->contig_id);
 								tmp_contig_ptr_box = get_contig_box_of_kmer(lookup_res, 0);
@@ -1482,6 +1506,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 								remote_assert( tmp_contig_ptr_box->next == NULL );
 								assign_contig_to_box_list( left_contig->myself, cur_contig );
 							} while (lookup_res->my_contig->contig != cur_contig);
+              // XXX PDHT
 							
 							add_contig_to_box_list(&failed_contigs, alloc_new_contig_ptr_list_box( left_contig ));
 							
@@ -1600,6 +1625,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 								scratchpad[v] = cur_contig->sequence[cur_contig->end - (KMER_LENGTH - v - 1)];
 							scratchpad[KMER_LENGTH] = '\0';
 							
+              // XXX PDHT needs checked
 							lookup_res = lookup_and_get_ext_of_kmer(hashtable, scratchpad, &foo, &seed_re);
 
 							if (lookup_res == NULL) printf("FATAL ERROR in right CONCAT protocol from thread %d\n", MYTHREAD);
@@ -1607,6 +1633,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 							
 							right_contig->state = CLAIMED;
 							upc_fence;
+              // XXX PDHT
 							do {
 								if (VERBOSE>0) LOG("Thread %d: attach right changing kmer %s from %ld to %ld\n", MYTHREAD, scratchpad, right_contig->contig_id, cur_contig->contig_id);
 
@@ -1615,6 +1642,7 @@ int UU_graph_traversal(hash_table_t *hashtable, FILE *output_file, int min_conti
 								remote_assert( tmp_contig_ptr_box->next == NULL );
 								assign_contig_to_box_list( right_contig->myself, cur_contig );
 							} while (lookup_res->my_contig->contig != cur_contig );
+              // XXX PDHT
 
 							add_contig_to_box_list(&failed_contigs, alloc_new_contig_ptr_list_box( right_contig ));
 							

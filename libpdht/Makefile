@@ -6,7 +6,7 @@
 
 #PORTALS_INCLUDEDIR=/opt/hpctools/include
 
-CFLAGS=$(GCFLAGS) -I. -I../include -I../$(PORTALS_INCLUDEDIR)
+CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-lportals -lpmi
 
@@ -20,6 +20,7 @@ OBJS =  assoc.o      \
         commsynch.o  \
         hash.o       \
         init.o       \
+        iter.o       \
         nbputget.o   \
         pmi.o        \
         poll.o       \

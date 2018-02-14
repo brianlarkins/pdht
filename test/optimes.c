@@ -64,6 +64,8 @@ int main(int argc, char **argv) {
   cfg.ptalloc_opts = 0;
   cfg.quiet        = 0;
   cfg.local_gets   = PdhtRegular;
+  cfg.rank         = PDHT_DEFAULT_RANK_HINT;
+
   while ((opt = getopt(argc, argv, "dhi:n:s:puUl")) != -1) {
     switch (opt) {
       case 'd':

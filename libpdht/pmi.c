@@ -6,7 +6,7 @@
 static int encode(const void *inval, int invallen, char *outval, int outvallen);
 static int decode(const char *inval, void *outval, int outvallen);
 
-void init_pmi() {
+void init_pmi(pdht_config_t *cfg) {
 #ifdef __APPLE__
     int initialized;
 #else
@@ -23,7 +23,10 @@ void init_pmi() {
     PMI_KVS_Get_key_length_max(&key_max);
     PMI_KVS_Get_value_length_max(&val_max);
 
-    PMI_Get_rank(&(c->rank));
+    if (cfg->rank == PDHT_DEFAULT_RANK_HINT)
+      PMI_Get_rank(&(c->rank));
+    else 
+      c->rank = cfg->rank; // assigning our rank from hint (used when running with UPC or MPI)
     PMI_Get_size(&(c->size));
 
     name = (char *)malloc(name_max);

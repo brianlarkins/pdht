@@ -4,8 +4,8 @@
 # created: 3/20/16
 #
 
-PORTALS_INCLUDEDIR = ../opt/include
-PORTALS_LIBDIR     = ../opt/lib
+PORTALS_INCLUDEDIR = $(HOME)/opt/include
+PORTALS_LIBDIR     = $(HOME)/opt/lib
 #PORTALS_INCLUDEDIR = /opt/hpctools/include
 #PORTALS_LIBDIR     = /opt/hpctools/lib
 
@@ -19,8 +19,8 @@ MPICC = mpicc
 #GCFLAGS = --std=c99 -pg -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # profiling
 GCFLAGS = --std=c99 -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # performance
 #GCFLAGS = -O3
-CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR)
-CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PDHT_TOP)/$(PORTALS_INCLUDEDIR)
+CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
+CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PORTALS_INCLUDEDIR)
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
@@ -35,7 +35,7 @@ PDHT_LIBMPIPDHT     = $(PDHT_INSTALL_LIBDIR)/libmpipdht.a
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 PDHT_LIBMPIDIRS = $(PDHT_TOP)/libmpipdht
 
-PDHT_LIBS = -L$(PDHT_TOP)/$(PORTALS_LIBDIR) -Wl,-rpath=$(PDHT_TOP)/$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
+PDHT_LIBS = -L$(PORTALS_LIBDIR) -Wl,-rpath=$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
 PDHT_MPILIBS = $(PDHT_LIBMPIPDHT) $(MATH_LIB)
 
 .PHONY: all
@@ -78,7 +78,9 @@ $(PDHT_LIBDIRS):
 $(PDHT_LIBMPIDIRS):
 	$(MAKE) -C $@ GCFLAGS="$(GCFLAGS)" CC="$(MPICC)" PORTALS_INCLUDEDIR="$(PORTALS_INCLUDEDIR)" PORTALS_LIBDIR="$(PORTALS_LIBDIR)"
 
-clean:
+
+.PHONY: pdhtclean
+pdhtclean: 
 	for dir in $(PDHT_LIBDIRS); do \
     $(MAKE) -C $$dir clean; \
   done;\
@@ -86,3 +88,6 @@ clean:
 		$(MAKE) -C $$dir clean; \
 	done;\
 	rm -f *~ *.o gmon.out $(LOCAL_EXECS)
+
+.PHONY: clean
+clean: pdhtclean

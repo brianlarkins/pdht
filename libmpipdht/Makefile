@@ -5,7 +5,7 @@
 
 
 
-CFLAGS=$(GCFLAGS) -I. -I../include -I../$(PORTALS_INCLUDEDIR)
+CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
 RANLIB = /usr/bin/ranlib
 
