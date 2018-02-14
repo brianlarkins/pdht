@@ -51,7 +51,7 @@ endif
 
 ## >> add additional UPC compiler configs here << ##
 ifeq ($(UPC_COMPILER), gupc)
-  $(info Using Berkeley UPC)
+  $(info Using GNU gcc UPC - intrepid)
   UPC_TYPE=-DUSE_GUPC # -shared-heap=1GB
   UPCC=upc
   # autodetect if upcc can use the more reliable -cupc2c translation option

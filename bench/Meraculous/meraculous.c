@@ -82,8 +82,15 @@ upc_atomicdomain_t *atomicdomain = NULL;
 int llookups = 0;
 int rlookups = 0;
 
-int use_pdht = 0;
+int use_pdht = 1;
 pdht_t *pdht;
+pdht_iter_t pdht_iter;
+
+//void mer_hash(pdht_t *ht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
+  //*mbits = hashkmer(htsize, key);
+  //*ptindex = *mbits % ht->ptl.nptes;
+  //(*rank).rank = *mbits % c->size;
+//}
 
 int main(int argc, char **argv) {
    int fileNo = 0;
@@ -186,7 +193,8 @@ int main(int argc, char **argv) {
      cfg.local_gets = PdhtSearchLocal;
      cfg.rank = MYTHREAD;
      pdht_tune(PDHT_TUNE_ALL, &cfg);
-     pdht = pdht_create(sizeof(int64_t), sizeof(list_t), PdhtModeStrict);
+     pdht = pdht_create(sizeof(char) * KMER_PACKED_LENGTH, sizeof(htentry_t), PdhtModeStrict);
+     pdht_iterate(pdht, &pdht_iter); // initialize PDHT iterator for traversal phase (global)
    }
    
    UPC_TICK_T start, end;

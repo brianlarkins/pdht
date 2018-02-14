@@ -79,6 +79,8 @@ static inline UPC_INT64_T UPC_ATOMIC_CSWAP_I64(shared void *ptr, UPC_INT64_T old
 #include <pdht.h>
 extern int use_pdht;
 extern pdht_t *pdht;
+extern pdht_iter_t pdht_iter;
+
 
 #ifndef REMOTE_ASSERT
 #define REMOTE_ASSERT 0
@@ -241,6 +243,14 @@ struct list_t{
    unsigned char _padding_for_UPC_bug[ UPC_PADDING ];
 #endif
 };
+
+struct htentry_s {
+  UPC_INT64_T used_flag;
+  shared[] contig_ptr_box_list_t *my_contig;     /* Pointer to the "box" of the contig ptr this k-mer has been added to */ \
+  unsigned char packed_key[KMER_PACKED_LENGTH];  /* The packed key of the k-mer */       \
+  unsigned char packed_extensions;               /* The packed extensions of the k-mer */
+};
+typedef struct htentry_s htentry_t;
 
 typedef shared[] list_t* shared_heap_ptr;
 

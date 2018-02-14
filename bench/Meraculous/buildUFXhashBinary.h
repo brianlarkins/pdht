@@ -21,6 +21,7 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
    int64_t *my_heap_sizes, my_heap_size, my_ufx_lines, idx;
    int *ufx_remote_thread, remote_thread;
    int64_t  hashval;
+   uint32_t ptindex; // PDHT
 
    UPC_TICK_T start_read, end_read, start_storing, end_storing, start_setup, end_setup, start_calculation, end_calculation;
 
@@ -79,6 +80,7 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
    rc_kmer[KMER_LENGTH] = '\0';
    int is_least;
    
+   unsigned char packed_key[KMER_PACKED_LENGTH];
    for (ptr= 0; ptr < kmers_read; ptr++) {
       reverseComplementKmer(kmersarr[ptr], rc_kmer);
       is_least = 0;
@@ -96,8 +98,13 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
       if (is_least)
 #endif
       {
-         hashval = hashkmer(load_factor * size, (char*) kmersarr[ptr]);
-         remote_thread = hashval % (THREADS*BS);
+        // PDHT - replace hashkmer with default PDHT hash func
+         //hashval = hashkmer(load_factor * size, (char*) kmersarr[ptr]);
+         //remote_thread = hashval % (THREADS*BS);
+         packSequence((unsigned char*) (kmersarr[ptr]), packed_key, KMER_LENGTH);
+         ptl_process_t remote;
+         pdht->hashfn(pdht, packed_key, &hashval, &ptindex, &remote);
+         remote_thread = remote.rank;
          my_heap_sizes[remote_thread]++;
          ufx_remote_thread[idx] = remote_thread;
       } else {
@@ -167,8 +174,8 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
          
 #ifdef DEBUG
          /* if DEBUG, verify the calculated remote thread is actually the correct one */
-         hashval = hashkmer(dist_hashtable->size, (char*) kmersarr[ptr]);
-         assert( remote_thread == upc_threadof(&(dist_hashtable->table[hashval])) );
+         //hashval = hashkmer(dist_hashtable->size, (char*) kmersarr[ptr]);
+         //assert( remote_thread == upc_threadof(&(dist_hashtable->table[hashval])) );
 #endif
          packSequence((unsigned char*) (kmersarr[ptr]), new_entry.packed_key, KMER_LENGTH);
          
@@ -250,15 +257,29 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
    
       unpackSequence((unsigned char*) &(local_filled_heap[heap_entry].packed_key), (unsigned char*) unpacked_kmer, KMER_LENGTH);
       if (!use_pdht) {
-        hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
+        hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer)); // pdht - ok, never used
         local_filled_heap[heap_entry].next = dist_hashtable->table[hashval].head;
         dist_hashtable->table[hashval].head =  (shared[] list_t*) &(shared_local_filled_heap[heap_entry]);
       } else {
-        hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
-        pdht_insert(pdht, hashval, hashval % pdht->ptl.nptes, &hashval, &(local_filled_heap[heap_entry]));
+        htentry_t value;
+
+        //hashval = hashkmer(dist_hashtable->size, (char*) (unpacked_kmer));
+        
+        value.used_flag = shared_local_filled_heap[heap_entry].used_flag;
+        upc_memget(value.packed_key, shared_local_filled_heap[heap_entry].packed_key, KMER_PACKED_LENGTH);
+        value.packed_extensions = shared_local_filled_heap[heap_entry].packed_extensions;
+        value.my_contig = shared_local_filled_heap[heap_entry].my_contig;
+
+        ptl_process_t remote;
+        pdht->hashfn(pdht, value.packed_key, &hashval, &ptindex, &remote);
+        assert(remote.rank ==  c->rank);
+        if (pdht_insert(pdht, hashval, hashval % pdht->ptl.nptes, &hashval, &value) != PdhtStatusOK) {
+          LOG("pdht_insert error.\n");
+          return NULL; // suspect
+        }
       }
    }
-   
+
    upc_barrier;
    upc_fence;
    upc_barrier;

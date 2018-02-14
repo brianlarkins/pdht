@@ -221,7 +221,7 @@ char *getRight(kmer_and_ext_t *kne) {
 }
 
 /* unpacks left_ext + kmer + right_ext into a single contiguous string of length KMER_LENGTH+2 */
-void unpackKmerAndExtensionsLocalCopy(list_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext) {
+void unpackKmerAndExtensionsLocalCopy(htentry_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext) {
 	assert(new_kmer_seed_ptr != NULL);
 		
 	unpackSequence(new_kmer_seed_ptr->packed_key, (unsigned char*) kmer_and_ext->kmer, KMER_LENGTH);
@@ -231,18 +231,18 @@ void unpackKmerAndExtensionsLocalCopy(list_t *new_kmer_seed_ptr, kmer_and_ext_t 
 	kmer_and_ext->endOfString = '\0';
 }
 
-void unpackKmerAndExtensionsLocalCopyOrient(list_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext, int is_least) {
+void unpackKmerAndExtensionsLocalCopyOrient(htentry_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext, int is_least) {
 	unpackKmerAndExtensionsLocalCopy(new_kmer_seed_ptr, kmer_and_ext);
 	if (!is_least) {
 		reverseComplementINPLACE(&(kmer_and_ext->left_ext), KMER_LENGTH+2);
 	}
 }
 
-void unpackKmerAndExtensions(shared[] list_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext) {
-	list_t copy;
+void unpackKmerAndExtensions(htentry_t *new_kmer_seed_ptr, kmer_and_ext_t *kmer_and_ext) {
+	//list_t copy;
 	assert(new_kmer_seed_ptr != NULL);
-	copy = *new_kmer_seed_ptr;
-	unpackKmerAndExtensionsLocalCopy(&copy, kmer_and_ext);
+	//copy = *new_kmer_seed_ptr;
+	unpackKmerAndExtensionsLocalCopy(new_kmer_seed_ptr, kmer_and_ext);
 }
 
 
