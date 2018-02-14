@@ -20,6 +20,7 @@ OBJS =  assoc.o      \
         commsynch.o  \
         hash.o       \
         init.o       \
+        iter.o       \
         nbputget.o   \
         pmi.o        \
         poll.o       \

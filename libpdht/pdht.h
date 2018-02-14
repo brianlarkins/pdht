@@ -295,11 +295,12 @@ enum pdht_reduceop_e {
 typedef enum pdht_reduceop_e pdht_reduceop_t;
 
 
-/* DHT iterators (UNSUPPORTED) */
+/* DHT iterators - local only iteration */
 struct pdht_iter_s {
-  // XXX iteration state stuff needs added.
-  int   (*hasnext)(struct pdht_iter_s *it);
-  void *(*next)(struct pdht_iter_s *it);
+  pdht_t    *dht;
+  char      *iterator;
+  int      (*hasnext)(struct pdht_iter_s *it);
+  void    *(*next)(struct pdht_iter_s *it);
 };
 typedef struct pdht_iter_s pdht_iter_t;
 
@@ -349,7 +350,7 @@ void                 pdht_sethash(pdht_t *dht, pdht_hashfunc hfun);
 pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);
 pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
-void                *pdht_getnext(pdht_iter_t *it);
+void                *pdht_getnext(pdht_iter_t *it, void **key);
 
 
 // atomics / counter support atomics.c
