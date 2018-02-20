@@ -28,12 +28,14 @@
 // small:    73
 // med  :  2633
 // large: 37449
+// 1e-16  84745 nodes
+// 1e-17 461513 nodes
 #define THRESHOLD_TEST  .1
 #define THRESHOLD_SMALL  1e-6
 #define THRESHOLD_MEDIUM 1e-10
 //#define THRESHOLD_LARGE  1e-14
 #define THRESHOLD_LARGE 1e-16
-#define INITIAL_LEVEL    2
+#define INITIAL_LEVEL    3
 
 #define PAR_LEVEL        3
 
@@ -54,6 +56,8 @@ int ncounter = 0;
 int pdhtcounter = 0;
 int stcount = 0;
 int totcount = 0;
+
+int nodecount = 0; 
 
 func_t *f, *fprime;
 int     defaultparlvl;
@@ -115,6 +119,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 
   fun = malloc(sizeof(func_t));
   fun->ftree = create_tree(); // safe to call eprintf() after this
+  if (c->rank == 0) nodecount++;
 
   fun->compressed = 0;
   fun->k         = k;
@@ -234,6 +239,7 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
       printf("%d: fine_scale_projection: put error\n", c->rank);
       exit(1);
     }
+    nodecount++;
   }
 
 
@@ -336,6 +342,7 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         }
         
         stcount++; totcount++;
+        nodecount++;
         
 
         free(tscoeffs);
@@ -1483,11 +1490,13 @@ int main(int argc, char **argv, char **envp) {
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
   PDHT_STOP_ATIMER(initialization_timer);
-  eprintf("function tree initialization complete.\n");
   //print_tree(f);
   
 //  printf("c->rank : %d pid : %d \n", c->rank, getpid());
   pdht_barrier();
+  int totalnodes = 0, tmp = nodecount;
+  pdht_allreduce(&tmp, &totalnodes, PdhtReduceOpSum, IntType, 1);
+  eprintf("function tree initialization complete. tree contains %d nodes\n", totalnodes);
   
   eprintf("compress.\n");
   PDHT_START_ATIMER(compress_timer);
@@ -1529,21 +1538,21 @@ int main(int argc, char **argv, char **envp) {
 
     printf("MADNESS TIMING size : %d \n", c->size);
 #ifndef MPI
-    printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
+    printf("initialization  min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
     printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] / c->size, max[2]);
     printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] / c->size, max[3]);
 #else
-    printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] * 2 / c->size, max[0]);
+    printf("initialization  min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] * 2 / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] * 2 / c->size, max[1]);
     printf("reconstruct     min : %12.7f avg : %12.7f max : %12.7f \n", min[2], avg[2] * 2 / c->size, max[2]);
     printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] * 2 / c->size, max[3]);
 #endif
   }
   pdht_print_stats(f->ftree);
+  pdht_print_distribution(f->ftree);
   eprintf("complete.\n");
   fflush(stdout);
-  return 1;
   exit(0);
 }
 
