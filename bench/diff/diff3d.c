@@ -31,8 +31,9 @@
 #define THRESHOLD_TEST  .1
 #define THRESHOLD_SMALL  1e-6
 #define THRESHOLD_MEDIUM 1e-10
-#define THRESHOLD_LARGE  1e-14
-#define INITIAL_LEVEL    2
+//#define THRESHOLD_LARGE  1e-14
+#define THRESHOLD_LARGE 1e-20
+#define INITIAL_LEVEL    3
 
 #define PAR_LEVEL        3
 
@@ -96,7 +97,7 @@ int       main(int argc, char **argv, char **envp);
 void bthandler(int sig) {
   void *a[100];
   size_t size;
-
+  printf("c->rank : %d \n");
   size = backtrace(a, 100);
   fprintf(stderr, "c->rank : %d Error: signal: %d:\n", c->rank, sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
@@ -1017,7 +1018,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   eprintf("    projection done.\n",c->rank);
   
   pdht_fence(fprime->ftree);
-
+  
   pdht_barrier();
 
   // parallel differentiation starts at limit depth
@@ -1081,7 +1082,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
           ckey.level = node->a.level + 1;
 
           // fetch f subtree node
-          if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+          if (pdht_persistent_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
             printf("%d: diff f pdht_get error.\n", c->rank);
             exit(1);
           }
@@ -1456,7 +1457,6 @@ int main(int argc, char **argv, char **envp) {
         exit(1);
     }
   }
-
   signal(SIGSEGV, bthandler);
 
   test  = test1;
@@ -1465,10 +1465,11 @@ int main(int argc, char **argv, char **envp) {
   //
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
-  cfg.maxentries = 30000;
-  cfg.pendq_size = 10000;
+  cfg.maxentries = 50000;
+  cfg.pendq_size = 20000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
-  
+  cfg.rank = PDHT_DEFAULT_RANK_HINT;
+
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
@@ -1476,6 +1477,7 @@ int main(int argc, char **argv, char **envp) {
   eprintf("function tree initialization complete.\n");
   //print_tree(f);
   
+//  printf("c->rank : %d pid : %d \n", c->rank, getpid());
   pdht_barrier();
   
   eprintf("compress.\n");
@@ -1498,7 +1500,7 @@ int main(int argc, char **argv, char **envp) {
   
   eprintf("diff.\n");
   //diff timer gets started in diff
-  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
+//  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
   PDHT_STOP_ATIMER(diff_timer);
   
   pdht_barrier();
@@ -1507,6 +1509,7 @@ int main(int argc, char **argv, char **envp) {
   local[1] = PDHT_READ_ATIMER_SEC(compress_timer);
   local[2] = PDHT_READ_ATIMER_SEC(reconstruct_timer);
   local[3] = PDHT_READ_ATIMER_SEC(diff_timer);
+  local[3] = 0;
 
   pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 4);
   pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 4);
@@ -1515,7 +1518,7 @@ int main(int argc, char **argv, char **envp) {
   
   if(c->rank == 0){
 
-    printf("MADNESS TIMING : \n");
+    printf("MADNESS TIMING size : %d \n", c->size);
 #ifndef MPI
     printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
@@ -1529,6 +1532,9 @@ int main(int argc, char **argv, char **envp) {
 #endif
   }
   eprintf("complete.\n");
+  fflush(stdout);
+  pdht_print_stats(f->ftree);
+  return 1;
   pdht_free(f->ftree);
   pdht_free(fprime->ftree);
   exit(0);

@@ -25,6 +25,7 @@ hash_table_t* create_hash_table(int64_t  size, memory_heap_t *memory_heap, int64
    
    result = (hash_table_t*) malloc(sizeof(hash_table_t));
    result->size = n_buckets;
+#if 0
    result->table = (shared[BS] bucket_t*) upc_all_alloc(n_buckets, sizeof(bucket_t));
    if (result->table == NULL) {
       fprintf(stderr, "Thread %d: ERROR: Could not allocate memory for the distributed hash table! %ld buckets of %ld bytes\n", MYTHREAD, n_buckets, sizeof(bucket_t));
@@ -35,6 +36,7 @@ hash_table_t* create_hash_table(int64_t  size, memory_heap_t *memory_heap, int64
       result->table[i].head = NULL;
    }
    
+#endif
    memory_heap->heap_ptr = (shared[BS] shared_heap_ptr*) upc_all_alloc(THREADS, sizeof(shared_heap_ptr));
    memory_heap->heap_indices = (shared[BS] UPC_INT64_T*) upc_all_alloc(THREADS, sizeof(UPC_INT64_T));
    if (memory_heap->heap_indices == NULL || memory_heap->heap_ptr == NULL) {
