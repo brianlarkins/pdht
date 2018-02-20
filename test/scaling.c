@@ -43,6 +43,12 @@ void ahash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, p
 }
 
 
+int gothere = 0;
+void inthandler(int sig) {
+  printf("%d: %d\n", c->rank, gothere);
+}
+
+
 int main(int argc, char **argv) {
   pdht_t *ht;
   pdht_status_t ret;
@@ -55,6 +61,8 @@ int main(int argc, char **argv) {
   double local[3], avg[3], min[3], max[3];
   int using_mpi = 0;
 
+  signal(SIGINT, inthandler);
+
   pdht_config_t cfg;
   cfg.nptes        = 1;
   cfg.pendmode     = PdhtPendingTrig;
@@ -64,7 +72,7 @@ int main(int argc, char **argv) {
   cfg.local_gets   = 0;
   cfg.rank         = PDHT_DEFAULT_RANK_HINT;
 
-  while ((opt = getopt(argc, argv, "hi:ls:pquv:U")) != -1) {
+  while ((opt = getopt(argc, argv, "hi:ls:pquv:UNDL")) != -1) {
     switch (opt) {
       case 'd':
         cfg.quiet = 1;
@@ -104,13 +112,22 @@ int main(int argc, char **argv) {
       case 'U':
         setenv("PTL_IGNORE_UMMUNOTIFY", "1",1);
         break;
+      case 'N':
+        setenv("PTL_PROGRESS_NOSLEEP", "1", 1);
+        break;
+      case 'D':
+        setenv("PTL_DISABLE_MEM_REG_CACHE", "1", 1);
+        break;
+      case 'L':
+        setenv("MPICH_CH3_NO_LOCAL", "1", 1);
+        break;
     } 
   }
 
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
   //setenv("PTL_LOG_LEVEL","3",1);
-  setenv("PTL_DEBUG","1",1);
-  setenv("PTL_PROGRESS_NOSLEEP","1",1);
+  //setenv("PTL_DEBUG","1",1);
+  //  setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   val = malloc(elemsize); // alloc our token value object
 
@@ -125,6 +142,7 @@ int main(int argc, char **argv) {
 
   PDHT_START_ATIMER(total);
 
+  pdht_sethash(ht, ahash);
   //pdht_sethash(ht, ahash);
 
   // each process puts numentries elements into distributed hash
@@ -136,11 +154,13 @@ int main(int argc, char **argv) {
     pdht_put(ht, &key, val);
     key += c->size;
     if ((iter % 1000) == 0) eprintf(".");
+    gothere++;
   }
   PDHT_STOP_ATIMER(ptimer);
 
   pdht_fence(ht);
   eprintf(".\n");
+  gothere = -gothere;
 
   eprintf("starting fetches\n");
 
