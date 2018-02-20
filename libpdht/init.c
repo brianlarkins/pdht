@@ -546,8 +546,9 @@ static void print_fucking_mapping() {
 void pdht_bthandler(int sig) {
   void *a[100];
   size_t size;
-
   size = backtrace(a, 100);
+  printf("pid : %d \n", getpid());
+  fflush(stdout);
   fprintf(stderr, "Error: signal: %d:\n", sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
   exit(1);

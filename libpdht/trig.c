@@ -116,8 +116,12 @@ void pdht_trig_init(pdht_t *dht) {
   // nextfree points to the first empty hash entry that doesn't have a pending trigger setup
   dht->nextfree = dht->ptl.nptes * dht->pendq_size; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
 
-  if (c->dhtcount == 1)
-    pthread_create(&c->progress_tid, NULL, pdht_trig_progress, NULL);
+  if (c->dhtcount == 0) {
+    ret = pthread_create(&c->progress_tid, NULL, pdht_trig_progress, NULL);
+    if (ret < 0) {
+      pdht_dprintf("pdht_trig_init: cannot spawn progress thread: %s\n", strerror(ret));
+    } 
+  }
 }
 
 
@@ -136,8 +140,9 @@ void pdht_trig_fini(pdht_t *dht) {
   for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) 
     PtlPTDisable(dht->ptl.lni, dht->ptl.putindex[ptindex]);
 
-  if (c->dhtcount == 0) 
+  if (c->dhtcount == 0)  {
     pthread_join(c->progress_tid, NULL);
+  }
 
   // remove all match entries from the table
   iter = (char *)dht->ht;
