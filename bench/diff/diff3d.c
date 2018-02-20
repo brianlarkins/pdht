@@ -31,7 +31,8 @@
 #define THRESHOLD_TEST  .1
 #define THRESHOLD_SMALL  1e-6
 #define THRESHOLD_MEDIUM 1e-10
-#define THRESHOLD_LARGE  1e-14
+//#define THRESHOLD_LARGE  1e-14
+#define THRESHOLD_LARGE 1e-16
 #define INITIAL_LEVEL    2
 
 #define PAR_LEVEL        3
@@ -115,7 +116,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 
   fun = malloc(sizeof(func_t));
   fun->ftree = create_tree(); // safe to call eprintf() after this
-  PDHT_START_ATIMER(initialization_timer);
+
   fun->compressed = 0;
   fun->k         = k;
   fun->npt       = k;
@@ -150,6 +151,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
    * }
    */
 
+
   if (fun->f) {
     // cheating. set global func_t *f for || task
     f = fun;
@@ -160,14 +162,19 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     eprintf("  creating octree with initial projection depth of %d : %d nodes\n", parlvl, fun->stlen);
     // initial function projection @ parlvl 
     // - need to project to subtrees[] level + 1, because refine requires children
+    
+
+    PDHT_INIT_ATIMER(initialization_timer);
     fine_scale_projection(fun, &root, parlvl+1);
     //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
     pdht_fence(fun->ftree);
 
+
     pdht_barrier();
     //print_tree(fun);
 
+    PDHT_START_ATIMER(initialization_timer);
     st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     while (st < fun->stlen) {
       stcount = 0;
@@ -766,8 +773,6 @@ void reconstruct(func_t *f, node_t *node, int limit) {
           ckey.y = 2 * node->a.y + iy;
           ckey.z = 2 * node->a.z + iz;
           ckey.level = node->a.level + 1;
-
-
           if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
             printf("%d: reconstruct: pdht_get error\n", c->rank);
             exit(1);
@@ -1420,14 +1425,14 @@ int main(int argc, char **argv, char **envp) {
 
   PDHT_INIT_ATIMER(compress_timer);
   PDHT_INIT_ATIMER(reconstruct_timer);
-  PDHT_INIT_ATIMER(initialization_timer);
+
   PDHT_INIT_ATIMER(diff_timer);
 
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
 
   // deal with cli args
-  while ((arg = getopt(argc, argv, "ehsmlt:C:c")) != -1) {
+  while ((arg = getopt(argc, argv, "ehsmlt:C:cp:q")) != -1) {
     switch (arg) {
       case 'c':
         caching = 1;
@@ -1450,6 +1455,12 @@ int main(int argc, char **argv, char **envp) {
         break;
       case 'h':
         usage(argv);
+      case 'q':
+        cfg.quiet = 1;
+        break;
+      case 'p':
+        cfg.pendq_size = atoi(optarg);
+        break;
       default:
         printf("%s: unknown option: -%c\n\n", argv[0], arg);
         usage(argv);
@@ -1465,10 +1476,8 @@ int main(int argc, char **argv, char **envp) {
   //
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
-  cfg.maxentries = 30000;
-  cfg.pendq_size = 10000;
+  cfg.maxentries = 250000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
-  
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
@@ -1498,7 +1507,7 @@ int main(int argc, char **argv, char **envp) {
   
   eprintf("diff.\n");
   //diff timer gets started in diff
-  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
+//  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
   PDHT_STOP_ATIMER(diff_timer);
   
   pdht_barrier();
@@ -1507,6 +1516,7 @@ int main(int argc, char **argv, char **envp) {
   local[1] = PDHT_READ_ATIMER_SEC(compress_timer);
   local[2] = PDHT_READ_ATIMER_SEC(reconstruct_timer);
   local[3] = PDHT_READ_ATIMER_SEC(diff_timer);
+  local[3] = 0;
 
   pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 4);
   pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 4);
@@ -1515,7 +1525,7 @@ int main(int argc, char **argv, char **envp) {
   
   if(c->rank == 0){
 
-    printf("MADNESS TIMING : \n");
+    printf("MADNESS TIMING : %d \n", c->size);
 #ifndef MPI
     printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
@@ -1528,9 +1538,10 @@ int main(int argc, char **argv, char **envp) {
     printf("diff            min : %12.7f avg : %12.7f max : %12.7f \n", min[3], avg[3] * 2 / c->size, max[3]);
 #endif
   }
+  pdht_print_stats(f->ftree);
   eprintf("complete.\n");
-  pdht_free(f->ftree);
-  pdht_free(fprime->ftree);
+//  pdht_free(f->ftree);
+//  pdht_free(fprime->ftree);
   exit(0);
 }
 
