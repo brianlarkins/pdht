@@ -97,7 +97,6 @@ int       main(int argc, char **argv, char **envp);
 void bthandler(int sig) {
   void *a[100];
   size_t size;
-  printf("c->rank : %d \n");
   size = backtrace(a, 100);
   fprintf(stderr, "c->rank : %d Error: signal: %d:\n", c->rank, sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
