@@ -1543,7 +1543,6 @@ int main(int argc, char **argv, char **envp) {
   pdht_print_stats(f->ftree);
   eprintf("complete.\n");
   fflush(stdout);
-  pdht_print_stats(f->ftree);
   return 1;
   exit(0);
 }
