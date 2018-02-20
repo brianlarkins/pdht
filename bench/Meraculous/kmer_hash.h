@@ -25,6 +25,7 @@ hash_table_t* create_hash_table(int64_t  size, memory_heap_t *memory_heap, int64
    
    result = (hash_table_t*) malloc(sizeof(hash_table_t));
    result->size = n_buckets;
+#if 0
    result->table = (shared[BS] bucket_t*) upc_all_alloc(n_buckets, sizeof(bucket_t));
    if (result->table == NULL) {
       fprintf(stderr, "Thread %d: ERROR: Could not allocate memory for the distributed hash table! %ld buckets of %ld bytes\n", MYTHREAD, n_buckets, sizeof(bucket_t));
@@ -35,6 +36,7 @@ hash_table_t* create_hash_table(int64_t  size, memory_heap_t *memory_heap, int64
       result->table[i].head = NULL;
    }
    
+#endif
    memory_heap->heap_ptr = (shared[BS] shared_heap_ptr*) upc_all_alloc(THREADS, sizeof(shared_heap_ptr));
    memory_heap->heap_indices = (shared[BS] UPC_INT64_T*) upc_all_alloc(THREADS, sizeof(UPC_INT64_T));
    if (memory_heap->heap_indices == NULL || memory_heap->heap_ptr == NULL) {
@@ -218,17 +220,37 @@ int64_t hashkmer(int64_t  hashtable_size, char *seq)
 }
   
 /* Use this lookup function when no writes take place in the distributed hashtable */
-shared[] list_t* lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *kmer, list_t *cached_copy)
+//shared[] list_t* lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *kmer, list_t *cached_copy)
+htentry_t *lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *kmer, htentry_t *cached_copy)
 {  
    // TODO: Fix hash functions to compute on packed kmers and avoid conversions
-   int64_t  hashval = hashkmer(hashtable->size, (char*) kmer);
+   //int64_t  hashval = hashkmer(hashtable->size, (char*) kmer);
    unsigned char packed_key[KMER_PACKED_LENGTH];
    unsigned char remote_packed_key[KMER_PACKED_LENGTH];
+   pdht_status_t ret;
 
    packSequence(kmer, packed_key, KMER_LENGTH);
-   shared[] list_t *result;
+   //shared[] list_t *result;
    bucket_t local_buc;
-   
+
+   ret = pdht_get(pdht, packed_key, &cached_copy);
+   if (ret != PdhtStatusOK) {
+     switch (ret) {
+     case PdhtStatusNotFound:
+       LOG("pdht entry not found\n");
+       break;
+     case PdhtStatusCollision:
+       LOG("pdht lookup collision\n");
+       break;
+     default:
+       LOG("pdht lookup error\n");
+       break;
+     }
+     return NULL;
+   }
+   return cached_copy;
+
+#if 0
    local_buc = hashtable->table[hashval];
    result = local_buc.head;
    
@@ -261,32 +283,33 @@ shared[] list_t* lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned ch
       LOG("Thread %d: lookup_kmer(): did not find %s (%s)\n", MYTHREAD, tmp, kmer);
    }
    return NULL;
+#endif // #if 0 non-PDHT removal
 }
 
-shared[] list_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer) {
-   list_t cached_copy;
+htentry_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer) {
+   htentry_t cached_copy;
    return lookup_kmer_and_copy(hashtable, kmer, &cached_copy);
 }
 
 /* find the entry for this kmer or reverse complement */
-shared[] list_t *lookup_least_kmer_and_copy(hash_table_t *dist_hashtable, const char *next_kmer, list_t *cached_copy, int *is_least) {
+htentry_t *lookup_least_kmer_and_copy(hash_table_t *dist_hashtable, const char *next_kmer, htentry_t *cached_copy, int *is_least) {
    char auxiliary_kmer[KMER_LENGTH+1];
    char *kmer_to_search;
    auxiliary_kmer[KMER_LENGTH] = '\0';
    /* Search for the canonical kmer */
    kmer_to_search = getLeastKmer(next_kmer, auxiliary_kmer);
    *is_least = (kmer_to_search == next_kmer) ? 1 : 0;
-   shared[] list_t *res = lookup_kmer_and_copy(dist_hashtable, (unsigned char*) kmer_to_search, cached_copy);
+   htentry_t *res = lookup_kmer_and_copy(dist_hashtable, (unsigned char*) kmer_to_search, cached_copy);
    if (VERBOSE > 2) LOG("Thread %d: lookup_least_kmer2(%s) is_least: %d res: %s\n", MYTHREAD, next_kmer, *is_least, res == NULL ? " not found" : "found");
    return res;
 }
 
-shared[] list_t *lookup_least_kmer(hash_table_t *dist_hashtable, const char *next_kmer, int *was_least) {
-   list_t cached_copy;
+htentry_t *lookup_least_kmer(hash_table_t *dist_hashtable, const char *next_kmer, int *was_least) {
+   htentry_t cached_copy;
    return lookup_least_kmer_and_copy(dist_hashtable, next_kmer, &cached_copy, was_least);
 }
 
-void set_ext_of_kmer(list_t *lookup_res, int is_least, char *new_seed_le, char *new_seed_re) {
+void set_ext_of_kmer(htentry_t *lookup_res, int is_least, char *new_seed_le, char *new_seed_re) {
    if (is_least) {
 #ifdef MERACULOUS
       convertPackedCodeToExtension(lookup_res->packed_extensions,new_seed_le,new_seed_re);
@@ -303,11 +326,11 @@ void set_ext_of_kmer(list_t *lookup_res, int is_least, char *new_seed_le, char *
 }
 
 /* find the entry for this kmer or reverse complement, set the left and right extensions */
-shared[] list_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const char *next_kmer, char *new_seed_le, char *new_seed_re)
+htentry_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const char *next_kmer, char *new_seed_le, char *new_seed_re)
 {
    int is_least;
-   shared[] list_t *lookup_res;
-   list_t copy;
+   htentry_t *lookup_res;
+   htentry_t copy;
    *new_seed_le = '\0';
    *new_seed_re = '\0';
    
@@ -325,9 +348,12 @@ shared[] list_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const 
 }
 
 /* get the contig_ptr "box" associated with a kmer -- must be USED already to work */
-shared[] contig_ptr_box_list_t *get_contig_box_of_kmer(shared[] list_t *lookup_res, int follow_list) {
+shared[] contig_ptr_box_list_t *get_contig_box_of_kmer(htentry_t *lookup_res, int follow_list) {
    shared[] contig_ptr_box_list_t *box_ptr = NULL;
    kmer_and_ext_t kmer_and_ext;
+
+   // PDHT lookup_res->my_contig should have been updated before now, locally 
+   //   (and via atomic cswap), so no need for communication?
    
    if (lookup_res == NULL)
       printf("FATAL ERROR: K-mer should not be NULL here (right walk)\n");
@@ -345,10 +371,14 @@ shared[] contig_ptr_box_list_t *get_contig_box_of_kmer(shared[] list_t *lookup_r
 }
 
 /* get the contig associated with a kmer -- must be USED already to work */
-shared[] contig_t *get_contig_of_kmer(shared[] list_t *lookup_res, int follow_list) {
+shared[] contig_t *get_contig_of_kmer(htentry_t *lookup_res, int follow_list) {
    shared[] contig_ptr_box_list_t *box_ptr;
    kmer_and_ext_t kmer_and_ext;
    shared[] contig_t *contig = NULL;
+
+   // PDHT lookup_res->my_contig should have been updated before now, locally 
+   //   (and via atomic cswap), so no need for communication?
+   //   assertions might blow...
    
    assert(lookup_res != NULL);
    assert(lookup_res->used_flag == USED);
@@ -386,12 +416,13 @@ shared[] contig_t *get_contig_of_kmer(shared[] list_t *lookup_res, int follow_li
    return NULL;
 }*/
 
+#if 0
 int add_kmer(hash_table_t *hashtable, unsigned char *kmer, unsigned char *extensions, memory_heap_t *memory_heap, int64_t  *ptrs_to_stack, int64_t  *ptrs_to_stack_limits, int CHUNK_SIZE)
 {
    list_t new_entry;
    shared[] list_t *insertion_point;
 
-   int64_t  hashval = hashkmer(hashtable->size, (char*) kmer);
+   int64_t  hashval = hashkmer(hashtable->size, (char*) kmer); // pdht - dead code, ok
    int64_t  pos;
    int64_t  new_init_pos, new_limit;
    int remote_thread = upc_threadof(&(hashtable->table[hashval]));
@@ -452,6 +483,7 @@ int add_kmer(hash_table_t *hashtable, unsigned char *kmer, unsigned char *extens
    
    return 0;
 }
+#endif // #if 0 for PDHT
 
 #endif // KMER_HASH_H
 

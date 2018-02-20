@@ -61,6 +61,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
      cfg.ptalloc_opts = PDHT_PTALLOC_OPTIONS;
      cfg.quiet        = PDHT_DEFAULT_QUIET;
      cfg.local_gets   = PDHT_DEFAULT_LOCAL_GETS;
+     cfg.rank         = PDHT_DEFAULT_RANK_HINT;
   } else {
     memcpy(&cfg, __pdht_config, sizeof(pdht_config_t));
   }
@@ -137,7 +138,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
 
   // initialize entire hash table array
-  for (int i=0; i < dht->maxentries; i++) {
+  for (unsigned int i=0; i < dht->maxentries; i++) {
     hte = (_pdht_ht_entry_t *)iter;
     hte->pme = PTL_INVALID_HANDLE; // initialize pending put ME as invalid
     hte->ame = PTL_INVALID_HANDLE; // initialize active ME as invalid
@@ -147,14 +148,12 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
 
   c->hts[c->dhtcount] = dht;
 
-
   // allocate event counter for puts/gets
   ret = PtlCTAlloc(dht->ptl.lni, &dht->ptl.lmdct);
   if (ret != PTL_OK) {
     pdht_dprintf("pdht_create: PtlCTAlloc failure (put/get)\n");
     exit(1);
   }
-
 
   // allocate event queue
   ret = PtlEQAlloc(dht->ptl.lni, dht->pendq_size, &dht->ptl.lmdeq);
@@ -190,7 +189,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     dht->ptl.countcts[i] = PTL_INVALID_HANDLE;
   }
 
-  for (int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
+  for (unsigned int ptindex=0; ptindex < dht->ptl.nptes; ptindex++) {
     // create PTE for matching gets, will be populated by pending put poller
 
     // need to create an event queue for PTL_EVENT_LINK events for triggered appends and fence op
@@ -213,6 +212,9 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   } else {
     pdht_trig_init(dht);
   }
+
+  // initialize atomic operations MD, CT, and scratch space
+  pdht_atomic_init(dht);
 
   c->dhtcount++; // register ourselves globally on this process
   return dht;
@@ -285,6 +287,9 @@ void pdht_free(pdht_t *dht) {
       PtlMDRelease(dht->ptl.countmds[i]);
   }
 
+  // cleanup MD, CT, and scratch space for atomic operations
+  pdht_atomic_free(dht);
+
   // clean up everything if we're last out the door
   if (c->dhtcount <= 0) {
     pdht_fini();
@@ -311,7 +316,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
      __pdht_config->maxentries   = PDHT_DEFAULT_TABLE_SIZE;
      __pdht_config->pendq_size   = PDHT_PENDINGQ_SIZE;
      __pdht_config->ptalloc_opts = PDHT_PTALLOC_OPTIONS;
-     __pdht_config->ptalloc_opts = PDHT_DEFAULT_QUIET;
+     __pdht_config->quiet        = PDHT_DEFAULT_QUIET;
+     __pdht_config->rank         = PDHT_DEFAULT_RANK_HINT;
   }
   if (opts & PDHT_TUNE_NPTES) 
     __pdht_config->nptes        = config->nptes;
@@ -327,6 +333,8 @@ void pdht_tune(unsigned opts, pdht_config_t *config) {
     __pdht_config->quiet        = config->quiet;
   if (opts & PDHT_TUNE_GETS)
     __pdht_config->local_gets   = config->local_gets;
+  if (opts & PDHT_TUNE_RANK)
+    __pdht_config->rank         = config->rank;
   // copy back tunables, so app can see
   memcpy(config,__pdht_config, sizeof(pdht_config_t));
 }
@@ -392,7 +400,7 @@ void pdht_init(pdht_config_t *cfg) {
   ni_req_limits.max_mds = 1024;
   ni_req_limits.max_eqs = PDHT_MAX_TABLES * ((2*cfg->nptes)+2);
   //ni_req_limits.max_cts = (cfg->nptes*cfg->pendq_size)+PDHT_MAX_COUNTERS
-  ni_req_limits.max_cts = (cfg->maxentries)+PDHT_MAX_COUNTERS + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + 1;
+  ni_req_limits.max_cts = (cfg->maxentries)+PDHT_MAX_COUNTERS + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + PDHT_ATOMIC_CTS + 1;
   ni_req_limits.max_pt_index = 2*cfg->nptes + PDHT_COUNT_PTES + PDHT_COLLECTIVE_PTES + 1;
   ni_req_limits.max_iovecs = 1024;
   ni_req_limits.max_list_size = cfg->maxentries;
@@ -428,7 +436,7 @@ void pdht_init(pdht_config_t *cfg) {
     goto error;
   }
 
-  init_pmi();
+  init_pmi(cfg);
 
 
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
@@ -538,8 +546,9 @@ static void print_fucking_mapping() {
 void pdht_bthandler(int sig) {
   void *a[100];
   size_t size;
-
   size = backtrace(a, 100);
+  printf("pid : %d \n", getpid());
+  fflush(stdout);
   fprintf(stderr, "Error: signal: %d:\n", sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
   exit(1);

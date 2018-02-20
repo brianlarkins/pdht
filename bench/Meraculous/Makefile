@@ -1,11 +1,16 @@
 #######################
 # general configuration
+#
+
+PDHT_TOP=../..
+
+include $(PDHT_TOP)/pdht.mk
 
 # kmer length for all datasets used in the benchmark
 KMER_LENGTH = 51
 
 # base CFLAGS for UPC
-CFLAGS = -DNDEBUG -O 
+CFLAGS = -DNDEBUG -O  -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
 #CFLAGS = -O0 -g
 
 # base CXXFLAGS
@@ -14,12 +19,13 @@ CXXFLAGS = -DNDEBUG -O3 -std=c++11 -Wshadow -Wreturn-type
 
 # C++ compiler
 #  note: must support c++11
-CXX = CC
+#CXX = CC
+CXX = g++
 
 # UPC compiler type
 #  determines which compiler-specific configuration is used below
 # included out of the box: Berkeley UPC (bupc), Cray UPC (cray)
-UPC_COMPILER = bupc
+UPC_COMPILER = gupc
 
 ################################
 # UPC compiler-specific settings
@@ -44,6 +50,19 @@ ifeq ($(UPC_COMPILER), cray)
 endif
 
 ## >> add additional UPC compiler configs here << ##
+ifeq ($(UPC_COMPILER), gupc)
+  $(info Using GNU gcc UPC - intrepid)
+  UPC_TYPE=-DUSE_GUPC # -shared-heap=1GB
+  UPCC=upc
+  # autodetect if upcc can use the more reliable -cupc2c translation option
+  CAN_USE_UPC2C := $(shell $(UPCC) -cupc2c hello_world.c -o hello_world >/dev/null 2>/dev/null ; echo $$?)
+  ifeq ($(CAN_USE_UPC2C), 0)
+    $(info using -cupc2c to translate UPC code)
+    USE_UPC2C = -cupc2c
+  endif
+  #UPC_CXX_LINK=-link-with=$(CXX) -lstdc++
+  UPC_CXX_LINK=-lstdc++
+endif
 
 ###################################
 # checks, derived CPP defines, etc.
@@ -62,7 +81,12 @@ KMERFLAG = -DMAX_KMER_SIZE=$(MAX_KMER_SIZE) -DKMERlength=$(KMER_LENGTH)
 
 CXXFLAGS += ${KMERFLAG}
 
+default: test-mode install
+
 all : meraculous-$(KMER_LENGTH)
+
+install:
+	cp meraculous-$(KMER_LENGTH)-testing tests/.
 
 test-mode : meraculous-$(KMER_LENGTH)-testing
 
@@ -78,7 +102,7 @@ INCLUDES = meraculous.h kmer_hash.h kmer_handling.h readufx.h buildUFXhashBinary
 
 PROFILE = -DPROFILE -DIO_TIME_PROFILE
 
-meraculous-%-testing : meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
+meraculous-%-testing : pdhtlibs meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 	$(UPCC) $(USE_UPC2C) $(UPC_OPTS) $(UPC_TYPE) meraculous.c \
 		-DMERACULOUS \
 		-DSYNC_PROTOCOL \
@@ -88,9 +112,10 @@ meraculous-%-testing : meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 		$(CFLAGS) \
 		readufx.o ${OBJECTS} \
 		$(UPC_CXX_LINK) \
-		-o $@
+		-o $@ $(PDHT_LIBS)
+		#-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
 
-meraculous-% : meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
+meraculous-% : pdhtlibs meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 	$(UPCC) $(USE_UPC2C) $(UPC_OPTS) $(UPC_TYPE) meraculous.c \
 		-DMERACULOUS \
 		-DDISABLE_SAVE_RESULTS \
@@ -101,10 +126,11 @@ meraculous-% : meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 		$(CFLAGS) \
 		readufx.o ${OBJECTS} \
 		$(UPC_CXX_LINK) \
-		-o $@
+		-o $@ $(PDHT_LIBS)
+		#-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
 
 .PHONY : clean
-clean :
+clean : pdhtclean
 	rm -f *.o
 	rm -f benchmark-constr benchmark-trav
 	rm -rf meraculous-[1-9]* hello_world

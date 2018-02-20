@@ -1,0 +1,8 @@
+mpiv=mvapich
+#mpiv=ompi.3.0
+#mpiv=ompi
+#mpiv=mpich
+
+export LD_LIBRARY_PATH=$HOME/opt/$mpiv/lib:$ORIG_LD_LIBRARY_PATH
+export PATH=$HOME/opt/$mpiv/bin:$ORIG_PATH
+

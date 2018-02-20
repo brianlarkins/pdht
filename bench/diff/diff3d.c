@@ -97,7 +97,7 @@ int       main(int argc, char **argv, char **envp);
 void bthandler(int sig) {
   void *a[100];
   size_t size;
-
+  printf("c->rank : %d \n");
   size = backtrace(a, 100);
   fprintf(stderr, "c->rank : %d Error: signal: %d:\n", c->rank, sig);
   backtrace_symbols_fd(a,size, STDERR_FILENO);
@@ -1022,7 +1022,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   eprintf("    projection done.\n",c->rank);
   
   pdht_fence(fprime->ftree);
-
+  
   pdht_barrier();
 
   // parallel differentiation starts at limit depth
@@ -1086,7 +1086,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
           ckey.level = node->a.level + 1;
 
           // fetch f subtree node
-          if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+          if (pdht_persistent_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
             printf("%d: diff f pdht_get error.\n", c->rank);
             exit(1);
           }
@@ -1467,7 +1467,6 @@ int main(int argc, char **argv, char **envp) {
         exit(1);
     }
   }
-
   signal(SIGSEGV, bthandler);
 
   test  = test1;
@@ -1476,8 +1475,11 @@ int main(int argc, char **argv, char **envp) {
   //
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
-  cfg.maxentries = 250000;
+  cfg.maxentries = 50000;
+  cfg.pendq_size = 20000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+  cfg.rank = PDHT_DEFAULT_RANK_HINT;
+  
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
@@ -1485,6 +1487,7 @@ int main(int argc, char **argv, char **envp) {
   eprintf("function tree initialization complete.\n");
   //print_tree(f);
   
+//  printf("c->rank : %d pid : %d \n", c->rank, getpid());
   pdht_barrier();
   
   eprintf("compress.\n");
@@ -1525,7 +1528,7 @@ int main(int argc, char **argv, char **envp) {
   
   if(c->rank == 0){
 
-    printf("MADNESS TIMING : %d \n", c->size);
+    printf("MADNESS TIMING size : %d \n", c->size);
 #ifndef MPI
     printf("initialiation   min : %12.7f avg : %12.7f max : %12.7f \n", min[0], avg[0] / c->size, max[0]);
     printf("compress        min : %12.7f avg : %12.7f max : %12.7f \n", min[1], avg[1] / c->size, max[1]);
@@ -1540,8 +1543,9 @@ int main(int argc, char **argv, char **envp) {
   }
   pdht_print_stats(f->ftree);
   eprintf("complete.\n");
-//  pdht_free(f->ftree);
-//  pdht_free(fprime->ftree);
+  fflush(stdout);
+  pdht_print_stats(f->ftree);
+  return 1;
   exit(0);
 }
 

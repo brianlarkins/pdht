@@ -93,6 +93,7 @@ void pdht_polling_init(pdht_t *dht) {
   dht->nextfree = dht->ptl.nptes * dht->pendq_size; // free = DEFAULT_TABLE_SIZE - PENDINGQ_SIZE
 
   pthread_create(&_pdht_poll_tid, NULL, pdht_poll, dht);
+  eprintf("XXX progress threads need fixed in polling model -- won't work with multiple dhts\n");  // admit defeat
 }
 
 

@@ -32,6 +32,11 @@ void pdht_init() {
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
+  char pname[MPI_MAX_PROCESSOR_NAME];
+  int nlen;
+  MPI_Get_processor_name(pname, &nlen);
+  printf("%d: %s\n", my_rank, pname);
+  fflush(stdout);
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c, 0, sizeof(pdht_context_t));

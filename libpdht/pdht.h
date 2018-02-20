@@ -208,6 +208,9 @@ struct pdht_htportals_s {
   ptl_handle_md_t countmds[PDHT_MAX_COUNTERS];  //!< MDs for initiator counter ops (initiator, all ranks)
   ptl_handle_ct_t countcts[PDHT_MAX_COUNTERS];  //!< CTs for initiator counter ops (initiator, all ranks)
   ptl_ct_event_t  curcounts;                    //!< current fail/success counts for local MD state (tracks progress)
+  ptl_handle_md_t atomic_md;                   //!< atomic MD handle
+  ptl_handle_ct_t atomic_ct;                   //!< atomic CT handle
+  void           *atomic_scratch;              //!< atomic scratch space
   ptl_size_t      lfail;                        //!< number of strict messages received
 };
 typedef struct pdht_htportals_s pdht_htportals_t;
@@ -253,6 +256,7 @@ typedef struct pdht_s pdht_t;
 #define PDHT_TUNE_PTOPT      0x10
 #define PDHT_TUNE_QUIET      0x20
 #define PDHT_TUNE_GETS       0x40
+#define PDHT_TUNE_RANK       0x80
 #define PDHT_TUNE_ALL        0xffffffff
 struct pdht_config_s {
   unsigned      nptes;
@@ -261,6 +265,8 @@ struct pdht_config_s {
   unsigned      pendq_size;
   unsigned      ptalloc_opts;
   unsigned      quiet;
+ #define PDHT_DEFAULT_RANK_HINT -1 // use PMI-defined rank
+  int           rank;
   pdht_local_gets_t local_gets;
 };
 typedef struct pdht_config_s pdht_config_t;
@@ -289,11 +295,12 @@ enum pdht_reduceop_e {
 typedef enum pdht_reduceop_e pdht_reduceop_t;
 
 
-/* DHT iterators (UNSUPPORTED) */
+/* DHT iterators - local only iteration */
 struct pdht_iter_s {
-  // XXX iteration state stuff needs added.
-  int   (*hasnext)(struct pdht_iter_s *it);
-  void *(*next)(struct pdht_iter_s *it);
+  pdht_t    *dht;
+  char      *iterator;
+  int      (*hasnext)(struct pdht_iter_s *it);
+  void    *(*next)(struct pdht_iter_s *it);
 };
 typedef struct pdht_iter_s pdht_iter_t;
 
@@ -343,13 +350,16 @@ void                 pdht_sethash(pdht_t *dht, pdht_hashfunc hfun);
 pdht_status_t        pdht_iterate(pdht_t *dht, pdht_iter_t *it);
 pdht_status_t        pdht_iterate_single(pdht_t *dht, pdht_iter_t *it);
 int                  pdht_hasnext(pdht_iter_t *it);
-void                *pdht_getnext(pdht_iter_t *it);
+void                *pdht_getnext(pdht_iter_t *it, void **key);
 
 
 // atomics / counter support atomics.c
 int                  pdht_counter_init(pdht_t *ht, int initval);
 uint64_t             pdht_counter_inc(pdht_t *ht, int counter, uint64_t val);
 void                 pdht_counter_reset(pdht_t *ht, int counter);
+int                  pdht_atomic_init(pdht_t *ht);
+void                 pdht_atomic_free(pdht_t *ht);
+pdht_status_t        pdht_atomic_cswap(pdht_t *ht, void *key, size_t offset, int64_t *old, int64_t new);
 
 //trig.c - temp
 void print_count(pdht_t *dht, char *msg);

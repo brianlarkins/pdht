@@ -1,6 +1,6 @@
 /********************************************************/
 /*                                                      */
-/*  atomics.c - PDHT atomic counter operations          */
+/*  atomics.c - PDHT atomic and counter operations      */
 /*                                                      */
 /*  author: d. brian larkins                            */
 /*  created: 2/2/17                                     */
@@ -8,6 +8,121 @@
 /********************************************************/
 
 #include <pdht_impl.h>
+
+struct _pdht_atomic_data_s {
+  int64_t old;
+  int64_t new;
+  int64_t compare;
+};
+typedef struct _pdht_atomic_data_s _pdht_atomic_data_t;
+
+/*
+ * pdht_atomic_init - initialize data structures for atomic operations
+ * @param ht - a PDHT hash table
+ */
+int pdht_atomic_init(pdht_t *ht) {
+  ptl_md_t md;
+  int ret;
+  _pdht_atomic_data_t *atomicptr = NULL;
+
+  // get CT ready for local counter MD events
+  ret = PtlCTAlloc(ht->ptl.lni, &ht->ptl.atomic_ct);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_atomic_init: unable to create CT for atomics. -- %s\n", pdht_ptl_error(ret));
+    return -1;
+  }
+
+  ret = posix_memalign((void **)&atomicptr, sizeof(int64_t), sizeof(_pdht_atomic_data_t));
+  if (ret != 0) {
+    pdht_dprintf("unable to get aligned memory block for atomic ops - %s\n", strerror(errno));
+    return -1;
+  }
+  ht->ptl.atomic_scratch = atomicptr; // save this to use for the actual atomic op later
+  memset(atomicptr, 0, sizeof(_pdht_atomic_data_t));
+
+  md.start     = ht->ptl.atomic_scratch;
+  md.length    = sizeof(_pdht_atomic_data_t);
+  md.options   = PTL_MD_EVENT_CT_REPLY;
+  md.eq_handle = PTL_EQ_NONE;
+  md.ct_handle = ht->ptl.atomic_ct;
+
+  ret = PtlMDBind(ht->ptl.lni, &md, &ht->ptl.atomic_md);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_atomic_init: unable to create MD for atomics");
+    return -1;
+  }
+  return 0;
+}
+
+
+
+/*
+ * pdht_atomic_free - cleanup after atomics 
+ * @param ht - a PDHT hash table
+ */
+void pdht_atomic_free(pdht_t *ht) {
+  PtlCTFree(ht->ptl.atomic_ct);    // free counter
+  PtlMDRelease(ht->ptl.atomic_md); // free memory descriptor
+  free(ht->ptl.atomic_scratch);    // free scratch space
+}
+
+
+
+/* 
+ * pdht_atomic_cswap - atomically compare and swap an int64 inside a HT entry
+ * @note this is hard-coded to int64_t, but could take a type parameter and 
+ *        support all portals atomic types (and cswap variants)
+ * @param ht - a PDHT hash table
+ * @param key - the key of the value to atomically update
+ * @param offset - offset inside the hash table entry to modify
+ * @param old - copyout of the remote value _prior_ to the swap
+ * @param new - new value to swap into HT entry
+ */
+pdht_status_t pdht_atomic_cswap(pdht_t *ht, void *key, size_t offset, int64_t *old, int64_t new) {
+  ptl_match_bits_t mbits;
+  uint32_t ptindex;
+  ptl_pt_index_t ptl_ptindex;
+  ptl_ct_event_t ctevent;
+  ptl_process_t rank;
+  _pdht_atomic_data_t *as;
+  ptl_size_t oldoff, newoff;
+  int ret;
+
+  // find out where we need to perform operation
+  ht->hashfn(ht, key, &mbits, &ptindex, &rank);
+  ptl_ptindex = ht->ptl.getindex[ptindex];
+
+  // setup scratch space and get current counter value
+  as = (_pdht_atomic_data_t *)ht->ptl.atomic_scratch; 
+  as->old = 0;
+  as->new = new;
+  as->compare = *old;
+  oldoff = offsetof(_pdht_atomic_data_t, old);
+  newoff = offsetof(_pdht_atomic_data_t, new);
+
+  PtlCTGet(ht->ptl.atomic_ct, &ctevent);
+
+  // perform atomic cswap
+  ret = PtlSwap(ht->ptl.atomic_md, oldoff, ht->ptl.atomic_md, newoff,
+      sizeof(int64_t), rank, ptl_ptindex, mbits, offset + PDHT_MAXKEYSIZE,
+      NULL, 0, &as->compare, PTL_CSWAP, PTL_INT64_T);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_atomic_cswap: PtlSwap failed\n");
+    return PdhtStatusError;
+  }
+
+  // wait for completion
+  ret = PtlCTWait(ht->ptl.atomic_ct, ctevent.success+1, &ctevent);
+  if (ret != PTL_OK) {
+    pdht_dprintf("pdht_atomic_cswap: PtlCTWait failed\n");
+    return PdhtStatusError;
+  }
+
+  //printf("oldoff: %d newoff: %d offset: %d %12"PRIx64" %d, %d %ld\n", oldoff, newoff, offset, mbits, ptl_ptindex, rank, as->old);
+  *old = as->old;
+  
+  return PdhtStatusOK;
+}
 
 /*
  * pdht_counter_init - initializes a new atomic counter for a hash table
@@ -19,6 +134,8 @@ int pdht_counter_init(pdht_t *ht, int initval) {
   int cindex, ret;
   ptl_me_t me;
   ptl_md_t md;
+
+  // XXX these structures are leaked and not cleaned up on hash table removal
 
   cindex = ht->countercount++;
 
