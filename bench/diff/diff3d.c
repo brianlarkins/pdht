@@ -316,17 +316,10 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         ckey.level = nkey->level+1;
 
         //printf("%d: creating  <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
-        
-
 
         fcube(f, f->npt, xlo, ylo, zlo, h, f->f, scoeffs);
-        
-
         tensor_scale(scoeffs, scale);
-        
-
         tscoeffs = transform3d(scoeffs, f->quad_phiw);
-        
 
         cnode.a = ckey; // copy key
         cnode.valid = madCoeffScaling;
@@ -343,12 +336,8 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
         
         stcount++; totcount++;
         nodecount++;
-        
 
         free(tscoeffs);
-
-
-
       }
     }
   }
@@ -550,7 +539,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
   int i, j, k;
   double t;
 
-  //printf("%d: compress of <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level);
+  //printf("%d: compress of <%ld,%ld,%ld> @ %ld keep = %s\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level, keep == 0 ? "no" : "yes");
 
   // get the current node
   if (pdht_get(f->ftree, nkey, &node) != PdhtStatusOK) {
@@ -568,7 +557,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
 
     // copy our scaling coeffs for our caller
     sc = tensor_copy((tensor_t *)&node.s); // cast from tensor3dk_t
-    node.valid = madCoeffNone; // mark scaling coeffs as invalid 
+    node.valid = (node.valid == madCoeffBoth ? madCoeffWavelet : madCoeffNone); // mark scaling coeffs as invalid 
 
   } else {
     // landing spot for children scaling coeffs
@@ -649,6 +638,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
   }
 
   // update global copy of our node
+  //print_madnode(&node); printf("\n");
   pdht_update(f->ftree, nkey, &node);
 
   return sc;
@@ -675,7 +665,9 @@ void par_reconstruct(func_t *f, int limit) {
     tensor_print((tensor_t *)&root.s,0);
 #endif
     // modifies root, but doesn't store into PDHT
-    reconstruct(f, &root, limit);
+    reconstruct(f, &root, limit); // keep difference coeffs
+
+    //print_tree(f);
 
     // update root tree node
     if (pdht_update(f->ftree, &rootkey, &root) != PdhtStatusOK) {
@@ -684,7 +676,6 @@ void par_reconstruct(func_t *f, int limit) {
     }
   }
   pdht_fence(f->ftree);
-
 
   // parallel reconstruction starts at limit depth
   pdht_counter_reset(f->ftree, f->counter);
@@ -741,7 +732,13 @@ void reconstruct(func_t *f, node_t *node, int limit) {
   // leaf nodes have no coeffs at all after compression
 
   // don't walk too far down the tree
-  if (node->a.level >= limit) return;
+  if (node->a.level >= limit) {
+    // this is the case where rank 0 does the top of the tree
+    // need to preserve "both" coeffs at subtree depth 
+    // XXX
+    return;
+  }
+
 #ifdef DIFF_UPDATES
   printf("%d reconstruct: %ld : %ld %ld %ld\n", c->rank, node->a.level, node->a.x,node->a.y,node->a.z);
 #endif
@@ -1340,7 +1337,7 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
     case madCoeffNone:
       break;
   }
-  printf("%snode: %ld  %ld,%ld,%ld f:%c", spaces, node.a.level, node.a.x, node.a.y,node.a.z, flag);
+  printf("%snode: %ld  %ld,%ld,%ld f: %c", spaces, node.a.level, node.a.x, node.a.y,node.a.z, flag);
   printf(" (%d) %c",childidx, node.children ? 'c' : '-');
 
   s = get_scaling(f, &node);
@@ -1370,9 +1367,7 @@ void print_subtree(func_t *f, madkey_t *nkey, int indent, int childidx) {
           ckey.y = y+ly;
           ckey.z = z+lz;
           ckey.level = nkey->level+1;
-#ifdef DIFF_UPDATES
           print_subtree(f, &ckey, indent+2, c);
-#endif          
           c++;
         }
       }
@@ -1490,10 +1485,11 @@ int main(int argc, char **argv, char **envp) {
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
   PDHT_STOP_ATIMER(initialization_timer);
-  //print_tree(f);
   
 //  printf("c->rank : %d pid : %d \n", c->rank, getpid());
   pdht_barrier();
+  //print_tree(f);
+
   int totalnodes = 0, tmp = nodecount;
   pdht_allreduce(&tmp, &totalnodes, PdhtReduceOpSum, IntType, 1);
   eprintf("function tree initialization complete. tree contains %d nodes\n", totalnodes);
@@ -1504,6 +1500,7 @@ int main(int argc, char **argv, char **envp) {
   PDHT_STOP_ATIMER(compress_timer);
   
   pdht_barrier();
+  //print_tree(f);
 
   eprintf("reconstruct.\n");
 
@@ -1515,6 +1512,7 @@ int main(int argc, char **argv, char **envp) {
   //   - just create tree-top and add subtrees
   
   pdht_barrier();
+  //print_tree(f);
   
   eprintf("diff.\n");
   //diff timer gets started in diff
