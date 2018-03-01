@@ -86,7 +86,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
   msg = (message_t *)buf;
   msg->type = pdhtGet;
-  
 
   for(int i = 0;i < c->dhtcount;i++){
     if(dht == c->hts[i]){
@@ -100,7 +99,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
   //MPI_Send(&mbits,sizeof(mbits),MPI_UNSIGNED_LONG_LONG,rank.rank,2,MPI_COMM_WORLD);//matchbits of the thing i want
 
-
   ret = MPI_Recv(rbuf, sizeof(rbuf), MPI_CHAR, target_rank, PDHT_TAG_REPLY,
                  MPI_COMM_WORLD,&status);
 
@@ -112,10 +110,8 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value){
 
   if (memcmp(&reply->key,key,dht->keysize) != 0)
     return PdhtStatusCollision;
-    
 
   memcpy(value,&reply->value,dht->elemsize); 
-
 
   return PdhtStatusOK;
 #endif
@@ -135,16 +131,12 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   uint64_t mbits;
   uint32_t ptindex;
   ht_t *instance;
-
-  char sbuf[sizeof(message_t) + PDHT_MAXKEYSIZE + dht->elemsize];
-  
-
   message_t *msg;
   MPI_Status status;
   int flag;
   int target_rank;
+  char sbuf[sizeof(message_t) + PDHT_MAXKEYSIZE + dht->elemsize];
   
-
   dht->hashfn(dht,key,&mbits,&ptindex,&rank);
 
 #ifdef THREAD_MULTIPLE
@@ -210,8 +202,6 @@ pdht_status_t pdht_put(pdht_t *dht, void *key, void *value){
   // send command message to target
   MPI_Ssend(sbuf, sizeof(sbuf), MPI_CHAR, target_rank,
            PDHT_TAG_COMMAND ,MPI_COMM_WORLD);
-
-
   return PdhtStatusOK;
 #endif
 }
@@ -220,6 +210,7 @@ pdht_status_t pdht_persistent_get(pdht_t *dht, void *key, void *value){
   while(pdht_get(dht, key, value) != PdhtStatusOK);
   return PdhtStatusOK;
 }
+
 
 pdht_status_t pdht_update(pdht_t *dht, void *key, void *value){
   return pdht_put(dht,key,value);

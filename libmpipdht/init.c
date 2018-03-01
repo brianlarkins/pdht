@@ -205,8 +205,6 @@ void *pdht_comm(void *arg) {
 
       case pdhtGet:
         // get request, search for entry and send reply to requestor
-        
-
         // make sure MPI send buffer is big enough
         need = sizeof(reply_t) + dht->elemsize;
         if ((!buf) || (buflen < need)) {
@@ -245,7 +243,6 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
-
 #ifdef THREAD_MULTIPLE
         pthread_mutex_lock(dht->uthash_lock);
 #endif         
@@ -271,13 +268,11 @@ void *pdht_comm(void *arg) {
         }
 
         // update HT entry with PUT data
-
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
         
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
         break;
-
 
       case pdhtCounterReset:
         //reset counter
@@ -293,7 +288,6 @@ void *pdht_comm(void *arg) {
         dht->counters[*counter_index] += increment;
         break;
 
-
       case pdhtCounterInit:
         if(msg->rank == 0){
           initval = *(uint64_t *)(msg->key);
@@ -301,18 +295,13 @@ void *pdht_comm(void *arg) {
           dht->counter_count++;
         }
         break;
-      case pdhtCreateHt:
 
-        
+      case pdhtCreateHt:
+        ht_t *ht = NULL;
         keysize  = (int *)(msgbuf + sizeof(message_t));
         elemsize = (int *)(msgbuf + sizeof(message_t) + sizeof(int));
 
-
         dht = (pdht_t *)calloc(1,sizeof(pdht_t));
-
-
-        ht_t *ht = NULL;
-
         dht->ht = ht;
         dht->elemsize = *elemsize;
         dht->hashfn = pdht_hash;
@@ -321,7 +310,6 @@ void *pdht_comm(void *arg) {
 
         c->hts[c->dhtcount] = dht;
         c->dhtcount++;
-
 
         htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + *elemsize;
         c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
@@ -339,7 +327,6 @@ done:
 //  MPI_Finalize();
   exit(0);
 #endif
-
 }
 
 
@@ -416,6 +403,9 @@ void pdht_free(pdht_t *dht) {
 void pdht_tune(unsigned opts, pdht_config_t *config) {
   ;
 }
+
+
+
 void pdht_bthandler(int sig) {
   void *a[100];
   size_t size;

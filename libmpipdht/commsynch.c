@@ -10,6 +10,8 @@ void pdht_barrier(void){
   MPI_Barrier(c->split_comm);
 }
 
+
+
 void pdht_fence(pdht_t *dht){
   MPI_Barrier(c->split_comm);
 }
@@ -39,8 +41,9 @@ int pdht_counter_init(pdht_t *ht, uint64_t initval){
   return ht->counter_count++;
 }
 
+
+
 void pdht_counter_reset(pdht_t *ht, int counter){
-  
   char sendBuf[sizeof(message_t) + sizeof(int)];
   
   if(c->rank == 0){
@@ -48,7 +51,6 @@ void pdht_counter_reset(pdht_t *ht, int counter){
     msg_reset->type = pdhtCounterReset;
     msg_reset->rank = c->rank;
     
-
     int i;
     for(i = 0; i < c->dhtcount; i++){
       if(c->hts[i] == ht) break;
@@ -63,6 +65,8 @@ void pdht_counter_reset(pdht_t *ht, int counter){
   }
   pdht_barrier();
 }
+
+
 
 uint64_t pdht_counter_inc(pdht_t *ht, int counter, uint64_t val){
   //preparing message
