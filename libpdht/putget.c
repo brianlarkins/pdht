@@ -16,6 +16,7 @@
  * portals distributed hash table put/get ops
  */
 
+static int _pdht_flow_control_warning = 0;
 
 // local-only discriminator for add/update/put operations
 typedef enum { PdhtPTQPending, PdhtPTQActive } pdht_ptq_t;
@@ -47,7 +48,6 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
 
   PDHT_START_TIMER(dht, ptimer);
 
-  dht->stats.puts++;
   // 1. hash key -> rank + match bits + element
   dht->hashfn(dht, key, &mbits, &ptindex, &rank);
 
@@ -148,7 +148,10 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
 
         if (fault.ni_fail_type == PTL_NI_PT_DISABLED) {
           // flow control event generated only on initial drop
-          pdht_dprintf("pdht_put: flow control on remote rank: %d : %d\n", rank, dht->stats.puts);
+          if (!_pdht_flow_control_warning) {
+            pdht_dprintf("pdht_put: flow control on remote rank: %d : %d\n", rank, dht->stats.puts);
+            _pdht_flow_control_warning = 1;
+          }
           PtlCTGet(dht->ptl.lmdct, &current);
           ts.tv_sec = 0;
           ts.tv_nsec = 10000000; // 10ms
@@ -170,7 +173,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
       }
 
     if (again && (ctevent.success == dht->ptl.curcounts.success)) {
-        pdht_dprintf("pdht_put: (again) flow control on remote rank: %d : %d\n", rank, dht->stats.puts);
+        //pdht_dprintf("pdht_put: (again) flow control on remote rank: %d : %d\n", rank, dht->stats.puts);
         PtlCTGet(dht->ptl.lmdct, &current);
         //pdht_dprintf("pdht_put: post (again): success: %lu fail: %lu\n", current.success, current.failure);
         nanosleep(&ts, NULL);
@@ -198,6 +201,7 @@ error:
    *   @returns status of operation
    */
   pdht_status_t pdht_add(pdht_t *dht, void *key, void *value) {
+    dht->stats.puts++;
     return pdht_do_put(dht,key,value, PdhtPTQPending);
   }
 
@@ -211,6 +215,7 @@ error:
    *   @returns status of operation
    */
   pdht_status_t pdht_put(pdht_t *dht, void *key, void *value) {
+    dht->stats.puts++;
     return pdht_do_put(dht,key,value,PdhtPTQPending);
   }
 
@@ -224,6 +229,7 @@ error:
    *   @returns status of operation
    */
   pdht_status_t pdht_update(pdht_t *dht, void *key, void *value) {
+    dht->stats.updates++;
     return pdht_do_put(dht,key,value,PdhtPTQActive);
   }
 
@@ -415,6 +421,8 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   _pdht_ht_entry_t *hte;
   ptl_me_t me;
   int ret;
+
+  dht->stats.inserts++;
 
   // find our next spot 
 

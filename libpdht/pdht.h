@@ -56,12 +56,14 @@ struct pdht_timer_s {
 typedef struct pdht_timer_s pdht_timer_t;
 
 struct pdht_stats_s {
-  u_int64_t    puts;
+  u_int64_t    puts;          // initial entry creations
+  u_int64_t    updates;       // entry updates
+  u_int64_t    inserts;       // local insertions
   u_int64_t    rankputs[PDHT_MAX_RANKS]; // keep per-target stats
   u_int64_t    pendputs;      // track PtlPuts to pending q for fence
   u_int64_t    appends;       // track complete appends to active q
   u_int64_t    tappends[PDHT_MAX_PTES];      // track complete appends to active q
-  u_int64_t    gets;
+  u_int64_t    gets;          // entry reads
   u_int64_t    collisions;
   u_int64_t    notfound;
   u_int64_t    ptcounts[PDHT_MAX_PTES];
@@ -369,5 +371,6 @@ void print_count(pdht_t *dht, char *msg);
 void   pdht_print_stats(pdht_t *dht);
 void   pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void *val));
 double pdht_average_time(pdht_t *dht, pdht_timer_t timer);
+void   pdht_print_distribution(pdht_t *dht);
 
 #include <pdht_inline.h>

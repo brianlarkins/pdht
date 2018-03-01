@@ -32,6 +32,11 @@ void pdht_init() {
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
+  char pname[MPI_MAX_PROCESSOR_NAME];
+  int nlen;
+  MPI_Get_processor_name(pname, &nlen);
+  printf("%d: %s\n", my_rank, pname);
+  fflush(stdout);
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c, 0, sizeof(pdht_context_t));
@@ -41,7 +46,7 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-
+  printf("c->rank : %d pid : %d \n", c->rank, getpid());
 #if 0
   // define  message datatype for MPI
   const int nitems = 3;
@@ -168,6 +173,7 @@ void *pdht_comm(void *arg) {
   int *elemsize;
   int htbuflen;
   int last;
+  int put_reply;
 
   MPI_Request *requests = calloc(sizeof(MPI_Request), c->size / 2);
   char *bufs = calloc(c->maxbufsize, c->size / 2);
@@ -264,12 +270,12 @@ void *pdht_comm(void *arg) {
 
 #ifdef THREAD_MULTIPLE
           pthread_mutex_unlock(dht->uthash_lock);
-#endif        
-        }
+#endif   
 
+        }
         // update HT entry with PUT data
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
-        
+        MPI_Send(&put_reply, 1, MPI_INT, requester, PDHT_TAG_REPLY, MPI_COMM_WORLD);
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
         break;

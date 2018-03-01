@@ -81,9 +81,12 @@ KMERFLAG = -DMAX_KMER_SIZE=$(MAX_KMER_SIZE) -DKMERlength=$(KMER_LENGTH)
 
 CXXFLAGS += ${KMERFLAG}
 
-default: test-mode
+default: test-mode install
 
 all : meraculous-$(KMER_LENGTH)
+
+install:
+	cp meraculous-$(KMER_LENGTH)-testing tests/.
 
 test-mode : meraculous-$(KMER_LENGTH)-testing
 
@@ -109,7 +112,8 @@ meraculous-%-testing : pdhtlibs meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 		$(CFLAGS) \
 		readufx.o ${OBJECTS} \
 		$(UPC_CXX_LINK) \
-		-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
+		-o $@ $(PDHT_LIBS)
+		#-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
 
 meraculous-% : pdhtlibs meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 	$(UPCC) $(USE_UPC2C) $(UPC_OPTS) $(UPC_TYPE) meraculous.c \
@@ -122,7 +126,8 @@ meraculous-% : pdhtlibs meraculous.c readufx.o $(OBJECTS) $(INCLUDES)
 		$(CFLAGS) \
 		readufx.o ${OBJECTS} \
 		$(UPC_CXX_LINK) \
-		-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
+		-o $@ $(PDHT_LIBS)
+		#-o $@ -L /opt/mvapich2/mvapich2-2.2rc1_gcc/lib -lmpi $(PDHT_LIBS)
 
 .PHONY : clean
 clean : pdhtclean

@@ -12,12 +12,12 @@ PORTALS_LIBDIR     = $(HOME)/opt/lib
 #CC = clang
 CC = gcc
 MPICC = mpicc
-#GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # development
+GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # development
 #GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = -g -Wall
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 #GCFLAGS = --std=c99 -pg -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # profiling
-GCFLAGS = --std=c99 -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # performance
+#GCFLAGS = --std=c99 -O3 -D_POSIX_C_SOURCE=199309L -msse4.2 # performance
 #GCFLAGS = -O3
 CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
 CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PORTALS_INCLUDEDIR)

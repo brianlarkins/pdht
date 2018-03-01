@@ -186,7 +186,8 @@ int main(int argc, char **argv) {
      pdht_config_t cfg;
      cfg.nptes = 1;
      cfg.pendmode = PdhtPendingTrig;
-     cfg.maxentries = 100000;
+     cfg.maxentries = 3000000;
+     //cfg.maxentries = 100000;
      cfg.pendq_size = 5000;
      cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
      cfg.quiet = 0;
