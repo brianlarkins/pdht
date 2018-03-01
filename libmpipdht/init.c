@@ -46,7 +46,7 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-
+  printf("c->rank : %d pid : %d \n", c->rank, getpid());
 #if 0
   // define  message datatype for MPI
   const int nitems = 3;
@@ -173,6 +173,7 @@ void *pdht_comm(void *arg) {
   int *elemsize;
   int htbuflen;
   int last;
+  int put_reply;
 
   MPI_Request *requests = calloc(sizeof(MPI_Request), c->size / 2);
   char *bufs = calloc(c->maxbufsize, c->size / 2);
@@ -210,8 +211,6 @@ void *pdht_comm(void *arg) {
 
       case pdhtGet:
         // get request, search for entry and send reply to requestor
-        
-
         // make sure MPI send buffer is big enough
         need = sizeof(reply_t) + dht->elemsize;
         if ((!buf) || (buflen < need)) {
@@ -272,13 +271,13 @@ void *pdht_comm(void *arg) {
 
 #ifdef THREAD_MULTIPLE
           pthread_mutex_unlock(dht->uthash_lock);
-#endif        
-        }
+#endif   
 
+        }
         // update HT entry with PUT data
 
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
-        
+        MPI_Send(&put_reply, 1, MPI_INT, requester, PDHT_TAG_REPLY, MPI_COMM_WORLD);
         // send ack to requestor
         //MPI_Send(&flag,sizeof(int),MPI_INT,requester,PDHT_TAG_ACK,MPI_COMM_WORLD);
         break;
