@@ -22,20 +22,15 @@ void pdht_init() {
   int my_rank;
   int size;
 
-  // init MPI, need MPI_THREAD_MULTIPLE 
-#ifdef THREAD_MULTIPLE
-  MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&result);
-  assert(result == MPI_THREAD_MULTIPLE);
-#else
   MPI_Init(NULL, NULL);
-#endif
+  
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
   char pname[MPI_MAX_PROCESSOR_NAME];
   int nlen;
-  MPI_Get_processor_name(pname, &nlen);
-  printf("%d: %s\n", my_rank, pname);
+  //MPI_Get_processor_name(pname, &nlen);
+  //printf("%d: %s\n", my_rank, pname);
   fflush(stdout);
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
@@ -46,7 +41,13 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-  printf("c->rank : %d pid : %d \n", c->rank, getpid());
+  
+  if(c->rank % 2){
+    MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &(c->split_comm));
+  }
+  else{
+    MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR, c->rank, &(c->split_comm));
+  }
 #if 0
   // define  message datatype for MPI
   const int nitems = 3;
@@ -94,7 +95,6 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     pdht_init();
   }
 
-#ifndef THREAD_MULTIPLE
   if(c->dhtcount == 1){
     //send request to my comm process to make me a new ht
     int target_rank = c->rank + 1;
@@ -115,28 +115,13 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     MPI_Ssend(buf, buflen, MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
 
   }
-#endif
 
   c->hts[c->dhtcount] = dht;
   c->dhtcount++;
   htbuflen = sizeof(message_t) + PDHT_MAXKEYSIZE + elemsize;
   c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
-#ifndef THREAD_MULTIPLE
   if (c->rank % 2){
-    MPI_Comm s_comm;
-
-    MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &s_comm);
-    c->split_comm = s_comm;
     pdht_comm(NULL);
-  }
-#endif
-
-  if (c->dhtcount == 1) {
-    
-#ifdef THREAD_MULTIPLE
-    pthread_create(&c->comm_tid,NULL,pdht_comm,NULL);
-#endif
-    MPI_Comm_split(MPI_COMM_WORLD, MAIN_COLOR,c->rank, &(c->split_comm));
   }
   return dht;
 }
@@ -196,10 +181,6 @@ void *pdht_comm(void *arg) {
     switch (msg->type) {
       case pdhtStop:
         // game over, go home
-#ifdef THREAD_MULTIPLE
-        goto done;
-        break;
-#else
         for(int i = 0; i < c->size / 2; i++){
           if(i != index){
             MPI_Cancel(&requests[i]);
@@ -207,7 +188,6 @@ void *pdht_comm(void *arg) {
         }
         MPI_Finalize();
         goto done;
-#endif
 
       case pdhtGet:
         // get request, search for entry and send reply to requestor
@@ -225,15 +205,9 @@ void *pdht_comm(void *arg) {
         buflen = need;
 
         reply = (reply_t *)buf; // cast so we can set header values
-#ifdef THREAD_MULTIPLE
-        pthread_mutex_lock(dht->uthash_lock);
-#endif  
        
         HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
 
-#ifdef THREAD_MULTIPLE
-        pthread_mutex_unlock(dht->uthash_lock);
-#endif
         if (instance) {
       // found entry
           reply->status = 1; 
@@ -249,28 +223,17 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
-#ifdef THREAD_MULTIPLE
-        pthread_mutex_lock(dht->uthash_lock);
-#endif         
         HASH_FIND_INT(dht->ht,&msg->mbits,instance);
-#ifdef THREAD_MULTIPLE       
-        pthread_mutex_unlock(dht->uthash_lock);
-#endif
+        
         if (!instance) {
           // new entry -- create new HT entry
           instance = (ht_t*)calloc(1,sizeof(ht_t));
           instance->key = msg->mbits;
           instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
 
-#ifdef THREAD_MULTIPLE
-          pthread_mutex_lock(dht->uthash_lock); 
-#endif
 
           HASH_ADD_INT(dht->ht,key,instance);  
 
-#ifdef THREAD_MULTIPLE
-          pthread_mutex_unlock(dht->uthash_lock);
-#endif   
 
         }
         // update HT entry with PUT data
@@ -303,11 +266,13 @@ void *pdht_comm(void *arg) {
         break;
 
       case pdhtCreateHt:
-        ht_t *ht = NULL;
+        
         keysize  = (int *)(msgbuf + sizeof(message_t));
         elemsize = (int *)(msgbuf + sizeof(message_t) + sizeof(int));
 
         dht = (pdht_t *)calloc(1,sizeof(pdht_t));
+
+        ht_t *ht = NULL;
         dht->ht = ht;
         dht->elemsize = *elemsize;
         dht->hashfn = pdht_hash;
@@ -329,10 +294,8 @@ done:
   if (buf) free(buf);
 
 
-#ifndef THREAD_MULTIPLE
-//  MPI_Finalize();
+  //MPI_Finalize();
   exit(0);
-#endif
 }
 
 
@@ -349,11 +312,9 @@ void pdht_fini() {
   msg.type = pdhtStop;
   msg.ht_index = 0;
   msg.rank = c->rank;
-#ifdef THREAD_MULTIPLE
-  target_rank = c->rank;
-#else
+  
   target_rank = c->rank + 1;
-#endif
+  
   MPI_Ssend(&msg, sizeof(message_t), MPI_CHAR, target_rank, 1, MPI_COMM_WORLD);
   MPI_Finalize();
   free(c);

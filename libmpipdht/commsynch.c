@@ -1,9 +1,7 @@
 #include <pdht.h>
-#ifdef THREAD_MULTIPLE
-  #define PDHT_COUNTER_HOLDER 0
-#else
-  #define PDHT_COUNTER_HOLDER 1
-#endif
+  
+#define PDHT_COUNTER_HOLDER 1
+
 extern pdht_context_t *c;
 
 void pdht_barrier(void){
@@ -35,9 +33,8 @@ int pdht_counter_init(pdht_t *ht, uint64_t initval){
   if(c->rank == PDHT_COUNTER_HOLDER){
     ht->counters[ht->counter_count] = initval;
   }
-#ifndef THREAD_MULTIPLE
   MPI_Ssend(msg_init, sizeof(message_t) + sizeof(uint64_t), MPI_CHAR, PDHT_COUNTER_HOLDER, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
-#endif
+  
   return ht->counter_count++;
 }
 

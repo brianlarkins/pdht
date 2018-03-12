@@ -23,6 +23,8 @@ typedef struct pdht_timer_s pdht_timer_t;
 
 //#define THREAD_MULTIPLE 0
 
+#define PDHT_DEFAULT_RANK_HINT -1
+
 #define PDHT_PTALLOC_OPTIONS PTL_PT_MATCH_UNORDERED
 #define PDHT_MAX_TABLES 20
 #define PDHT_MAXKEYSIZE 32
@@ -157,6 +159,7 @@ struct pdht_config_s{
   long unsigned pendq_size;
   long unsigned ptalloc_opts;
   int nptes;
+  int rank;
 };
 typedef struct pdht_config_s pdht_config_t;
 
