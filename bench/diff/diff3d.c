@@ -32,9 +32,9 @@
 // 1e-17 461513 nodes
 #define THRESHOLD_TEST  .1
 #define THRESHOLD_SMALL  1e-6
-#define THRESHOLD_MEDIUM 1e-10
+#define THRESHOLD_MEDIUM 1e-16
 //#define THRESHOLD_LARGE  1e-14
-#define THRESHOLD_LARGE 1e-16
+#define THRESHOLD_LARGE 1e-17
 #define INITIAL_LEVEL    3
 
 #define PAR_LEVEL        3
@@ -234,7 +234,9 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
   if ((c->rank == 0) && (nkey->level != 0)) {
-    //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
+
+
+    //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, node.a.x, node.a.y, node.a.z, node.a.level);
     if (pdht_put(f->ftree, nkey, &node) != PdhtStatusOK) { // store new node in PDHT
       printf("%d: fine_scale_projection: put error\n", c->rank);
       exit(1);
@@ -327,7 +329,6 @@ void fine_scale_project(func_t *f, madkey_t *nkey) {
              
         memcpy(&cnode.s, tscoeffs, sizeof(tensor3dk_t));
         
-
         // store child node
         if (pdht_put(f->ftree, &ckey, &cnode) != PdhtStatusOK) { // store new node in PDHT
           printf("%d: fine_scale_project: put error\n", c->rank);
@@ -394,6 +395,9 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
           pdht_get(f->ftree, &ckey, &cnode);
           cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
           cnode.children = 1;
+
+
+          //printf("%d: updating: <%ld,%ld,%ld> @ %ld\n", c->rank, cnode.a.x, cnode.a.y, cnode.a.z, cnode.a.level);
           pdht_update(f->ftree, &ckey, &cnode);
           fine_scale_project(f, &ckey);
           refine_fine_scale_project(f, &ckey);
@@ -446,7 +450,6 @@ tensor_t *gather_scaling_coeffs(func_t *f, madkey_t *node) {
         ckey.level = node->level + 1;
 
         //printf("%d: asking for <%ld,%ld,%ld>@%ld\n", c->rank, ckey.x,ckey.y,ckey.z,ckey.level);
-
         if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
           printf("%d: gather: pdht_get error\n", c->rank);
           return NULL;
@@ -639,6 +642,8 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
 
   // update global copy of our node
   //print_madnode(&node); printf("\n");
+  
+  //printf("%d: update2: <%ld,%ld,%ld> @ %ld\n", c->rank, node.a.x, node.a.y, node.a.z, node.a.level);
   pdht_update(f->ftree, nkey, &node);
 
   return sc;
@@ -691,7 +696,10 @@ void par_reconstruct(func_t *f, int limit) {
     // reconstruct subtree 
     reconstruct(f,  &stnode, MAX_TREE_DEPTH+1); // recur to leaf nodes
 
+
     // store modifications to subtree root
+
+    //printf("%d: calling recur diff on: <%ld,%ld,%ld> @ %ld\n", c->rank, stnode.a.x, stnode.a.y, stnode.a.z, stnode.a.level);
     if (pdht_update(f->ftree, &f->subtrees[st], &stnode) != PdhtStatusOK) {
       printf("%d: reconstruct subtree pdht_update error.\n", c->rank);
       exit(1);
@@ -740,6 +748,7 @@ void reconstruct(func_t *f, node_t *node, int limit) {
   }
 
 #ifdef DIFF_UPDATES
+  
   printf("%d reconstruct: %ld : %ld %ld %ld\n", c->rank, node->a.level, node->a.x,node->a.y,node->a.z);
 #endif
   // if have both coeffs, then we must be an interior node
@@ -789,12 +798,14 @@ void reconstruct(func_t *f, node_t *node, int limit) {
               }
             }
           }
+          //XXX is this okay?
           memcpy(&cnode.s, tmp, sizeof(tensor3dk_t));
           cnode.valid = (cnode.valid == madCoeffWavelet) ? madCoeffBoth : madCoeffScaling;
 
           // call reconstruct recursively XXX
           reconstruct(f, &cnode, limit);
 
+          //printf("%d: updating3: <%ld,%ld,%ld> @ %ld\n", c->rank, cnode.a.x, cnode.a.y, cnode.a.z, cnode.a.level);
           // this updates the tree for everything except the call from par_reconstruct
           if (pdht_update(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
             printf("%d: reconstruct: pdht_update error\n", c->rank);
@@ -828,12 +839,14 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, node_t *node, madkey_t neighbo
   madkey_t path[30];
   madkey_t fkey; // found key
   node_t fnode;  // found node
+  tensor_t *t;
   char found = 0;
-
+  int count = 0;
   if (!node)
     return NULL;
 
-  //printf("get_coeffs: %ld %ld,%ld,%ld from %ld %ld,%ld,%ld\n",neighbor.level,neighbor.x,neighbor.y,neighbor.z, 
+
+  //printf("%d : get_coeffs: %ld %ld,%ld,%ld from %ld %ld,%ld,%ld\n", c->rank ,neighbor.level,neighbor.x,neighbor.y,neighbor.z, 
   //         node->a.level, node->a.x, node->a.y, node->a.z);
 
   // check left region boundaries
@@ -867,8 +880,9 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, node_t *node, madkey_t neighbo
     nextlvl--;
     nextx /= 2; nexty /= 2; nextz /= 2;
   }
-
+ 
   flevel = nextlvl;              // remember final level
+  //flevel = neighbor.level;
   path[nextlvl].x = nextx;       // remember final x coord
   path[nextlvl].y = nexty;       // remember final y coord
   path[nextlvl].z = nextz;       // remember final z coord
@@ -881,7 +895,7 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, node_t *node, madkey_t neighbo
       found = 1;
       break;
     }
-
+  
     // not found, move on up the tree until we find success
     nextlvl--;
     nextx /= 2; nexty /= 2; nextz /= 2;
@@ -890,23 +904,29 @@ tensor_t *get_coeffs(func_t *f, diffdim_t wrtdim, node_t *node, madkey_t neighbo
     path[nextlvl].z = nextz;       // remember final z coord
     path[nextlvl].level = nextlvl; // remember level
   }
-
+  if(!found){
+    printf("c->rank : %d not found node : %ld \n", c->rank, node->a.level);
+  }
   assert(found);
 
   while (nextlvl < flevel) {
-
+    //XXX To much recurring
+    //printf("flevel : %ld nextlvl : %ld \n", flevel, nextlvl);
+    //printf("in get coeffs\n");
     recur_down(f, &fnode, (tensor_t *)&fnode.s);
+    //recur_down(f, fnode, (tensor_t *)&fnode->s);
 
     // XXX - again, may have race condition
-    if (pdht_get(f->ftree, &path[nextlvl], &fnode) != PdhtStatusOK) {
+    if (pdht_persistent_get(f->ftree, &path[nextlvl], &fnode) != PdhtStatusOK) {
       printf("%d: get_coeffs pdht_get error- may be race condition (2).\n", c->rank);
       exit(1);
     }
     nextlvl++; // correct child coords should be in path[]
   }
 
-  // XXX need to return tensor_t *
-  return NULL;
+  t = get_scaling(f, &fnode);
+  // XXX need to return tensor_t 
+  return t;
 }
 
 
@@ -921,8 +941,6 @@ void recur_down(func_t *f, node_t *node, tensor_t *s) {
   long ix, iy, iz, iix, iiy, iiz;
   long i,j,k;
   long count = 0;
-
-  //printf("recur_down: %ld %ld,%ld,%ld\n", level,x,y,z);
 
   // two-scale gives us child scaling coeffs at n+1
   su = unfilter(f,s,1); // sonly=1, we only have scaling coeffs
@@ -952,10 +970,13 @@ void recur_down(func_t *f, node_t *node, tensor_t *s) {
         }
         // update child's scaling coeffs
         memcpy(&cnode.s, tmp, sizeof(tensor3dk_t));
+        
         cnode.valid = (cnode.valid == madCoeffWavelet) ? madCoeffBoth : madCoeffScaling;
-
+        //cnode.valid = madCoeffNone;
+        cnode.a = ckey;
         // pdht_put() our updated child into f
         // XXX may cause race condition with recursive diff to follow
+        //set_scaling(f->ftree, &cnode, tmp);
         if (pdht_put(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
           printf("%d: diff f' pdht_put error.\n", c->rank);
           exit(1);
@@ -1031,15 +1052,15 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   // parallel differentiation starts at limit depth
   pdht_counter_reset(f->ftree, f->counter);
   st = pdht_counter_inc(f->ftree, f->counter, 1);
-  while (st < f->stlen) {
 
+  while (st < f->stlen) {
+  
     // fetch f subtree node
     if (pdht_get(f->ftree, &f->subtrees[st], &stnode) != PdhtStatusOK) {
       printf("%d: diff subtree pdht_get error.\n", c->rank);
       exit(1);
     }
 
-    //
     // fetch f' subtree node
     if (pdht_get(fprime->ftree, &fprime->subtrees[st], &stdnode) != PdhtStatusOK) {
       printf("%d: diff subtree pdht_get error.\n", c->rank);
@@ -1060,6 +1081,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
         f->subtrees[st].z, f->subtrees[st].level);
 #endif
     st = pdht_counter_inc(f->ftree, f->counter, 1);
+    /* temp */
   }
 
   pdht_fence(f->ftree);
@@ -1069,6 +1091,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
 
 
 void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dnode) {
+  
   long level, x,y,z;
   double twon;
   long i,j,k, count = 0;
@@ -1087,6 +1110,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
           ckey.y = 2 * node->a.y + iy;
           ckey.z = 2 * node->a.z + iz;
           ckey.level = node->a.level + 1;
+
 
           // fetch f subtree node
           if (pdht_persistent_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
@@ -1127,9 +1151,10 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
 
     // chase down coeffs
 
+    //printf("%d: at start on: <%ld,%ld,%ld> @ %ld\n", c->rank, node->a.x, node->a.y, node->a.z, node->a.level);
     sm = get_coeffs(f, wrtdim, node, mk);
     sp = get_coeffs(f, wrtdim, node, pk);
-
+    
     s0 = (tensor_t *)&node->s; 
 
     // find anything?
@@ -1156,7 +1181,7 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
       void *tmp;
       memcpy(&dnode->s, r, sizeof(tensor3dk_t));
       dnode->valid = (dnode->valid == madCoeffWavelet) ? madCoeffBoth : madCoeffScaling;
-
+      //free(sm); free(sp);
       // pdht_put/update of dnode scaling coeffs is done by parent
 
     } else {
@@ -1176,12 +1201,15 @@ void diff(func_t *f, diffdim_t wrtdim, node_t *node, func_t *fprime, node_t *dno
             ckey.z = 2 * node->a.z + iz;
             ckey.level = node->a.level + 1;
 
+
             // fetch f subtree node
-            if (pdht_persistent_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
+            if (pdht_get(f->ftree, &ckey, &cnode) != PdhtStatusOK) {
               printf("%d: diff f pdht_get error- may be race condition.\n", c->rank);
               exit(1);
             }
+            //printf("%d: calling pdht get on: <%ld,%ld,%ld> @ %ld\n", c->rank, ckey.x, ckey.y, ckey.z, ckey.level);
 
+            //printf("%d: calling recur diff on: <%ld,%ld,%ld> @ %ld\n", c->rank, cnode.a.x, cnode.a.y, cnode.a.z, cnode.a.level);
             // recursively call diff(f, wrtdim, cnode, fprime, cdnode
             diff(f, wrtdim, &cnode, fprime, &cdnode);
 
@@ -1432,8 +1460,10 @@ int main(int argc, char **argv, char **envp) {
   chunksize = DEFAULT_CHUNKSIZE;
   defaultparlvl = INITIAL_LEVEL;
 
+  cfg.pendq_size = 10000;
   // deal with cli args
-  while ((arg = getopt(argc, argv, "ehsmlt:C:cp:q")) != -1) {
+  cfg.maxentries = 30000;
+  while ((arg = getopt(argc, argv, "ehsmlt:C:cp:M:q")) != -1) {
     switch (arg) {
       case 'c':
         caching = 1;
@@ -1462,13 +1492,16 @@ int main(int argc, char **argv, char **envp) {
       case 'p':
         cfg.pendq_size = atoi(optarg);
         break;
+      case 'M':
+        cfg.maxentries = atoi(optarg);
+        break;
       default:
         printf("%s: unknown option: -%c\n\n", argv[0], arg);
         usage(argv);
         exit(1);
     }
   }
-  signal(SIGSEGV, bthandler);
+  //signal(SIGSEGV, bthandler);
 
   test  = test1;
   //
@@ -1476,8 +1509,8 @@ int main(int argc, char **argv, char **envp) {
   //
   cfg.nptes = 1;
   cfg.pendmode = PdhtPendingTrig;
-  cfg.maxentries = 50000;
-  cfg.pendq_size = 20000;
+
+  //cfg.pendq_size = 20000;
   cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
   cfg.rank = PDHT_DEFAULT_RANK_HINT;
   
@@ -1516,7 +1549,7 @@ int main(int argc, char **argv, char **envp) {
   
   eprintf("diff.\n");
   //diff timer gets started in diff
-//  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
+  fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
   PDHT_STOP_ATIMER(diff_timer);
   
   pdht_barrier();
@@ -1525,7 +1558,7 @@ int main(int argc, char **argv, char **envp) {
   local[1] = PDHT_READ_ATIMER_SEC(compress_timer);
   local[2] = PDHT_READ_ATIMER_SEC(reconstruct_timer);
   local[3] = PDHT_READ_ATIMER_SEC(diff_timer);
-  local[3] = 0;
+//  local[3] = 0;
 
   pdht_allreduce(local, &avg, PdhtReduceOpSum, DoubleType, 4);
   pdht_allreduce(local, &min, PdhtReduceOpMin, DoubleType, 4);
@@ -1548,7 +1581,7 @@ int main(int argc, char **argv, char **envp) {
 #endif
   }
   pdht_print_stats(f->ftree);
-  pdht_print_distribution(f->ftree);
+//  pdht_print_distribution(f->ftree);
   eprintf("complete.\n");
   fflush(stdout);
   exit(0);
