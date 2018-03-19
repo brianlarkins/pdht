@@ -392,7 +392,7 @@ void pdht_init(pdht_config_t *cfg) {
   }
 
   // request portals NI limits
-  ni_req_limits.max_entries = cfg->maxentries;
+  ni_req_limits.max_entries = (cfg->maxentries) + PDHT_MAX_COUNTERS + PDHT_COLLECTIVE_CTS + PDHT_COMPLETION_CTS + PDHT_ATOMIC_CTS + 1;
   ni_req_limits.max_unexpected_headers = 1024;
   ni_req_limits.max_mds = 1024;
   ni_req_limits.max_eqs = PDHT_MAX_TABLES * ((2*cfg->nptes)+2);
