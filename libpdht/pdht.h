@@ -141,6 +141,7 @@ struct pdht_context_s {
   int              dbglvl;       //!< debug level for error printing
   pdht_portals_t   ptl;          //!< Portals 4 ADTs
   pthread_t        progress_tid; //!< progress thread id
+  int              verbosity;    //!< verbosity level for portals logs
 };
 typedef struct pdht_context_s pdht_context_t;
 

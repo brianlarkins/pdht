@@ -150,6 +150,7 @@ typedef struct reply_s reply_t;
 #define PDHT_TUNE_PTOPT     0x10
 #define PDHT_TUNE_QUIET     0x20
 #define PDHT_TUNE_GETS      0x40
+#define PDHT_TUNE_RANK      0x80
 #define PDHT_TUNE_ALL       0xffffffff
 struct pdht_config_s{
   int pendmode;
@@ -159,6 +160,7 @@ struct pdht_config_s{
   long unsigned pendq_size;
   long unsigned ptalloc_opts;
   int nptes;
+#define PDHT_DEFAULT_RANK_HINT -1
   int rank;
 };
 typedef struct pdht_config_s pdht_config_t;

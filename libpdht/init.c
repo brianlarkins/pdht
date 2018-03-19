@@ -48,8 +48,8 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
 
-  //setenv("PTL_LOG_LEVEL","3",1);
-//  setenv("PTL_DEBUG","1",1);
+  //setenv("PTL_LOG_LEVEL","3",1);  // set c->verbosity, in pdht_init
+  //setenv("PTL_DEBUG","1",1);      // don't do this
   //setenv("PTL_PROGRESS_NOSLEEP","1",1);
 
   if (!__pdht_config) {
@@ -366,8 +366,11 @@ void pdht_init(pdht_config_t *cfg) {
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c,0,sizeof(pdht_context_t));
 
+  //c->verbosity = 1; // for debugging Portals
+
   if (!cfg->quiet) {
     c->dbglvl = PDHT_DEBUG_WARN;
+
   } else {
     c->dbglvl = PDHT_DEBUG_NONE;
     int devnull = open("/dev/null", O_WRONLY);
@@ -376,23 +379,17 @@ void pdht_init(pdht_config_t *cfg) {
   }
 
   atexit(pdht_exit_handler);
+
+  if (c->verbosity) {
+    setenv("PTL_LOG_LEVEL","3",1);
+    setenv("PTL_DEBUG","1",1);
+  }
 	
   ret = PtlInit();
   if (ret != PTL_OK) {
     pdht_dprintf("portals initialization error\n");
     exit(-1);
   }
-
-#if 0
-  ret = PtlNIInit(PTL_IFACE_DEFAULT,
-      PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
-      PTL_PID_ANY, NULL, NULL, &(c->ptl.phy));
-  if (ret != PTL_OK) {
-    pdht_dprintf("Portals physical NI initialization problem. (return=%d)\n", ret);
-    exit(-1);
-  }
-#endif
-
 
   // request portals NI limits
   ni_req_limits.max_entries = cfg->maxentries;
@@ -437,7 +434,6 @@ void pdht_init(pdht_config_t *cfg) {
   }
 
   init_pmi(cfg);
-
 
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_entries: %d\n", c->ptl.ni_limits.max_entries);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_unexpected_headers: %d\n", c->ptl.ni_limits.max_unexpected_headers);
