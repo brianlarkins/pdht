@@ -2,24 +2,24 @@
 #set title TITLE offset char 0, char -1
 set style data linespoints
 #set term pdf size 800, 600
-set terminal postscript eps enhanced color 'Helvetica,16' lw 2
+set terminal postscript eps enhanced color 'Helvetica,24' lw 2
 
-set output "optimesComet.eps"
+set output "mpilatency.eps"
 
-set xlabel "Nodes"
+set xlabel "# Entries"
 set logscale x
-set xrange [1:76]
-set xtics (1,2,4,8,16,32,64,72)
-set ylabel "Throughput (reads/sec)"
+#set xrange [100:100000]
+set xtics (1,10,100,1000,10000,50000)
+set ylabel "Read Latency (usec)"
 #set logscale y
-#set yrange [0:60]
+set yrange [.1:13.5]
 set key top left
 
-#  procs * LV == total data volume
-#  time / 1000 = time in seconds
-# throughput = volume / seconds in reads/sec
+plot 'optimesComet.dat' index 0 using 1:2 title "PDHT local Ordered", \
+     'optimesComet.dat' index 1 using 1:2 title "PDHT remote Ordered", \
+     'optimesComet.dat' index 2 using 1:2 title "PDHT local Unordered", \
+     'optimesComet.dat' index 3 using 1:2 title "PDHT remote Unordered", \
+     'optimesComet.dat' index 4 using 1:2 title "PDHT local searching Unordered", \
+     'optimesComet.dat' index 5 using 1:2 title "PDHT MPI local", \
+     'optimesComet.dat' index 6 using 1:2 title "PDHT MPI remote"
 
-plot 'scaling.dat' using 1:($1*10000) /($2/1000) title "LV 10K", \
-     'scaling.dat' using 1:($1*20000) /($3/1000) title "LV 20K", \
-     'scaling.dat' using 1:($1*50000) /($4/1000) title "LV 50K", \
-     'scaling.dat' using 1:($1*100000)/($5/1000) title "LV 100K"        
