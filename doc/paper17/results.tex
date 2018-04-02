@@ -6,28 +6,38 @@
 
 We have gathered preliminary performance results using a prototype
 implementation of \pdht running on the Portals reference
-implementation~\cite{portals-code}.  Results were gathered on the Comet
-system at the San Diego Supercomputer Center with access provided
-through the Extreme Science and Engineering Discovery Environment (XSEDE)
-program.  Comet contains nodes with several configurations; for our
-experiments, we used the Intel\regtm Xeon\regtm E5 nodes.  There are 1944 such
-nodes, which are constructed from Dell\othertm PowerEdge\othertm C6320 servers
-containing dual 12-core Intel\regtm Xeon\regtm E5-2680 processors and 128
-gigabytes of memory.  Nodes are connected using a Mellanox\othertm FDR 56 Gb/s
-InfiniBand\othertm fabric.
-
+implementation~\cite{portals-code}. Results were gathered on a cluster system
+part of the Advanced Systems Technology Test Bed at Sandia National
+Laboratories.  The cluster contains 36 compute nodes, constructed with dual
+16-core Intel\regtm Haswell\regtm processors and 128 gigabytes of memory. Nodes
+are connected using a Mellanox\othertm FDR 56Gb/s Infiniband\othertm fabric.
 
 \subsection{Experimental Setup}
 
-To measure the effectiveness of implementing PDHT directly on top of Portals, 
+To measure the effectiveness of implementing PDHT directly on top of Portals,
 we constructed an MPI version of PDHT. The MPI version provides a similar
-functionality to PDHT and is implemented with a communication thread to 
-manage insertion, access, and update requests. The MPI version relies
-on the same hash function to determine rank and match bits, but
-uses an efficient hash table on each local process~\cite{uthash} to
-actually store the data elements. All tests are run using the MPICH
-3.2 MPI run-time, configured to use a Portals 4 channel for all
-communication operations.
+functionality to PDHT and is implemented with separate processes to act as
+initiator and target roles to handle insertion, access, and update requests.
+The MPI version relies on the same hash function to determine rank and match
+bits, but internally uses an efficient hash table on each local
+process~\cite{uthash} to store the data elements, keyed with the same 64-bit
+value returned by the PDHT hash function. 
+
+%All tests are run using the MPICH 3.2 MPI run-time, configured to use a Portals
+%4 channel for all communication operations.
+
+All tests are run using the OpenMPI 3.0.0 MPI run-time, configured to use Portals
+4 as the message transport layer for all communication operations.
+
+One of the primary challenges in deriving performance results for this work is
+that the Portals 4 runtime library was developed as an exploratory framework
+for modeling next-generation hardware offload network processing. To this end,
+it has not been optimized as extensively as other high-performance network
+middleware (e.g. MVAPICH2). Results from both native PDHT and MPI-based
+applications that use the reference implementation are skewed by this
+difference in focus. Evaluation of the system focuses on the relative 
+performance between systems.
+
 
 \subsection{Communication Operation Costs}
 
@@ -84,7 +94,7 @@ visited before finding a match.
   \center
   \includegraphics[width=.95\linewidth]{plots/mpilatency}
   \caption{PDHT and MPI Access Latency ($\mu$sec)}
-  \label{fig:6}
+  \label{fig:7}
 \end{figure}
 
 \begin{figure}
@@ -105,33 +115,33 @@ visited before finding a match.
 
 %\subsection{OpenSHMEM Benchmark}
 
-\subsection{Sparse Matrix Multiplication}
-
-This benchmark application computes the matrix product of two sparse 
-matrices. Matrix sparsity is maintained by decomposing the source
-matrices into tiles containing non-zero and zero elements. Tiles 
-containing non-zero elements are added to the PDHT at the beginning of
-the computation. The matrix multiplication then operates in a SPMD
-fashion with each process requesting the necessary tiles to compute
-the partial product. If either of the operand tiles are not in the
-key/value store, the process continues on until it reaches a tile 
-with non-zero elements. The performance of this benchmark is shown in
-Figures~\ref{fig:4} and \ref{fig:5}.
-
-\begin{figure}[ht]
-  \center
-  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
-  \caption{Sparse-matrix multiplication weak scaling}
-  \label{fig:4}
-\end{figure}
-
-\begin{figure}[ht]
-  \center
-  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
-  \caption{Sparse-matrix multiplication strong scaling}
-  \label{fig:5}
-\end{figure}
-
+%\subsection{Sparse Matrix Multiplication}
+%
+%This benchmark application computes the matrix product of two sparse 
+%matrices. Matrix sparsity is maintained by decomposing the source
+%matrices into tiles containing non-zero and zero elements. Tiles 
+%containing non-zero elements are added to the PDHT at the beginning of
+%the computation. The matrix multiplication then operates in a SPMD
+%fashion with each process requesting the necessary tiles to compute
+%the partial product. If either of the operand tiles are not in the
+%key/value store, the process continues on until it reaches a tile 
+%with non-zero elements. The performance of this benchmark is shown in
+%Figures~\ref{fig:4} and \ref{fig:5}.
+%
+%\begin{figure}[ht]
+%  \center
+%  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
+%  \caption{Sparse-matrix multiplication weak scaling}
+%  \label{fig:4}
+%\end{figure}
+%
+%\begin{figure}[ht]
+%  \center
+%  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
+%  \caption{Sparse-matrix multiplication strong scaling}
+%  \label{fig:5}
+%\end{figure}
+%
 
 
 \subsection{MADNESS}
@@ -154,6 +164,13 @@ occur on neighboring subtrees. This is a highly irregular operation
 and is easily expressed using spatial tree coordinates, but is
 very difficult using traditional message-passing (due to tree
 irregularity) and PGAS (due to physical addressing requirements).
+
+\begin{figure}[ht]
+  \center
+  \includegraphics[width=.75\linewidth]{figs/diff}
+  \caption{MADNESS differentiation operation}
+  \label{fig:diff}
+\end{figure}
 
 Figures~\ref{fig:1}--\ref{fig:3} show the performance of the
 Portals-based PDHT implementation relative to the MPI implementation.
