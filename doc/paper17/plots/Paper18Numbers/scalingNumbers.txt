@@ -1,0 +1,156 @@
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 960 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 10301.8108259 / 9462.1219635 / 10742.6660061  ms (avg/min/max)
+get times         : 1491.1563670 / 1195.4109669 / 1663.7439728  ms (avg/min/max)
+total elapsed time: 12409.0259845 / 12406.3251019 / 12422.0027924  ms (avg/min/max)
+put throughput    :        0.611 MBps
+get throughput    :        4.219 MBps      643.796 reads/sec
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 720 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 8003.8947807 / 7057.2328568 / 8323.8959312  ms (avg/min/max)
+get times         :  698.0522003 /  503.1890869 /  800.6899357  ms (avg/min/max)
+total elapsed time: 9124.4696538 / 9122.8780746 / 9134.6528530  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 576 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 6490.9744047 / 5839.5838737 / 6788.3710861  ms (avg/min/max)
+get times         :  400.1566536 /  256.8418980 /  628.0329227  ms (avg/min/max)
+total elapsed time: 7416.5173032 / 7405.7271481 / 7423.5889912  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 480 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 5428.4358680 / 5063.5578632 / 5643.9859867  ms (avg/min/max)
+get times         :  375.9479860 /  167.1018600 /  650.0082016  ms (avg/min/max)
+total elapsed time: 6294.1298505 / 6289.6008492 / 6300.3652096  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 360 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 3966.8798831 / 3643.6698437 / 4223.5648632  ms (avg/min/max)
+get times         :  376.6260187 /  187.2239113 /  557.7239990  ms (avg/min/max)
+total elapsed time: 4781.6068994 / 4781.3620567 / 4790.9710407  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 240 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 2586.7063701 / 2470.9439278 / 2677.0200729  ms (avg/min/max)
+get times         :  400.9617269 /  175.7569313 /  638.3459568  ms (avg/min/max)
+total elapsed time: 3321.7588723 / 3321.6321468 / 3324.9440193  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 120 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 1252.3387512 / 1160.8891487 / 1334.2518806  ms (avg/min/max)
+get times         :  379.7220627 /  190.1800632 /  569.8640347  ms (avg/min/max)
+total elapsed time: 1904.1762789 / 1904.0689468 / 1905.2529335  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 96 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 1003.2838682 /  908.0839157 / 1148.9150524  ms (avg/min/max)
+get times         :  402.7580569 /  198.5929012 /  686.1860752  ms (avg/min/max)
+total elapsed time: 1835.2497071 / 1835.0939751 / 1838.8071060  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 48 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         :  148.2628981 /  143.2130337 /  151.7610550  ms (avg/min/max)
+get times         :  441.2412544 /  258.5749626 /  752.1879673  ms (avg/min/max)
+total elapsed time:  904.9626589 /  904.0009975 /  909.1370106  ms (avg/min/max)
+
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
+starting run with 24 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         :  471.3280797 /  400.7120132 /  661.8418694  ms (avg/min/max)
+get times         :  400.2839327 /  225.0020504 /  639.0829086  ms (avg/min/max)
+total elapsed time: 1309.9016746 / 1309.8950386 / 1309.9091053  ms (avg/min/max)
+
+
+
+
+srun -n 480 -c 2 ./scaling -q -u -l -v 1000 -s 65536
+starting run with 480 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 17872.5373156 / 16545.9055090 / 18315.4523130  ms (avg/min/max)
+get times         :  683.8121500 /  432.4595190 /  904.9339900  ms (avg/min/max)
+total elapsed time: 19426.4095051 / 19405.3046690 / 19441.9502100  ms (avg/min/max)
+
+srun -n 360 -c 2 -N 30 --contiguous ./scaling -q -u -l -v 1000 -s 65536
+starting run with 360 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 14610.1426422 / 13708.1276840 / 14949.8567130  ms (avg/min/max)
+get times         :  425.0550473 /  282.9736640 /  764.0861700  ms (avg/min/max)
+total elapsed time: 15920.6136773 / 15892.3486110 / 15933.9601570  ms (avg/min/max)
+
+srun -n 240 -c 2 -N 20 --contiguous ./scaling -q -u -l -v 1000 -s 65536
+starting run with 240 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 10927.7954374 / 10382.5125270 / 11177.2009450  ms (avg/min/max)
+get times         :  438.5535190 /  291.8722430 /  719.5693160  ms (avg/min/max)
+total elapsed time: 12061.1674762 / 12042.2364940 / 12080.3716630  ms (avg/min/max)
+
+srun -n 180 -c 2 -N 15 --contiguous ./scaling -q -u -l -v 1000 -s 65536
+starting run with 180 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 8895.2584852 / 8350.1366790 / 9149.1255030  ms (avg/min/max)
+get times         :  415.0010937 /  305.9042210 /  700.2910470  ms (avg/min/max)
+total elapsed time: 9998.9134363 / 9990.5917100 / 10005.8019770  ms (avg/min/max)
+
+srun -n 120 -c 2 -N 10 --contiguous ./scaling -q -u -l -v 1000 -s 65536
+starting run with 120 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 6886.7320541 / 6624.2948010 / 7102.4368700  ms (avg/min/max)
+get times         :  425.7280574 /  323.0318990 /  661.9886590  ms (avg/min/max)
+total elapsed time: 7914.9642472 / 7906.0627930 / 7924.3390390  ms (avg/min/max)
+
+srun -n 60 -c 2 -N 5 --contiguous ./scaling -q -u -l -v 1000 -s 65536
+starting run with 60 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 4893.8488829 / 4332.8493410 / 5109.6306710  ms (avg/min/max)
+get times         :  410.3808100 /  302.0568160 /  620.3006050  ms (avg/min/max)
+total elapsed time: 6086.9533863 / 6066.0987290 / 6100.9102840  ms (avg/min/max)
+
+srun -n 48 -c 2 -N 4 --contiguous ./scaling -q -u -l -v 1000 -s 65536 
+starting run with 48 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 4650.8425014 / 4262.0237240 / 4831.8339620  ms (avg/min/max)
+get times         :  400.4447109 /  334.0437340 /  622.1722910  ms (avg/min/max)
+total elapsed time: 5755.8167130 / 5749.4998400 / 5764.6735860  ms (avg/min/max)
+
+srun -n 24 -c 2 -N 2 --contiguous ./scaling -q -u -l -v 1000 -s 65536 
+starting run with 24 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 3298.9834063 / 2979.3764350 / 3296.9666390  ms (avg/min/max)
+get times         :  374.5621060 /  286.3060380 /  509.4260350  ms (avg/min/max)
+total elapsed time: 4179.5108201 / 4175.1633020 / 4182.6172230  ms (avg/min/max)
+
+
+
+
+
+
+
