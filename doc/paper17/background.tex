@@ -8,7 +8,7 @@ application. Keys are mapped to a unique location in the partitioned global
 address space. The application may iterate over local keys or get locality
 information for the logically addressed element in order to support
 owner-compute work distribution. Rather than application-specific keys for distributed
-data, conventional PGAS data models rely on direct remote addresses (OpenSHMEM
+data, conventional PGAS data models rely on direct remote addresses (e.g. OpenSHMEM
 and UPC), an offset into a remote buffer (MPI), or an index into an array
 (Fortran Coarrays). 
 
@@ -64,28 +64,29 @@ logical addresses, but it is difficult to do efficiently. Resolution may
 require several communication operations to query a remote translation 
 directory, resulting in high overheads~\cite{namashivayam:15}.
 
-MPI provides application-specified tags to match up specific pairs of 
-send/receive operations. MPI tags could be used in place of more general PGLAS 
-keys, however there are some limitations with this approach. First, MPI 
-requires ordered message processing, whereas the PGLAS adopts the
-PGAS unordered-by-default communication model. Next, tags are intended to be 
-used as a mechanism to fix a matching of specific send/receive messages, not to 
-implement a persistent key/value store. Tagged receive operations are consumed 
-by incoming messages, whereas the PGLAS model permits the key/value association
-to persist until explicitly released by the application. Lastly, tagged MPI 
-requests for data objects that do not exist will result in the request being 
-deferred to the unexpected message list, rather than a negative 
-acknowledgement. While this is reasonable for a two-sided communication model, 
-it makes more sense to explicitly reject PGLAS requests for non-existent data 
+MPI provides application-specified tags to match up specific pairs of
+send/receive operations. MPI tags could be used in place of more general PGLAS
+keys, however there are limitations with this approach. First, MPI requires
+ordered message processing, whereas both PGLAS and PGAS systems adopt
+unordered-by-default communication models. Next, tags are intended to be used
+as a mechanism to specify the matching of specific send/receive messages, not
+to implement a persistent key/value store. Further, tagged receive operations are
+consumed by incoming messages, whereas the PGLAS model permits the key/value
+association to persist until explicitly released by the application. Lastly,
+tagged MPI requests for data objects that do not exist will result in the
+request being deferred to the unexpected message list, rather than a negative
+acknowledgement. While this is reasonable for a two-sided communication model,
+it makes more sense to explicitly reject PGLAS requests for non-existent data
 objects.
 
 \subsection{Distributed Sparse Data}
 
-We see the PGLAS model as tool for dealing sparsity within HPC problem domains.  
+%XXX re-visit
+We see the PGLAS model as a tool for dealing sparsity within HPC problem domains.  
 Sparse data structures are commonly used in a number of important HPC 
 applications, which can create challenges in obtaining high performance. Matrix 
 and tensor representations frequently have to contend with sparse data, 
-relying on specialized formats such as compressed spare row (CSR) and variants.  
+relying on specialized formats such as compressed sparse row (CSR) and variants.  
 Other problems, such as grid/mesh solvers, or N-body simulation are naturally 
 expressed with spatial decomposition data structures such as quadtrees and 
 octrees. 
@@ -101,11 +102,12 @@ these classes of applications.
 Logically addressing data across memories in a distributed
 system has been explored in a number of other models.  Distributed,
 shared key/value stores are an intrinsic part of the Piccolo
-programming model~\cite{power:10}.  The Linda programming
-model~\cite{ahuja:86} is built around tuple spaces, that allows data
+programming model~\cite{power:10}. The Linda programming
+model~\cite{ahuja:86} is built around tuple spaces that allow data
 to be inserted, read, and removed from global memory. Linda data items
-are identified through a user-supplied tuple.  Such models are of
+are identified through a user-supplied tuple. Such models are of
 renewed interest in the context of resilience~\cite{wilke:14}.
+
 Distributed object models, such as Orca~\cite{bal:92}, reference
 shared data through graphs rather than direct pointers.  In the Open
 Community Runtime (OCR)~\cite{OCR}, data blocks (DBs) are identified
@@ -119,12 +121,13 @@ models, such as Charm++~\cite{kale:93}, support a variety of methods
 for representing and querying object collections.
 
 Hash tables are also commonly used to store sparse or loosely structured
-data~\cite{memcached04,chord01,docan:12}
-and their implementation has been studied in the context of MPI and popular PGAS
+data~\cite{memcached04,chord01,docan:12} and their implementation has been
+studied in the context of MPI and popular PGAS
 models~\cite{zht13,fompi13,cmpi10,maynard:12,memcached12,mht15} as well as in
-the context of RDMA offload~\cite{memcached12,mitchell:13,kalia:14}.  In
-addition, PGAS-like hierarchical approaches to
-managing sparse spatial decomposition have been proposed~\cite{larkins:08}
+the context of RDMA offload~\cite{memcached12,mitchell:13,kalia:14}.  Others
+have studied the applicability of programmable NICs to efficiently implement
+key-value stores~\cite{li:17}.  In addition, PGAS-like hierarchical approaches
+to managing sparse spatial decomposition have been proposed~\cite{larkins:08}
 along with runtime methods to manage this data and exploit spatial
 locality~\cite{larkins:12}.
 
