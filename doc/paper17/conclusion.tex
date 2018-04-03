@@ -1,1 +1,30 @@
 \section{Conclusion}
+
+This paper has presented the partitioned global address space (PGLAS)
+programming model and a functioning implementation of the model in
+PDHT. The PDHT system makes novel use of the Portals networking interface
+by re-purposing the message-matching system to operate as a key mechanism
+for a global, distributed key/value store. We envision that a number of
+applications that rely on sparse methods can be readily adapted to the PGLAS
+parallel programming model and have demonstrated that such systems can 
+result in good performance.
+
+This work has led to several insights into adapting Portals data abstractions
+onto higher-level programming models. In particular, the separation of the
+message matching mechanics from the requirement for ordered delivery is
+critical to good performance with PDHT. We see future opportunities for
+adapting the Portals triggered operations with separate semantics for capturing
+the trigger parameters at setup time versus invocation time evaluation. Lastly, 
+this work has motivated the need for permitting applications to search
+the priority list for matching.
+
+\section*{Acknowledgement}
+
+This work used the Extreme Science and Engineering Discovery Environment
+(XSEDE), which is supported by National Science Foundation grant number
+ACI-1053575.
+
+We would also like to acknowledge Ryan Grant and Todd Kordenbrock at Sandia
+National Laboratories for their help with Portals-related issues and the
+generous use of Sandia test bed facilities as well as Evangelos Georganas at
+Intel for his assistance with the Meraculous benchmark.
