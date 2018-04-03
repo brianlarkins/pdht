@@ -100,6 +100,14 @@ put times         : 14610.1426422 / 13708.1276840 / 14949.8567130  ms (avg/min/m
 get times         :  425.0550473 /  282.9736640 /  764.0861700  ms (avg/min/max)
 total elapsed time: 15920.6136773 / 15892.3486110 / 15933.9601570  ms (avg/min/max)
 
+srun -n 288 -N 24 -c 2 ./scaling -q -u -l -v 1000 -s 65536 
+starting run with 288 processes, each with 1000 entries (total reads == 1000)
+..
+starting fetches
+put times         : 12718.2406435 / 11858.1911900 / 13002.0326590  ms (avg/min/max)
+get times         :  408.9999394 /  278.6050270 /  716.2554240  ms (avg/min/max)
+total elapsed time: 13882.4152905 / 13873.4332700 / 13894.2780970  ms (avg/min/max)
+
 srun -n 240 -c 2 -N 20 --contiguous ./scaling -q -u -l -v 1000 -s 65536
 starting run with 240 processes, each with 1000 entries (total reads == 1000)
 ..
