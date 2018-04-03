@@ -56,62 +56,43 @@ reconstruct     min :    0.4341090 avg :    0.4466744 max :    0.4775682
 diff            min :    3.7742896 avg :    3.8518300 max :    3.9904441 
 
 
+MPI tree size 646409:
 
-ibrun -n 48 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
 MADNESS TIMING size : 24 
-initialization  min :    4.7636430 avg :    4.7703101 max :    4.7748141 
-compress        min :    2.9605269 avg :    2.9783128 max :    3.3872890 
-reconstruct     min :    2.9975410 avg :    3.0013235 max :    3.0046010 
-diff            min :    6.3569350 avg :    6.3649458 max :    6.3712170 
+initialization  min :    6.1905191 avg :    6.1959522 max :    6.2013168 
+compress        min :    4.8863471 avg :    4.9030872 max :    5.2878199 
+reconstruct     min :    4.9029219 avg :    4.9075467 max :    4.9122431 
+diff            min :   33.4474218 avg :   33.4882131 max :   33.5706348 
 
-ibrun -n 80 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 40 
-initialization  min :    3.1427150 avg :    3.1486761 max :    3.1542039 
-compress        min :    1.9936841 avg :    2.0051943 max :    2.4253850 
-reconstruct     min :    2.0237000 avg :    2.0278516 max :    2.0311980 
-diff            min :    4.2535298 avg :    4.2615183 max :    4.2718530 
+MADNESS TIMING size : 48 
+initialization  min :    9.2625799 avg :    9.2769642 max :    9.3707750 
+compress        min :    8.9995480 avg :    9.0365769 max :   10.1169899 
+reconstruct     min :    8.4923689 avg :    8.5091230 max :    8.5445011 
+diff            min :   14.1898310 avg :   14.2252083 max :   14.3012481 
 
-ibrun -n 120 ./diffMPI -m
 MADNESS TIMING size : 60 
-initialization  min :    2.4177670 avg :    2.4259894 max :    2.4522450 
-compress        min :    1.5788498 avg :    1.5871229 max :    2.0405209 
-reconstruct     min :    1.6228321 avg :    1.6288881 max :    1.6420660 
-diff            min :    3.2628140 avg :    3.2745679 max :    3.3057790 
-complete.
+initialization  min :    5.8589368 avg :    5.8699317 max :    5.8999760 
+compress        min :    3.3483028 avg :    3.3588200 max :    3.8007889 
+reconstruct     min :    3.3318439 avg :    3.3409368 max :    3.3571081 
+diff            min :   14.6904809 avg :   14.7260115 max :   14.8148911
 
-ibrun -n 160 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 80 
-initialization  min :    2.1949668 avg :    2.2057405 max :    2.2504621 
-compress        min :    1.3625460 avg :    1.3686888 max :    1.8254750 
-reconstruct     min :    1.3346362 avg :    1.3427475 max :    1.3670540 
-diff            min :    2.8521948 avg :    2.8670729 max :    2.9114730 
-
-ibrun -n 240 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
 MADNESS TIMING size : 120 
-initialization  min :    2.1109400 avg :    2.1200121 max :    2.1656990 
-compress        min :    1.3021581 avg :    1.3080861 max :    1.7967231 
-reconstruct     min :    1.1140928 avg :    1.1217135 max :    1.1505799 
-diff            min :    2.3070090 avg :    2.3225606 max :    2.3836961 
+initialization  min :    4.8866780 avg :    4.9214162 max :    5.0718470 
+compress        min :    3.2768390 avg :    3.2850781 max :    3.8890731 
+reconstruct     min :    2.4505250 avg :    2.4713133 max :    2.5458479 
+diff            min :    4.8338039 avg :    4.8760189 max :    5.0297859 
 
-ibrun -n 320 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 160 
-initialization  min :    2.6084719 avg :    2.6246193 max :    2.6742871 
-compress        min :    1.0484591 avg :    1.0586580 max :    1.5238121 
-reconstruct     min :    1.2756732 avg :    1.2883111 max :    1.3205690 
-diff            min :    2.3499861 avg :    2.3729092 max :    2.4382551 
+MADNESS TIMING size : 180 
+initialization  min :    5.3424001 avg :    5.3783228 max :    5.5317521 
+compress        min :    1.7443058 avg :    1.7635774 max :    2.6022191 
+reconstruct     min :    2.1933751 avg :    2.2461143 max :    2.3903141 
+diff            min :    3.4620321 avg :    3.5289317 max :    3.7818010
 
-ibrun -n 480 ./diffMPI -m
-function tree initialization complete. tree contains 646409 nodes
 MADNESS TIMING size : 240 
-initialization  min :    6.4437749 avg :    6.4800483 max :    6.6126251 
-compress        min :    1.2480719 avg :    1.2680963 max :    2.0614421 
-reconstruct     min :    1.0185061 avg :    1.0475352 max :    1.1076291 
-diff            min :    2.9370708 avg :    3.0823692 max :    3.3478031 
+initialization  min :    6.6384909 avg :    6.6875944 max :    6.8449118 
+compress        min :    1.5529141 avg :    1.5851369 max :    2.5761101 
+reconstruct     min :    1.2710969 avg :    1.3115044 max :    1.5112998 
+diff            min :    3.0334940 avg :    3.1557526 max :    3.4493749 
 
 
 
