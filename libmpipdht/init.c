@@ -26,7 +26,6 @@ void pdht_init() {
   
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
-
   char pname[MPI_MAX_PROCESSOR_NAME];
   int nlen;
   //MPI_Get_processor_name(pname, &nlen);
@@ -206,7 +205,7 @@ void *pdht_comm(void *arg) {
 
         reply = (reply_t *)buf; // cast so we can set header values
        
-        HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+        HASH_FIND(hh, dht->ht, &(msg->mbits), sizeof(unsigned long), instance);
 
         if (instance) {
       // found entry
@@ -223,7 +222,7 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
-        HASH_FIND_INT(dht->ht,&msg->mbits,instance);
+        HASH_FIND(hh, dht->ht ,&msg->mbits, sizeof(unsigned long), instance);
         
         if (!instance) {
           // new entry -- create new HT entry
@@ -231,10 +230,7 @@ void *pdht_comm(void *arg) {
           instance->key = msg->mbits;
           instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
 
-
-          HASH_ADD_INT(dht->ht,key,instance);  
-
-
+          HASH_ADD(hh, dht->ht, key, sizeof(unsigned long), instance);  
         }
         // update HT entry with PUT data
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
