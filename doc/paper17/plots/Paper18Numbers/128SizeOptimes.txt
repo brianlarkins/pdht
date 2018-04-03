@@ -1,0 +1,81 @@
+srun -n 2 -N 2 ./optimes -n 100000 -l -s 128
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:   52.9098773 s
+  unit: local notfound:    2.3848150 us remote notfound    5.1287179 us
+  unit: local put:         5.2714712 us remote put:        8.9599670 us
+  unit: local update:      2.0452673 us remote update:     6.1846027 us
+  [      1]: local get:    3.3586430 us remote get:        6.0305189 us
+  [     10]: local get:    3.3593397 us remote get:        6.1123420 us
+  [    100]: local get:    3.8610325 us remote get:        6.7207780 us
+  [   1000]: local get:   12.2917003 us remote get:       14.9452916 us
+  [   5000]: local get:   53.1981573 us remote get:       55.7668131 us
+  [  10000]: local get:  102.1310168 us remote get:      104.9426207 us
+  [  20000]: local get:  202.0092213 us remote get:      205.1201246 us
+  [  30000]: local get:  301.3798250 us remote get:      304.8087693 us
+  [  50000]: local get:  499.2827593 us remote get:      502.3420486 us
+  [ 100000]: local get: 1323.0840185 us remote get:     1354.5559139 us
+
+5 PTE
+srun -n 2 -N 2 ./optimes -n 100000 -s 128
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:   12.0296213 s
+  unit: local notfound:    3.5981687 us remote notfound    6.2714316 us
+  unit: local put:         5.4834562 us remote put:        9.4709860 us
+  unit: local update:      2.8884039 us remote update:     6.1776249 us
+  [      1]: local get:    3.3478153 us remote get:        5.9854413 us
+  [     10]: local get:    3.4444935 us remote get:        6.0150204 us
+  [    100]: local get:    3.3464525 us remote get:        6.1579881 us
+  [   1000]: local get:    4.5356125 us remote get:        7.2744374 us
+  [   5000]: local get:   12.4806219 us remote get:       15.3998656 us
+  [  10000]: local get:   24.2678577 us remote get:       26.4874175 us
+  [  20000]: local get:   43.6382571 us remote get:       45.6001754 us
+  [  30000]: local get:   62.7786946 us remote get:       64.6764823 us
+  [  50000]: local get:  101.7433949 us remote get:      103.6969468 us
+  [ 100000]: local get:  202.2171855 us remote get:      202.5552838 us
+
+srun -n 2 -N 2 ./optimes -n 100000 -u -l -s 128
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:    2.8275728 s
+  unit: local notfound:    0.3694716 us remote notfound    5.0332348 us
+  unit: local put:         6.3193195 us remote put:        9.1903516 us
+  unit: local update:      2.1107301 us remote update:     6.1774632 us
+  [      1]: local get:    1.1877073 us remote get:        6.0244271 us
+  [     10]: local get:    0.3698883 us remote get:        6.0474466 us
+  [    100]: local get:    0.3709692 us remote get:        6.0713495 us
+  [   1000]: local get:    0.3699556 us remote get:        6.0905688 us
+  [   5000]: local get:    0.3709728 us remote get:        6.1499287 us
+  [  10000]: local get:    0.3721649 us remote get:        6.0978375 us
+  [  20000]: local get:    0.3709723 us remote get:        6.0964298 us
+  [  30000]: local get:    0.3719018 us remote get:        6.0785810 us
+  [  50000]: local get:    0.3723347 us remote get:        6.0795984 us
+  [ 100000]: local get:    0.3709412 us remote get:        6.0741042 us
+
+(mvapich)ibrun -npernode=2 ./optimesMPI -s 128 -n 100000
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:    1.6375329 s
+  unit: local notfound:    0.8683491 us remote notfound    3.8732004 us
+  unit: local put:         1.2265897 us remote put:        4.2548800 us
+  unit: local update:      0.8827925 us remote update:     3.9131880 us
+  [      1]: local get:    1.4027119 us remote get:        4.2613983 us
+  [     10]: local get:    1.4051199 us remote get:        4.2500019 us
+  [    100]: local get:    1.4189005 us remote get:        4.2401075 us
+  [   1000]: local get:    1.4191866 us remote get:        4.2402983 us
+  [   5000]: local get:    1.4038086 us remote get:        4.2268991 us
+  [  10000]: local get:    1.4109850 us remote get:        4.2690992 us
+  [  20000]: local get:    1.4106989 us remote get:        4.2863131 us
+  [  30000]: local get:    1.4163971 us remote get:        4.2828083 us
+  [  50000]: local get:    1.4075041 us remote get:        4.2757988 us
+  [ 100000]: local get:    1.4109850 us remote get:        4.2639971 us
+
+OMPI
+mpirun --mca pml cm --mca btl portals4 --mca coll ^portals4 --bind-to none env PTL_IGNORE_UMMUNOTIFY=1 ./optimesMPI -n 100000 -s 128
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:    6.4815249 s
+  unit: local notfound:    7.6265910 us remote notfound    8.9950787 us
+  unit: local put:        11.3725023 us remote put:       12.4759163 us
+  unit: local update:     11.5878700 us remote update:    12.4346247 us
+  [      1]: local get:    9.5973711 us remote get:       12.3632701 us
+  [     10]: local get:    9.5198028 us remote get:       12.4235352 us
+  [    100]: local get:    9.5354836 us remote get:       12.3394086 us
+  [   1000]: local get:    9.5391279 us remote get:       12.2965859 us
+  [   5000]: local get:    9.5403148 us remote get:       12.3332051 us
+  [  10000]: local get:    9.5304423 us remote get:       12.3415959 us
+  [  20000]: local get:    9.5338983 us remote get:       12.3385620 us
+  [  30000]: local get:    9.6240995 us remote get:       12.3401118 us
+  [  50000]: local get:    9.6122292 us remote get:       12.3350014 us
+  [ 100000]: local get:    9.6055088 us remote get:       12.3724278 us
