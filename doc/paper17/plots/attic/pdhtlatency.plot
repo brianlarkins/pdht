@@ -9,14 +9,14 @@ set output "pdhtlatency.eps"
 set xlabel "# Entries"
 set logscale x
 #set xrange [100:100000]
-set xtics (1,10,100,"1k" 1000,"10k" 10000, "25k" 25000, "100k" 100000, "" 150000)
+set xtics (1,10,100,1000,10000,50000)
 set ylabel "Read Latency (usec)"
 set logscale y
-set yrange [.3:850]
-set ytics (1,5,10,50,100,500)
+set yrange [.5:850]
+set ytics (1,3,6,10,50,100,400)
 set key top left
 
-plot 'latency.dat' index 0 using 1:3 title "matchlist", \
-     'latency.dat' index 1 using 1:3 title "multi PTE (5)", \
-     'latency.dat' index 2 using 1:3 title "unordered", \
-     'latency.dat' index 2 using 1:2 title "local"
+plot 'pdhtlatency.dat' index 0 using 1:2 title "local", \
+     'pdhtlatency.dat' index 0 using 1:3 title "unordered", \
+     'pdhtlatency.dat' index 1 using 1:3 title "multi PTE (5)", \
+     'pdhtlatency.dat' index 2 using 1:3 title "matchlist"
