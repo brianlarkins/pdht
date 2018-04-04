@@ -8,13 +8,13 @@ compress        min :    3.0948880 avg :    3.1114726 max :    3.0948998
 reconstruct     min :    3.0420593 avg :    3.0450113 max :    3.0482486 
 diff            min :   37.1808419 avg :   37.1941082 max :   37.2076529 
 
-srun -n 40 --ntasks-per-node=4 -c 2 ./diff -s -M 50000 -p 20000 -L -q
+srun -n 48 --ntasks-per-node=4 -c 2 ./diff -m -M 50000 -p 20000 -L -q
 function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 40 
-initialization  min :   15.2020443 avg :   15.2159332 max :   15.2255298 
-compress        min :    2.1687981 avg :    2.1787841 max :    2.1688093 
-reconstruct     min :    2.1204821 avg :    2.1249128 max :    2.1280747 
-diff            min :   29.0727887 avg :   29.0917189 max :   29.1072908 
+MADNESS TIMING size : 48 
+initialization  min :   13.6110906 avg :   13.6310599 max :   13.6652109 
+compress        min :    1.8823828 avg :    1.8905944 max :    1.8823964 
+reconstruct     min :    1.8053870 avg :    1.8102619 max :    1.8144726 
+diff            min :   26.2813579 avg :   26.2969207 max :   26.3318978 
 
 srun -n 60 --ntasks-per-node=4 -N 15 -c 2 ./diff -s -M 50000 -p 13000 -L -q
 function tree initialization complete. tree contains 646409 nodes
@@ -24,14 +24,6 @@ compress        min :    1.4923881 avg :    1.5008811 max :    1.4951748
 reconstruct     min :    1.4367530 avg :    1.4420026 max :    1.4522875 
 diff            min :   14.8505492 avg :   14.8835990 max :   14.9327788 
 
-srun -n 80 --ntasks-per-node=4 -N 20 -c 2 ./diff -s -M 50000 -p 10000 -L -q
-function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 80 
-initialization  min :    6.5459314 avg :    6.5771358 max :    6.6603896 
-compress        min :    1.2045461 avg :    1.2092042 max :    1.2045676 
-reconstruct     min :    1.1263384 avg :    1.1325857 max :    1.1527986 
-diff            min :    9.5429160 avg :    9.5760277 max :    9.6713700 
-
 srun -n 120 --ntasks-per-node=4 -N 30 -c 2 ./diff -s -M 50000 -p 10000 -L -q
 function tree initialization complete. tree contains 646409 nodes
 MADNESS TIMING size : 120 
@@ -40,12 +32,13 @@ compress        min :    0.8462240 avg :    0.8494460 max :    0.8462427
 reconstruct     min :    0.7697826 avg :    0.7746382 max :    0.7979107 
 diff            min :    6.7412553 avg :    6.7777173 max :    6.8956106
 
-srun -n 160 -N 40 --ntasks-per-node=4 ./diff -s -M 50000 -p 10000 -L -q 
-MADNESS TIMING size : 160 
-initialization  min :    5.0273360 avg :    5.0683760 max :    5.1480224 
-compress        min :    0.6907730 avg :    0.6936266 max :    0.6913382 
-reconstruct     min :    0.5834474 avg :    0.5917208 max :    0.6166536 
-diff            min :    5.1599049 avg :    5.2077106 max :    5.3142278 
+srun -n 180 -c 2 --ntasks-per-node=4 ./diff -m -M 50000 -p 10000 -L -q
+function tree initialization complete. tree contains 646409 nodes
+MADNESS TIMING size : 180 
+initialization  min :    5.1035009 avg :    5.1421213 max :    5.2426634 
+compress        min :    0.6415822 avg :    0.6439474 max :    0.6416171 
+reconstruct     min :    0.5600678 avg :    0.5701292 max :    0.5982871 
+diff            min :    4.8190790 avg :    4.8878357 max :    5.0269859 
 
 srun -n 240 -N 60 --ntasks-per-node=4 ./diff -s -M 50000 -p 10000 -L -q
 function tree initialization complete. tree contains 646409 nodes
