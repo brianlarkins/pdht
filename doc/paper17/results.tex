@@ -112,7 +112,7 @@ access latency by an order of magnitude.
 
 \begin{figure}
     \centering
-    \includegraphics[width=.9\linewidth]{plots/throughput}
+    \includegraphics[width=.9\linewidth]{plots/scaling1k}
     %\caption{System throughput for a range of local volume (entries per node).}
     \caption{Aggregate system throughput (1K elements).}
     \label{fig:throughput-small}
@@ -120,7 +120,7 @@ access latency by an order of magnitude.
 
 \begin{figure}
     \centering
-    \includegraphics[width=.9\linewidth]{plots/throughput}
+    \includegraphics[width=.9\linewidth]{plots/scaling64}
     %\caption{System throughput for a range of local volume (entries per node).}
     \caption{Aggregate system throughput (64K elements).}
     \label{fig:throughput-big}
@@ -260,14 +260,14 @@ Portals-based PDHT implementation relative to the MPI implementation.
 
 \begin{figure}[ht]
   \center
-  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
+  \includegraphics[width=.9\linewidth]{plots/compress}
   \caption{MADNESS compression performance ($\mu$ sec)}
   \label{fig:mad-compress}
 \end{figure}
 
 \begin{figure}[ht]
   \center
-  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
+  \includegraphics[width=.9\linewidth]{plots/reconstruct}
   \caption{MADNESS reconstruction performance ($\mu$ sec)}
   \label{fig:mad-reconstruct}
 \end{figure}
@@ -275,7 +275,7 @@ Portals-based PDHT implementation relative to the MPI implementation.
 
 \begin{figure}[ht]
   \center
-  \fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
+  \includegraphics[width=.9\linewidth]{plots/diff}
   \caption{MADNESS differentiation performance ($\mu$ sec)}
   \label{fig:mad-diff}
 \end{figure}
