@@ -120,13 +120,29 @@ put times         :  390.7013237 /  385.8458996 /  393.7270641  ms (avg/min/max)
 get times         :  105.6155165 /  104.1300297 /  107.0032120  ms (avg/min/max)
 total elapsed time:  500.7608632 /  500.7441044 /  500.7750988  ms (avg/min/max)
 
+ibrun -npernode 16 ./scalingMPI -U -l -v 10000 -q -s 1024
+starting run with 96 processes, each with 10000 entries (total reads == 10000)
+...........
+starting fetches
+put times         :  466.1476562 /  455.3120136 /  474.9360085  ms (avg/min/max)
+get times         :  400.1915107 /  392.3079967 /  405.6298733  ms (avg/min/max)
+total elapsed time:  880.6254119 /  880.6121349 /  880.6438446  ms (avg/min/max)
+
+ibrun -npernode 15 ./scalingMPI -U -l -v 10000 -q -s 1024
+starting run with 120 processes, each with 10000 entries (total reads == 10000)
+...........
+starting fetches
+put times         :  524.5411356 /  516.1960125 /  537.0640755  ms (avg/min/max)
+get times         :  429.1135867 /  416.5527821 /  437.8149509  ms (avg/min/max)
+total elapsed time:  974.9228319 /  974.9069214 /  974.9379158  ms (avg/min/max)
+
 ibrun -npernode 24 ./scalingMPI -U -l -v 10000 -q -s 1024
 starting run with 240 processes, each with 10000 entries (total reads == 10000)
 ...........
 starting fetches
-put times         : 2492.1461205 / 2419.9490547 / 2873.7270832  ms (avg/min/max)
-get times         :  236.4536365 /  228.9218903 /  242.6691055  ms (avg/min/max)
-total elapsed time: 3115.8009390 / 3110.7258797 / 3116.5509224  ms (avg/min/max)
+put times         : 2454.0209810 / 2371.4988232 / 2573.3079910  ms (avg/min/max)
+get times         :  395.9607085 /  346.0829258 /  498.6209869  ms (avg/min/max)
+total elapsed time: 3072.4244853 / 3071.9640255 / 3076.7219067  ms (avg/min/max)
 
 ibrun -npernode 24 ./scalingMPI -U -l -v 10000 -q -s 1024
 starting run with 360 processes, each with 10000 entries (total reads == 10000)
