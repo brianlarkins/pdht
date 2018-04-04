@@ -1,22 +1,27 @@
 \section{Conclusion}
 
 This paper has presented the partitioned global address space (PGLAS)
-programming model and a functioning implementation of the model in
-PDHT. The PDHT system makes novel use of the Portals networking interface
-by re-purposing the message-matching system to operate as a key mechanism
-for a global, distributed key/value store. We envision that a number of
-applications that rely on sparse methods can be readily adapted to the PGLAS
-parallel programming model and have demonstrated that such systems can 
-result in good performance.
+programming model and its first realization through the Parallel Distributed
+Hash Table (PDHT).  PDHT system makes novel use of the Portals networking
+interface by re-purposing its message-matching system to operate as an
+acceleration mechanism for a global, distributed key/value store.
 
 This work has led to several insights into adapting Portals data abstractions
 onto higher-level programming models. In particular, the separation of the
 message matching mechanics from the requirement for ordered delivery is
 critical to good performance with PDHT. We see future opportunities for
-adapting the Portals triggered operations with separate semantics for capturing
-the trigger parameters at setup time versus invocation time evaluation. Lastly, 
-this work has motivated the need for permitting applications to search
-the priority list for matching.
+adapting the Portals triggered operations to manage PDHT structures. Lastly,
+this work has motivated several extensions to the Portals model, including
+functionality allowing applications to search the priority list when responding
+to local matching queries.
+
+We envision that a number of applications that rely on sparse methods and
+irregularly structured data can be readily adapted to the PGLAS parallel
+programming model.  We identified two representative applications from the
+computational chemistry and genomics domains and applied PDHT as a system for
+managing the sparse spatial and loosely structured data arising in these
+domains.  Experimental results are promising and indicate that Portals can
+provide efficient and productive support for such data structures.
 
 \section*{Acknowledgement}
 

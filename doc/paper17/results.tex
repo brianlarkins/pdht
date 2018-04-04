@@ -10,7 +10,7 @@
 %part of the Advanced Systems Technology Test Bed at Sandia National
 %Laboratories.  The cluster contains 36 compute nodes, constructed with dual
 %16-core Intel\regtm Haswell\regtm processors and 128 gigabytes of memory. Nodes
-%are connected using a Mellanox\othertm FDR 56Gb/s Infiniband\othertm fabric.
+%are connected using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric.
 
 Performance results were gathered using a prototype implementation of \pdht
 running on a modified version the Portals reference
@@ -21,7 +21,7 @@ contains nodes with several configurations, these experiments were conducted a
 portion of the 1944 nodes with Intel\regtm Xeon\regtm E5 processors, comprising
 Dell\othertm PowerEdge\othertm C6320 server each with dual 12-core Intel\regtm
 Xeon\regtm E5-2680 processors and 128 gigabytes of memory. Nodes are connected
-using a Mellanox\othertm FDR 56Gb/s Infiniband\othertm fabric.
+using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric.
 
 \subsection{Experimental Setup}
 
@@ -41,14 +41,18 @@ Experiments run with OpenMPI are using version 3.0.0, which has been configured
 to use Portals 4 as the message transport layer for all communication
 operations. The MPICH MPI tests are run with version 3.2.1 using Portals 4 as
 the {\tt ch3} interface. The MVAPICH2 tests are run with version 2.1 and the
-runtime is configured to directly use the Infiniband\othertm Verbs interface.
+runtime is configured to directly use the InfiniBand\othertm Verbs interface.
 
 One of the primary challenges in deriving performance results for this work is
 that the Portals 4 runtime library was developed as an exploratory framework
-for modeling next-generation hardware offload network processing. To this end,
-it has not been optimized as extensively as other high-performance network
-middleware (e.g. MVAPICH2). Our evaluation of the system focuses on the relative
-performance between systems.
+for modeling next-generation hardware offload network processing. As a result,
+Portals message processing is performed by the host processor and
+incurs higher overheads than would be expected with a hardware accelerated
+implementation. Thus, communication performed through the Portals 4 runtime
+library has not been optimized as extensively as other high-performance network
+middleware (e.g. MVAPICH2). Where possible in our evaluation, we have measured
+these overheads and presented comparisons that demonstrate the relative
+performance potential of \pdht.
 
 %Results from both native PDHT and MPI-based applications that use the reference implementation are skewed by this
 %difference in focus. 
