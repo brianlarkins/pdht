@@ -82,8 +82,8 @@ and can result in significant overheads.
 
 Recent updates to the Portals 4.0 communications interface provide
 additions to a well-known interconnect programming model that permits
-efficient hardware offload of communication traffic. The latest BXI
-interconnect hardware from Bull has provided a hardware implementation
+efficient hardware offload of communication traffic. The Bull\othertm{} BXI\othertm{}
+interconnect~\cite{bxi} has provided a hardware accelerated implementation
 of the Portals interface.  Parallel programs written using middleware
 systems that are built on the Portals interface will be able to take
 advantage of network offload hardware without special consideration. 
@@ -97,7 +97,7 @@ efficient implementation of high-performance programming interfaces
 and runtime systems that provide either message-passing semantics
 (such as MPI), or one-sided, partitioned global address (PGAS) based
 activities. For message-passing systems, Portals provides a {\em
-  matching interface} that allows runtime implementators to robustly
+  matching interface} that allows communication middleware to robustly
 support a two-sided (matched sends and receives) communication
 model. Alternatively, Portals also provides a {\em non-matching
   interface} that sheds much of the complexity in matching messages
@@ -108,7 +108,7 @@ Rather than considering the matching and non-matching interfaces as
 the basis for higher-level communication systems, we have developed a
 system that provides a distributed key/value storage that use Portals
 primitives in a novel manner, leading towards a hardware accelerated
-hash table system. In this paper, we describe the implementation of a
+hash table system providing a PGLAS programming model. In this paper, we describe the implementation of a
 parallel distributed hash table (PDHT) that is implemented directly
 using the Portals programming interface. This work is based on the
 following insights: (1) implementing data structures using Portals
@@ -118,12 +118,16 @@ can be readily mapped to hardware accelerated operations within
 Portals that would be difficult to express exclusively within an
 MPI-like system or a PGAS system.
 
-This work makes the following contributions: First, we describe the
-design and implementation of a one-sided distributed hash table that
-is amenable to network hardware offload. Second, we describe a novel
-application of Portals matching interface operations to realize a
-distributed data structure. Lastly, we provide an experimental validation of
-our approach.
+This work makes the following contributions: We identify the
+logically-addressed PGLAS paradigm as a novel extension to existing PGAS
+programming concepts, which improves support for sparse and loosely structured
+data.  We demonstrate the utility of this model through two representative
+scientific applications, MADNESS and Meraculous, from the computational
+chemistry and genomics domains, respectively.  We describe a new PGLAS model,
+PDHT, a one-sided distributed hash table that is implemented using a novel
+application of Portals matching interface operations. Lastly, we provide an
+experimental validation, indicating that this approach can yield significant
+performance improvements for these classes of applications.
 
 % high performance interconnect hardware
 %  - provides hardware optimized for use cases
