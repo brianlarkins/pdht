@@ -8,3 +8,4 @@ all:
 	gnuplot reconstruct.plot
 	gnuplot scaling1k.plot
 	gnuplot scaling64k.plot
+	gnuplot meraculous.plot
