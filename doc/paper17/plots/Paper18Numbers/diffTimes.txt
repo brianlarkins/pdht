@@ -8,13 +8,13 @@ compress        min :    3.0948880 avg :    3.1114726 max :    3.0948998
 reconstruct     min :    3.0420593 avg :    3.0450113 max :    3.0482486 
 diff            min :   37.1808419 avg :   37.1941082 max :   37.2076529 
 
-srun -n 48 --ntasks-per-node=4 -c 2 ./diff -m -M 50000 -p 20000 -L -q
+srun -n 40 --ntasks-per-node=4 -c 2 ./diff -s -M 50000 -p 20000 -L -q
 function tree initialization complete. tree contains 646409 nodes
-MADNESS TIMING size : 48 
-initialization  min :   13.6110906 avg :   13.6310599 max :   13.6652109 
-compress        min :    1.8823828 avg :    1.8905944 max :    1.8823964 
-reconstruct     min :    1.8053870 avg :    1.8102619 max :    1.8144726 
-diff            min :   26.2813579 avg :   26.2969207 max :   26.3318978 
+MADNESS TIMING size : 40 
+initialization  min :   15.2020443 avg :   15.2159332 max :   15.2255298 
+compress        min :    2.1687981 avg :    2.1787841 max :    2.1688093 
+reconstruct     min :    2.1204821 avg :    2.1249128 max :    2.1280747 
+diff            min :   29.0727887 avg :   29.0917189 max :   29.1072908 
 
 srun -n 60 --ntasks-per-node=4 -N 15 -c 2 ./diff -s -M 50000 -p 13000 -L -q
 function tree initialization complete. tree contains 646409 nodes
@@ -52,22 +52,22 @@ diff            min :    3.7742896 avg :    3.8518300 max :    3.9904441
 MPI tree size 646409:
 
 MADNESS TIMING size : 24 
-initialization  min :    6.1905191 avg :    6.1959522 max :    6.2013168 
-compress        min :    4.8863471 avg :    4.9030872 max :    5.2878199 
-reconstruct     min :    4.9029219 avg :    4.9075467 max :    4.9122431 
-diff            min :   33.4474218 avg :   33.4882131 max :   33.5706348 
+initialization  min :    6.7874148 avg :    6.7937661 max :    6.7998700 
+compress        min :    5.0585740 avg :    5.0755312 max :    5.4653728 
+reconstruct     min :    4.9871099 avg :    4.9917289 max :    4.9958029 
+diff            min :   10.7640531 avg :   10.7737317 max :   10.7809439 
 
-MADNESS TIMING size : 48 
-initialization  min :    9.2625799 avg :    9.2769642 max :    9.3707750 
-compress        min :    8.9995480 avg :    9.0365769 max :   10.1169899 
-reconstruct     min :    8.4923689 avg :    8.5091230 max :    8.5445011 
-diff            min :   14.1898310 avg :   14.2252083 max :   14.3012481 
+MADNESS TIMING size : 40 
+initialization  min :    5.3438251 avg :    5.3532923 max :    5.3601611 
+compress        min :    4.0417781 avg :    4.0597901 max :    4.5558050 
+reconstruct     min :    4.1090910 avg :    4.1151657 max :    4.1208599 
+diff            min :    8.7169392 avg :    8.7283691 max :    8.7375710 
 
 MADNESS TIMING size : 60 
-initialization  min :    5.8589368 avg :    5.8699317 max :    5.8999760 
-compress        min :    3.3483028 avg :    3.3588200 max :    3.8007889 
-reconstruct     min :    3.3318439 avg :    3.3409368 max :    3.3571081 
-diff            min :   14.6904809 avg :   14.7260115 max :   14.8148911
+initialization  min :    6.0929320 avg :    6.1057091 max :    6.1673129 
+compress        min :    3.7990298 avg :    3.8119446 max :    4.3944380 
+reconstruct     min :    3.2621891 avg :    3.2712067 max :    3.2891600 
+diff            min :    6.8131142 avg :    6.8311786 max :    6.8683190 
 
 MADNESS TIMING size : 120 
 initialization  min :    4.8866780 avg :    4.9214162 max :    5.0718470 

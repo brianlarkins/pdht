@@ -79,3 +79,20 @@ elemsize 128 elements: 100000 iterations: 10000 elapsed time:    6.4815249 s
   [  30000]: local get:    9.6240995 us remote get:       12.3401118 us
   [  50000]: local get:    9.6122292 us remote get:       12.3350014 us
   [ 100000]: local get:    9.6055088 us remote get:       12.3724278 us
+
+MPICH:
+srun -n 4 env PTL_IGNORE_UMMUNOTIFY=1 ./optimesMPI -s 128 -n 100000
+elemsize 128 elements: 100000 iterations: 10000 elapsed time:    3.7786880 s
+  unit: local notfound:    0.7711506 us remote notfound   10.6288195 us
+  unit: local put:         1.1136913 us remote put:       12.4166107 us
+  unit: local update:      0.8237123 us remote update:    12.7779007 us
+  [      1]: local get:    0.8813858 us remote get:       10.5938911 us
+  [     10]: local get:    0.8803129 us remote get:       10.6517792 us
+  [    100]: local get:    0.8804083 us remote get:       10.5934143 us
+  [   1000]: local get:    0.8749008 us remote get:       10.6271982 us
+  [   5000]: local get:    0.8825064 us remote get:       10.6197119 us
+  [  10000]: local get:    0.8789062 us remote get:       10.6128931 us
+  [  20000]: local get:    0.8806229 us remote get:       10.5985880 us
+  [  30000]: local get:    0.8800983 us remote get:       10.6432915 us
+  [  50000]: local get:    0.8733988 us remote get:       10.6459141 us
+  [ 100000]: local get:    0.8765936 us remote get:       10.5678082 us

@@ -1,21 +1,19 @@
 
-ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
-starting run with 960 processes, each with 1000 entries (total reads == 1000)
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536 -i 20
+starting run with 960 processes, each with 1000 entries (total reads == 20000)
 ..
 starting fetches
-put times         : 10301.8108259 / 9462.1219635 / 10742.6660061  ms (avg/min/max)
-get times         : 1491.1563670 / 1195.4109669 / 1663.7439728  ms (avg/min/max)
-total elapsed time: 12409.0259845 / 12406.3251019 / 12422.0027924  ms (avg/min/max)
-put throughput    :        0.611 MBps
-get throughput    :        4.219 MBps      643.796 reads/sec
+put times         : 10308.6513852 / 9374.1021156 / 10744.6708679  ms (avg/min/max)
+get times         :  396.3736505 /  271.0741997 /  529.3830395  ms (avg/min/max)
+total elapsed time: 22961.0169172 / 22958.3849907 / 22980.1950455  ms (avg/min/max)
 
-ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
-starting run with 720 processes, each with 1000 entries (total reads == 1000)
+ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536 -i 4
+starting run with 720 processes, each with 1000 entries (total reads == 4000)
 ..
 starting fetches
-put times         : 8003.8947807 / 7057.2328568 / 8323.8959312  ms (avg/min/max)
-get times         :  698.0522003 /  503.1890869 /  800.6899357  ms (avg/min/max)
-total elapsed time: 9124.4696538 / 9122.8780746 / 9134.6528530  ms (avg/min/max)
+put times         : 8024.0892443 / 7345.7610607 / 8389.4808292  ms (avg/min/max)
+get times         :  419.3851622 /  285.3704691 /  576.4127374  ms (avg/min/max)
+total elapsed time: 10882.0602126 / 10879.9059391 / 10893.3911324  ms (avg/min/max)
 
 ibrun -npernode 24 ./scalingMPI -U -l -v 1000 -q -s 65536
 starting run with 576 processes, each with 1000 entries (total reads == 1000)
@@ -84,13 +82,13 @@ total elapsed time: 1309.9016746 / 1309.8950386 / 1309.9091053  ms (avg/min/max)
 
 
 
-srun -n 480 -c 2 ./scaling -q -u -l -v 1000 -s 65536
-starting run with 480 processes, each with 1000 entries (total reads == 1000)
+srun -n 480 -c 2 ./scaling -q -u -l -v 1000 -s 65536 -i 50
+starting run with 480 processes, each with 1000 entries (total reads == 50000)
 ..
 starting fetches
-put times         : 17872.5373156 / 16545.9055090 / 18315.4523130  ms (avg/min/max)
-get times         :  683.8121500 /  432.4595190 /  904.9339900  ms (avg/min/max)
-total elapsed time: 19426.4095051 / 19405.3046690 / 19441.9502100  ms (avg/min/max)
+put times         :  364.4855278 /  341.8689165 /  374.5172658  ms (avg/min/max)
+get times         :  374.9393263 /  288.1478915 /  545.1932178  ms (avg/min/max)
+total elapsed time: 1035.7846160 / 1035.5967082 / 1035.9792444  ms (avg/min/max)
 
 srun -n 360 -c 2 -N 30 --contiguous ./scaling -q -u -l -v 1000 -s 65536
 starting run with 360 processes, each with 1000 entries (total reads == 1000)
