@@ -30,7 +30,6 @@ void pdht_init() {
   int nlen;
   //MPI_Get_processor_name(pname, &nlen);
   //printf("%d: %s\n", my_rank, pname);
-  fflush(stdout);
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c, 0, sizeof(pdht_context_t));
@@ -40,7 +39,9 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-  
+  if(!c->reply_buf){
+    c->reply_buf = malloc(sizeof(int));
+  }
   if(c->rank % 2){
     MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &(c->split_comm));
   }
@@ -314,6 +315,9 @@ void pdht_fini() {
   
   MPI_Ssend(&msg, sizeof(message_t), MPI_CHAR, target_rank, 1, MPI_COMM_WORLD);
   MPI_Finalize();
+  if(c->reply_buf){
+    free(c->reply_buf);
+  }
   free(c);
 }
 
