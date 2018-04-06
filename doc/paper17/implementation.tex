@@ -128,7 +128,7 @@ the target-side process (e.g. to match an earlier send to a posted receive).
 
 % serial vs. parallel approaches
 Hash tables and key/value stores can be implemented with a myriad of different
-techniques, but are traditionally implemented sequentially as an array of
+techniques but are traditionally implemented sequentially as an array of
 pointers to objects.  Parallel implementations typically distribute entries
 across nodes. In contrast to sequential versions, the distributed store must
 hold the entire value object, rather than just holding a reference to the value
@@ -172,7 +172,7 @@ entry. The ME has a reference to the location in the distributed object array
 and uses the 64-bit hash value produced by the hash function as the matching
 value, ({\em match bits}), in the match list. By using the hashed value of the
 key for the match bits field in the ME, the lookup and communication
-corresponding to read operation can be performed entirely by the Portals
+corresponding to the read operation can be performed entirely by the Portals
 implementation.
 
 % adding new entries
@@ -220,7 +220,7 @@ The value object data is communicated and stored into the memory region defined
 by the match list entry. As seen in Figure \ref{fig:put}b, the table entry
 resides on the owner process, but the match-list entry is still resident on the
 pending match list, rather than the active one. To complete the put operation,
-the inserted entry must have a corresponding entry on the active match list,
+the inserted entry must have a corresponding entry on the active match list
 with the match bits set to the hashed key string. Since the insert operation
 consumed a wildcard entry on the pending PTE, it must also be replaced with a
 new empty ME.
@@ -278,7 +278,7 @@ PDHT also provides an interface to iterate over active entries on the local
 process. This functionality allows for owner-compute style programming idioms
 and allows for communication-free access to global data entities. Remote fetch
 or update operations are not synchronized against local iteration. Overlapping
-both models is trivial in a read-only phase, but may require external
+both models is trivial in a read-only phase but may require external
 synchronization when mixing models in general.
 
 
@@ -311,7 +311,7 @@ synchronization, and counter operations.
 \label{sec:ptl-ext}
 
 {\noindent {\em Progress Thread Elimination:}} A progress thread is a viable
-approach for handling insertion requests, but requires target-side processing
+approach for handling insertion requests but requires target-side processing
 by both Portals and PDHT. Portals provides an experimental feature that allows
 for a triggered match list append operation to occur when an event counter
 exceeds a specified threshold value. We can eliminate the progress thread

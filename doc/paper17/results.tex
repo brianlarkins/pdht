@@ -92,7 +92,7 @@ performance potential of \pdht.
 
 We start by measuring the read latency of the MPI and Portals PDHT
 implementations in a two node configuration with one process per node. As can
-different be seen in Figure~\ref{fig:all-latency}, the latency of
+be seen in Figure~\ref{fig:all-latency}, the latency of
 the native PDHT implemented directly on Portals is faster than that of the MPI
 implementations tested with both MPICH and OpenMPI using Portals communication
 channels. This microbenchmark tests the latency with local hash table sizes of a varying
@@ -109,8 +109,8 @@ Next, we examine the impact of different native PDHT implementation techniques
 described in the implementation section. Figure~\ref{fig:pdht-latency} compares
 the default version with growing latencies with respect to match list length.
 By spreading the key/value entries over multiple Portal table entries (i.e.
-multiple match lists), we see that this improves performance, but still causes
-latencies to grow as more entries are added. Using the unordered matching
+multiple match lists), we see that performance improves, but latencies still
+grow as more entries are added. Using the unordered matching
 feature in the current version of Portals, we see that PDHT is able to run with
 good, flat latencies as the number of local entries increases. Lastly, we see
 the impact of searching the local match list rather than performing a full {\tt
@@ -137,9 +137,9 @@ As shown in Figure~\ref{fig:throughput-small}, we measure the weak scaling
 of \pdht read operations on the key/value store by examining the
 overall throughput of the system. A total of twelve processes are run per node, allowing
 additional cores to be used for Portals progress threads or MPI companion processes.  Each process owns a fixed number of
-hash table elements that are read by a neighboring process. The
-system performs as expected under weak scaling, with overall system
-throughput increasing with the number of processes involved. We compare
+hash table elements that are read by a neighboring process. With overall
+system throughput increasing with the number of processes involved, 
+the system performs as expected under weak scaling. We compare
 PDHT native performance against MPI using the MVAPICH2 runtime.
 
 With smaller
@@ -149,7 +149,7 @@ software simulation of Portals on an InfiniBand network. By increasing the size 
 64KB, data transfers become bandwidth bound and the impact of these overheads on performance becomes negligible.
 Figure~\ref{fig:throughput-big} shows the convergence in overall system
 throughput. Portals-based MPI implementations did not scale favorably with
-either native or optimized MPI; thus we do not report results for these implementations because of performance bugs.
+either PDHT or optimized MPI; thus we do not report results for these implementations because of performance bugs.
 %XXX This is where we should do some 
 %analysis with round-trip communications in native vs. MPI implementations. It's late.
 
@@ -168,9 +168,9 @@ either native or optimized MPI; thus we do not report results for these implemen
 %list traversal overhead that is proportional to the number of elements
 %visited before finding a match.
 
-Collisions are a source of overhead in any distributed hash table.  This, it
-is also useful to explore how the design of the PDHT system can reduce the
-number of collisions that occur when compared with  more traditional direct
+Collisions are a source of overhead in any distributed hash table. We also explored
+how the design of the PDHT system can reduce the number of collisions that 
+occur when compared with  more traditional direct
 array-indexed distributed tables. The benchmark code used in another comparison
 of UPC, MPI, and SHMEM-based approaches to distributed hash
 tables~\cite{maynard:12} was adapted for use with PDHT. This benchmark is
@@ -260,7 +260,7 @@ The differentiation operation is an irregular operation and is easily expressed
 using spatial tree coordinates, but is very difficult using traditional
 message-passing (due to tree irregularity) and PGAS (due to physical addressing
 requirements). As shown in a Fig.~\ref{fig:diff}a with a 1-D function tree,
-taking the derivative at node $i$, requires a convolution with coefficients
+taking the derivative at node $i$ requires a convolution with coefficients
 from nodes $i-1$ and $i+1$ at the same level within the tree. If these nodes
 do not exist, the closest ancestor node must be found and expanded to provide
 coefficients at the correct level. 
@@ -312,7 +312,7 @@ Figure~\ref{fig:meraculous}. The input file for this experiment was the {\tt
 suite. This input set consists of 96 million sequences, each of which must have
 an ME in Portals. At small scale, this consumes a much greater number of
 Portals resources than is typically supported. On the other end, adding 
-processes reduces Portals resources, but runs out of work quickly.
+processes reduces Portals resources but runs out of work quickly.
 
 \begin{figure}
   \centering
