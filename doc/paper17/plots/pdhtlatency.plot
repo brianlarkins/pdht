@@ -10,7 +10,7 @@ set output "pdhtlatency.eps"
 set xlabel "Number of Entries"
 set logscale x
 #set xrange [100:100000]
-set xtics (1,10,100,"1k" 1000,"10k" 10000, "25k" 25000, "100k" 100000, "" 150000)
+#set xtics (1,10,100,"1k" 1000,"10k" 10000, "25k" 25000, "100k" 100000, "" 150000)
 set ylabel "Read Latency (usec)"
 set logscale y
 #set yrange [.3:850]

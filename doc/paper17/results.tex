@@ -135,20 +135,23 @@ access latency by an order of magnitude.
 
 As shown in Figure~\ref{fig:throughput-small}, we measure the weak scaling
 of \pdht read operations on the key/value store by examining the
-overall throughput of the system. Each process owns a fixed number of
-hash table elements which are read by a neighboring process. The
+overall throughput of the system. A total of twelve processes are run per node, allowing
+additional cores to be used for Portals progress threads or MPI companion processes.  Each process owns a fixed number of
+hash table elements that are read by a neighboring process. The
 system performs as expected under weak scaling, with overall system
 throughput increasing with the number of processes involved. We compare
-PDHT native performance against MPI using the MVAPICH2 runtime. With smaller
-entry sizes, we can see that MVAPICH2 performs better than PDHT. 
+PDHT native performance against MPI using the MVAPICH2 runtime.
 
+With smaller
+entry sizes, we can see that MVAPICH2 performs better than PDHT. 
 This performance gap is largely due to the increased latencies when using a
-Portals-based implementation. By increasing the size of a key/value entry to
-64KB, we minimize the impact of latency on this benchmark.
+software simulation of Portals on an InfiniBand network. By increasing the size of a key/value entry to
+64KB, data transfers become bandwidth bound and the impact of these overheads on performance becomes negligible.
 Figure~\ref{fig:throughput-big} shows the convergence in overall system
 throughput. Portals-based MPI implementations did not scale favorably with
-either native or optimized MPI. XXX This is where we should do some 
-analysis with round-trip communications in native vs. MPI implementations. It's late.
+either native or optimized MPI; thus we do not report results for these implementations because of performance bugs.
+%XXX This is where we should do some 
+%analysis with round-trip communications in native vs. MPI implementations. It's late.
 
 
 %To verify this, we measure the performance of retrieving elements from
@@ -165,7 +168,8 @@ analysis with round-trip communications in native vs. MPI implementations. It's 
 %list traversal overhead that is proportional to the number of elements
 %visited before finding a match.
 
-It is also useful to explore how the design of the PDHT system can reduce the
+Collisions are a source of overhead in any distributed hash table.  This, it
+is also useful to explore how the design of the PDHT system can reduce the
 number of collisions that occur when compared with  more traditional direct
 array-indexed distributed tables. The benchmark code used in another comparison
 of UPC, MPI, and SHMEM-based approaches to distributed hash
@@ -263,7 +267,8 @@ coefficients at the correct level.
 
 
 Figures~\ref{fig:mad-compress}--\ref{fig:mad-diff} show the performance of the
-Portals-based PDHT implementation relative to the MPI implementation.
+Portals-based PDHT implementation relative to the MPI implementation in a strong
+scaling experiment.
 
 \begin{figure}
   \centering
@@ -297,8 +302,8 @@ linear subgraphs. These subgraphs correspond to contiguous sequences of
 genomic data. Meraculous is written in UPC and uses a hash table
 to represent the de Bruijn graph. 
 
-We have adapted the Meraculous benchmark to use PDHT to store the de Bruijn
-graph in the place of the UPC hash table. Both structures utilize the same key
+We have adapted the Meraculous benchmark~\cite{georganas:14} to store the de Bruijn
+graph using \pdht instead of a UPC hash table. Both structures utilize the same key
 structure and creation algorithm. The graph traversal is performed in parallel
 by iterating through all local entries in the table and walking both the left
 and right ends of the sequence. The results of this experiment are shown in
