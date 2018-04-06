@@ -3,7 +3,7 @@
 This work focuses on an efficient implementation of a runtime system that
 provides a partitioned, global logical address space (PGLAS). Similar in spirit
 to traditional PGAS data models, the PGLAS distinguishes itself by logically
-addressing data elements with a {\em key} which is meaningful to the
+addressing data elements with a {\em key}, which is meaningful to the
 application. Keys are mapped to a unique location in the partitioned global
 address space. The application may iterate over local keys or get locality
 information for the logically addressed element in order to support
@@ -76,8 +76,7 @@ association to persist until explicitly released by the application. Lastly,
 tagged MPI requests for data objects that do not exist will result in the
 request being deferred to the unexpected message list, rather than a negative
 acknowledgement. While this is reasonable for a two-sided communication model,
-it makes more sense to explicitly reject PGLAS requests for non-existent data
-objects.
+explicitly rejecting PGLAS requests for non-existent data objects is prudent.
 
 \subsection{Distributed Sparse Data}
 
@@ -87,7 +86,7 @@ Sparse data structures are commonly used in a number of important HPC
 applications, which can create challenges in obtaining high performance. Matrix 
 and tensor representations frequently have to contend with sparse data, 
 relying on specialized formats such as compressed sparse row (CSR) and variants.  
-Other problems, such as grid/mesh solvers, or N-body simulation are naturally 
+Other problems, such as grid/mesh solvers or N-body simulation are naturally 
 expressed with spatial decomposition data structures such as quadtrees and 
 octrees. 
 

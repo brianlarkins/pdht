@@ -1,4 +1,4 @@
-\section{Implementation}
+ethroughput increasing with the number of processes involved.section{Implementation}
 
 To realize our PGLAS, we have implemented a parallel distributed key/value store, 
 PDHT. A novel aspect of this system is its implementation directly on top of the
@@ -8,8 +8,8 @@ data abstractions that map nicely onto the PGLAS operations supported by PDHT.
 PDHT adopts a one-sided communication model which operates with PGAS-like
 semantics. By implementing PDHT directly with the Portals interface, we can
 take advantage of message-passing features that permit an efficient,
-hardware-offload friendly version of a PGLAS. It is helpful to describe
-some of the primary abstractions with the Portals network model in order 
+hardware-offload friendly version of a PGLAS. Describing
+some of the primary abstractions with the Portals network model is helpful 
 to better understand the PDHT implementation.
 
 \subsection{Portals Networking Interface}
@@ -36,7 +36,7 @@ The Portals matching interface was designed to support systems that provide a
 two-sided messaging model with guarantees about message ordering. The
 implementation strategy that underlies PDHT is to separate these two concerns.
 PDHT utilizes the matching interface operations to fulfill put and get
-operations, but makes no guarantees about the interleaving of requests. We
+operations but makes no guarantees about the interleaving of requests. We
 review the primary concepts in the Portals interface to provide clarity for
 discussing the implementation of PDHT.
 
@@ -63,13 +63,13 @@ initiator and target roles. Initiator processes define a {\em memory
 operations as well as ancillary structures used to track communication
 events (such as completion) for these operations.
 
-Target processing is expressed with respect to a {\em portal table}. There is
-one portal table for each NI, containing multiple entries that separate and
+Target processing is expressed with respect to a {\em portal table}. Each NI has one portal 
+table containing multiple entries that separate and
 classify communication channels between endpoints.  Each {\em portal table
   entry} (PTE) is identified by a unique index into the Portal table. The index
 for a specific PTE is a required parameter of all Portals communication
 operations. Each PTE maintains a list of memory regions that are valid for
-communication operations as well as an event queue which is used to track
+communication operations as well as an event queue, which is used to track
 target-side asynchronous notifications.  Some completion information and
 notifications may only be visible to the initiator and not the target, or vice
 versa.
@@ -80,7 +80,7 @@ with the entry. If the match criteria are satisfied, the communication
 operation commences working on corresponding memory region. Matching criteria
 consist of multiple parameters, including a 64-bit {\em match bits} field
 that must be an exact match in order for an incoming request to to proceed
-with the given ME. For example, a process may post an {\tt MPI\_Recv()} which
+with the given ME. For example, a process may post an {\tt MPI\_Recv()}, which
 creates a new ME on the target PTE with a specific match bits value. Later,
 another process would issue an {\tt MPI\_Send()} communication request with
 the same match bits that corresponds to the previous receive operation.
@@ -220,7 +220,7 @@ The value object data is communicated and stored into the memory region defined
 by the match list entry. As seen in Figure \ref{fig:put}b, the table entry
 resides on the owner process, but the match-list entry is still resident on the
 pending match list, rather than the active one. To complete the put operation,
-the inserted entry must have a corresponding entry on the active match list
+the inserted entry must have a corresponding entry on the active match list,
 with the match bits set to the hashed key string. Since the insert operation
 consumed a wildcard entry on the pending PTE, it must also be replaced with a
 new empty ME.
