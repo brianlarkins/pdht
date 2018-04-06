@@ -10,7 +10,7 @@ set output "diff.eps"
 set xlabel "Processes"
 set logscale x 2
 #set xrange [24:256]
-set xtics (24, "" 40, 60, 120, 160, 240)
+set xtics (24, 40, 60, 120, 160, 240)
 set ylabel "Execution Time (sec)"
 #set yrange [0:40]
 #set ytics (1,5,10,15,20,25,30,35,40)
