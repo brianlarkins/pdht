@@ -310,7 +310,8 @@ synchronization, and counter operations.
 \subsection{Performance Improvements}
 \label{sec:ptl-ext}
 
-{\noindent {\em Progress Thread Elimination:}} A progress thread is a viable
+\subsubsection{Progress Thread Elimination}
+A progress thread is a viable
 approach for handling insertion requests but requires target-side processing
 by both Portals and PDHT. Portals provides an experimental feature that allows
 for a triggered match list append operation to occur when an event counter
@@ -331,13 +332,14 @@ the pending match list, but the active ME's match bits are unknown until a new
 entry is placed via a {\tt PtlPut()} on the pending list. This issue does not
 impact the current reference implementations of either PDHT or Portals. These
 issues could be resolved with alternative Portals implementations under the
-current triggered operation semantics by "stacking" multiple triggered
+current triggered operation semantics by ``chaining'' multiple triggered
 operations. Ideally, this additional functionality and semantics should be
 incorporated into the Portals specification, in order to ensure that these
-programming models can be efficiently implemented with hardware offload
-systems.\\
+programming models are portable across Portals implementations.
 
-{\noindent {\em Unordered Matching:}} PDHT is able to provide efficient get
+\subsubsection{Unordered Matching}
+
+PDHT is able to provide efficient get
 operations by having an ME for every entry in the PDHT key/value store. This
 design results in match lists that may contain many thousands of entries. When
 a get operation is issued, the target side must search the match list for a
@@ -347,7 +349,7 @@ this approach is that the match list is conventionally implemented as a
 linked-list, which much be searched upon any message request. If a process is
 hosting a large number of key/value entries, searching this list may be
 prohibitively expensive. Traditional uses of the matching interface, such as
-implementing MPI message matching would rarely see match list lengths on the
+implementing MPI message matching, would rarely see match list lengths on the
 scale as may be used in PDHT (one per element) \cite{flajslik:16}.
 
 Indeed, initial results showed that matchlist length had a critical impact on
@@ -367,17 +369,20 @@ captured with a linked list. However, under the PGLAS approach, no ordering
 constraint exists and sequentially searching a linked list unnecessarily slows
 performance.
 
-The Portals 4 reference implementation recently accepted a patch to support
-unordered matching operations on a Portals matching interface as an
-experimental feature. This was implemented by adding an option that is
+\sloppypar
+We have therefore proposed the inclusion of an unordered matching feature on the Portals matching interface
+and the corresponding patches has been merged into the Portals reference implementation.
+We implemented this extension by adding a {\tt PTL\_PT\_MATCH\_UNORDERED} option that is
 specified when creating a new PTE. When the unordered matching option is set,
 the match list append operation stores a reference to the ME in a lightweight
 hash table~\cite{uthash}.  The search process is also amended to circumvent a
 list traversal by first checking the hash table for a matching entry. This
 results in much improved performance with respect to the initial
-implementation.\\
+implementation.
 
-{\noindent {\em Local Match List Searching:}} Initially, all accesses to
+\subsubsection{Local Match List Searching}
+
+Initially, all accesses to
 distributed value objects were made using {\tt PtlGet()} operations. The
 Portals reference implementation makes no distinction between local and remote
 data, which adds substantial overhead for operations on local data.  
@@ -404,8 +409,11 @@ improvement in access to local data.
 A hash collision occurs when multiple keys map to an identical rank/match bits
 pair. By default, PDHT detects collisions by comparing the requested key value
 against the key of the retrieved object and reporting the condition to the
-application. PDHT can handle collisions transparently within the system, but
-this is not a common problem in practice.
+application. PDHT can also handle collisions transparently within the system by reserving
+a small number of match bits to use as alias identifiers and probing multiple
+aliases on the requested key when a collision is detected. However, we have
+observed that many applications can provide a hash function that is
+collision-free.
 
 In traditional hash tables, a hashed key, $K$, is used with modular arithmetic
 to select a location in an array of elements of size $N$. The hash function
