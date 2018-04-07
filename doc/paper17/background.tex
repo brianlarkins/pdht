@@ -13,7 +13,7 @@ and UPC), an offset into a remote buffer (MPI), or an index into an array
 (Fortran Coarrays). 
 
 While PGLAS and PGAS models differ in addressing and layout, PGLAS shares a
-one-sided communication model and asynchronous data accesss common to existing
+one-sided communication model and asynchronous data access common to existing
 PGAS approaches. Data is accessed using one-sided get, put, and atomic operations.
 The PGLAS model is a member of the larger family of distributed key/value stores where
 the organization and access of data follow a PGAS model.
@@ -93,13 +93,13 @@ octrees.
 In these instances, PGLAS provides a natural mapping between an application's 
 inherent indexing system and the corresponding distributed data. Global 
 distributed key/value stores make it straightforward to deal with sparse data 
-and are helpful in avoiding the complications and difficulty in parallelizing 
+and are helpful in avoiding the complications of parallelizing 
 these classes of applications.
 
 \subsection{Related Work} 
 
 Logically addressing data across memories in a distributed
-system has been explored in a number of other models.  Distributed,
+system has been explored with other models.  Distributed,
 shared key/value stores are an intrinsic part of the Piccolo
 programming model~\cite{power:10}. The Linda programming
 model~\cite{ahuja:86} is built around tuple spaces that allow data
@@ -134,4 +134,4 @@ locality~\cite{larkins:12}.
 %%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "paper"
-%%% End:
+%% End:

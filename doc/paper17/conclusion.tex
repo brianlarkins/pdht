@@ -6,14 +6,14 @@ Hash Table (PDHT).  PDHT system makes novel use of the Portals networking
 interface by re-purposing its message-matching system to operate as an
 acceleration mechanism for a global, distributed key/value store.
 
-This work has led to several insights into adapting Portals data abstractions
-onto higher-level programming models. In particular, the separation of the
-message matching mechanics from the requirement for ordered delivery is
-critical to good performance with PDHT. We see future opportunities for
-adapting the Portals triggered operations to manage PDHT structures. Lastly,
-this work has motivated several extensions to the Portals model, including
-functionality allowing applications to search the priority list when responding
-to local matching queries.
+This work has led to several insights into adapting Portals abstractions onto
+higher-level programming models. In particular, the separation of the message
+matching mechanics from required delivery ordering is key to good
+performance with PDHT. We see future opportunities for adapting the Portals
+triggered operations to manage PDHT structures. Lastly, this work has motivated
+several extensions to the Portals model, including functionality allowing
+applications to search the priority list when responding to local matching
+queries.
 
 We envision that a number of applications that rely on sparse methods and
 irregularly structured data can be readily adapted to the PGLAS parallel
@@ -28,8 +28,9 @@ This work used the Extreme Science and Engineering Discovery Environment
 (XSEDE), which is supported by National Science Foundation grant number
 ACI-1053575.
 
-We would also like to acknowledge Ryan Grant and Todd Kordenbrock at Sandia
+We would like to acknowledge Ryan Grant and Todd Kordenbrock at Sandia
 National Laboratories for their help with Portals-related issues and the
-generous use of Sandia test bed facilities as well as Evangelos Georganas at
+use of Sandia facilities as well as Evangelos Georganas at
 Intel for his assistance with the Meraculous benchmark.
 \end{acks}
+\vspace{-3mm}

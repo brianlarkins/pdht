@@ -25,7 +25,7 @@ The Portals interface provides low-level data abstractions that can be used to
 implement both PGAS and message-passing run-times. PDHT relies on a one-sided
 communication model that aims to avoid processor involvement on the target
 node. Portals supports messaging via a {\em matching interface} model intended to
-support MPI, two-sided matched send/receive pairs. It also provides a
+support MPI (i.e. two-sided matched send/receive pairs). It also provides a
 lightweight {\em non-matching} interface that is intended to support one-sided
 communications without the need for the matching and ordering semantics
 required by MPI. Our implementation uses a novel application of the Portals
@@ -153,7 +153,7 @@ rank and 64-bit hash value. Each key is mapped to a deterministic physical
 location within the distributed key/value store.
 
 A PDHT storage structure is represented as a distributed array of objects, with
-partitions on all processes. Upon the creation of a new PHDT store, two portal
+partitions on all processes. Upon the creation of a new PDHT store, two portal
 table entries (PTEs) are allocated. The first PTE is used as the {\em pending}
 match list, which is used solely for insert operations.  The second PTE is used
 for the {\em active} match list, and is used for all other operations. 
@@ -352,7 +352,7 @@ prohibitively expensive. Traditional uses of the matching interface, such as
 implementing MPI message matching, would rarely see match list lengths on the
 scale as may be used in PDHT (one per element) \cite{flajslik:16}.
 
-Indeed, initial results showed that matchlist length had a critical impact on
+Indeed, initial results showed that match list length had a critical impact on
 the access times within PDHT~\cite{comhpc16}. Our first approach to deal with
 this issue was to adapt the hash function to map a logical key to a tuple
 including the rank, match bits, and a new PTE index value. The PDHT
@@ -417,19 +417,19 @@ collision-free.
 
 In traditional hash tables, a hashed key, $K$, is used with modular arithmetic
 to select a location in an array of elements of size $N$. The hash function
-provides a mapping between $K \rightarrow N$ elements.  If the size of the key
+gives a mapping between $K \rightarrow N$ elements.  If the size of the key
 space, $|K|$, is much larger than $N$, the likelihood of collisions increases.
-Conventional approaches are to store a list of objects within each array entry
+Conventional approaches store a lists of objects within each array entry
 (chaining) to limit the overhead of collisions.
 
 While PDHT also uses an array to hold the collection of hash table entries, the
 indexing into this array is performed indirectly, by Portals. At
-initialization, match list entries are created that map to specific table
-entries. While each table may be of size $N$, each of the $N$ entries is
-indexed by the Portals match bits value, using a hash function that maps from
-$K \rightarrow 2^{64}$. Compared to traditional implementations, $N \ll
-2^{64}$, which has the impact of dramatically lowering the probability of a
-collision, given a reasonable hash function.
+initialization, match list entries map to specific table entries. While each
+table may be of size $N$, each of the $N$ entries is indexed by the Portals
+match bits value, using a hash function that maps from $K \rightarrow 2^{64}$.
+Compared to traditional implementations, $N \ll 2^{64}$, which has the impact
+of dramatically lowering the probability of a collision, given a reasonable
+hash function.
 
 
 % get operation

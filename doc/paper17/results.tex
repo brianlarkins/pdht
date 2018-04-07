@@ -267,19 +267,19 @@ coefficients at the correct level.
 
 
 Figures~\ref{fig:mad-compress}--\ref{fig:mad-diff} show the performance of the
-Portals-based PDHT implementation relative to the MPI implementation in a strong
-scaling experiment.
+Portals-based PDHT implementation relative to the MPI implementation.
+%in a strong scaling experiment.
 
 \begin{figure}
   \centering
-  \includegraphics[width=.9\linewidth]{plots/compress}
+  \includegraphics[width=.88\linewidth]{plots/compress}
   \caption{MADNESS compression performance ($\mu$ sec)}
   \label{fig:mad-compress}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=.9\linewidth]{plots/reconstruct}
+  \includegraphics[width=.88\linewidth]{plots/reconstruct}
   \caption{MADNESS reconstruction performance ($\mu$ sec)}
   \label{fig:mad-reconstruct}
 \end{figure}
@@ -287,7 +287,7 @@ scaling experiment.
 
 \begin{figure}
   \centering
-  \includegraphics[width=.9\linewidth]{plots/diff}
+  \includegraphics[width=.88\linewidth]{plots/diff}
   \caption{MADNESS differentiation performance ($\mu$ sec)}
   \label{fig:mad-diff}
 \end{figure}
@@ -302,17 +302,44 @@ linear subgraphs. These subgraphs correspond to contiguous sequences of
 genomic data. Meraculous is written in UPC and uses a hash table
 to represent the de Bruijn graph. 
 
-We have adapted the Meraculous benchmark~\cite{georganas:14} to store the de Bruijn
-graph using \pdht instead of a UPC hash table. Both structures utilize the same key
-structure and creation algorithm. The graph traversal is performed in parallel
-by iterating through all local entries in the table and walking both the left
-and right ends of the sequence. The results of this experiment are shown in
-Figure~\ref{fig:meraculous}. The input file for this experiment was the {\tt
-  human-chr14.txt.ufx.bin} data set available as a part of the NERSC benchmark
-suite. This input set consists of 96 million sequences, each of which must have
-an ME in Portals. At small scale, this consumes a much greater number of
-Portals resources than is typically supported. On the other end, adding 
-processes reduces Portals resources but runs out of work quickly.
+
+We have adapted the Meraculous benchmark~\cite{georganas:14} to store the de
+Bruijn graph using \pdht instead of a UPC hash table. Both structures utilize
+the same key structure and creation algorithm. The graph traversal is performed
+in parallel by iterating through all local entries in the table and walking
+both the left and right ends of the sequence. The results of this experiment
+are shown in Figure~\ref{fig:meraculous}\footnote{We are in the process of
+  gathering a full set of data for this experiment.}. The input file for this
+experiment was the {\tt human-chr14.txt.ufx.bin} data set available as a part
+of the NERSC benchmark suite. This input set consists of 96 million sequences,
+each of which must have an ME in Portals. At small scale, this consumes a much
+greater number of Portals resources than is typically supported. \pdht,
+however, completes without encountering collisions. On the other end, adding
+processes reduces Portals resources but runs out of work quickly. 
+
+{\small
+\begin{table}[h]
+  \centering
+  \begin{tabular}[h]{|c|c|c|}\hline
+    processes & UPC & PDHT \\\hline
+    10 & 43.225\% & 0.0\%\\\hline
+    20 & 41.953\% & 0.0\%\\\hline
+    40 & 41.344\% & 0.0\%\\\hline
+  \end{tabular}
+  \vspace{1mm}
+  \caption{Meraculous UPC vs PDHT collisions}
+  \label{tbl:collisions}
+\end{table}
+}
+\vspace{-5mm}
+
+Table~\ref{tbl:collisions} provides additional evidence that PDHT outperforms
+the default UPC array-based implementation of a hash table with respect to
+collisions. Collisions are counted as any global hash table access that is not
+satisfied without traversing a portion of the linked-list chain for a given 
+hash table array element.
+
+    
 
 \begin{figure}
   \centering

@@ -15,5 +15,5 @@ set yrange [0:175]
 set ytics (0, 25, 50, 75 ,100, 125, 150, 175)
 set key top right
 
-plot 'shepard.meraculous.dat' index 0 using 1:3 title "GCC-UPC" lw 2
-#     'shepard.meraculous.dat' index 0 using 1:3 title "MVAPICH2"
+plot 'shepard.meraculous.dat' index 0 using 1:3 title "GCC-UPC" lw 2, \
+     'shepard.meraculous.dat' index 0 using 1:5 title "PDHT"
