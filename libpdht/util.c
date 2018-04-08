@@ -285,7 +285,7 @@ void pdht_print_active(pdht_t *dht, void kprinter(void *key), void vprinter(void
     hte = (_pdht_ht_trigentry_t *)iter;
     key = (long *)hte->key;
     if (hte->ame != PTL_INVALID_HANDLE) {
-      pdht_dprintf("elem %d: mbits: %12"PRIx64" ptr: %p", i, hte->me.match_bits, &hte->key);
+      pdht_dprintf("elem %d: mbits: %12"PRIx64" ptr: %p ", i, hte->me.match_bits, &hte->key);
       //pdht_dprintf(" pkey: %ld ", key[0]);
       //pdht_dprintf(" pkey: [%ld,%ld,%ld@%ld] ", key[0],key[1],key[2],key[3]); // MADNESS
       kprinter(hte->key);

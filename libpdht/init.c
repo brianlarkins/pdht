@@ -45,7 +45,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   if (stat("/dev/ummunotify",&fileStat) != 0){
     setenv("PTL_IGNORE_UMMUNOTIFY","1",1);
   }
-  
+
   // setenv("PTL_DISABLE_MEM_REG_CACHE","1",1);
 
   //setenv("PTL_LOG_LEVEL","3",1);  // set c->verbosity, in pdht_init
@@ -69,12 +69,9 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
   if (!c) {
     pdht_init(&cfg);
   }
-	  
 
   dht = (pdht_t *)malloc(sizeof(pdht_t));
   memset(dht, 0, sizeof(pdht_t));
-
-
 
   if (keysize > PDHT_MAXKEYSIZE) {
     pdht_eprintf(PDHT_DEBUG_NONE, "pdht_create: keysize greater than PDHT_MAXKEYSIZE: %d > %d\n", keysize, PDHT_MAXKEYSIZE);

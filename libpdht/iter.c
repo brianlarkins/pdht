@@ -38,7 +38,7 @@ int pdht_hasnext(pdht_iter_t *it) {
   int ret = 0;
   _pdht_ht_entry_t     *phte;
   _pdht_ht_trigentry_t *thte;
-  char *peek = it->iterator + it->dht->entrysize;
+  char *peek = it->iterator;
 
   switch (it->dht->pmode) {
     case PdhtPendingPoll:
@@ -52,7 +52,7 @@ int pdht_hasnext(pdht_iter_t *it) {
         ret = 1;
       break;
   }
-
+  //pdht_dprintf("returning %d: %p %p %d\n", ret, thte, &thte->ame, (int)thte->ame);
   return ret;
 }
 
