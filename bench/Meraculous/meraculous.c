@@ -85,12 +85,46 @@ int rlookups = 0;
 int use_pdht = 1;
 pdht_t *pdht;
 pdht_iter_t pdht_iter;
+int prank;
 
 //void mer_hash(pdht_t *ht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   //*mbits = hashkmer(htsize, key);
   //*ptindex = *mbits % ht->ptl.nptes;
   //(*rank).rank = *mbits % c->size;
 //}
+
+void mkprinter(void *key) {
+  char *p = (char *)key;
+  uint64_t hi, lo;
+  char *q = (char *)&hi;
+
+  q += 3;
+  hi = 0;
+  memcpy(q, &p[0], 5);
+  memcpy(&lo, &p[5], 8);
+  printf("%d: key: %llx%llx\n", MYTHREAD, hi, lo);
+}
+
+void fkprinter(FILE *f, void *key) {
+  char *p = (char *)key;
+  uint64_t hi, lo, hash;
+  int ptindex;
+  ptl_process_t rank;
+  char *q = (char *)&hi;
+
+  q += 3;
+  hi = 0;
+  memcpy(q, &p[0], 5);
+  memcpy(&lo, &p[5], 8);
+
+  pdht->hashfn(pdht,key,&hash, &ptindex, &rank);
+  fprintf(f, "h:%llx k:%llx%llx\n", hash, hi, lo);
+}
+
+void mvprinter(void *value) {
+  htentry_t *hte = (htentry_t *)value;
+  printf("%d: val: used_flag: %d check: %d\n", MYTHREAD, hte->used_flag, hte->check);
+}
 
 int main(int argc, char **argv) {
    int fileNo = 0;
@@ -186,11 +220,11 @@ int main(int argc, char **argv) {
      pdht_config_t cfg;
      cfg.nptes = 1;
      cfg.pendmode = PdhtPendingTrig;
-     cfg.maxentries = 3000000;
+     cfg.maxentries = 2000000;
      //cfg.maxentries = 100000;
-     cfg.pendq_size = 5000;
+     cfg.pendq_size = 1000000;
      cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
-     cfg.quiet = 0;
+     cfg.quiet = 1;
      cfg.local_gets = PdhtSearchLocal;
      cfg.rank = MYTHREAD;
      pdht_tune(PDHT_TUNE_ALL, &cfg);
@@ -273,6 +307,9 @@ int main(int argc, char **argv) {
       printf("\nTime for constructing UFX hash table is : %f seconds\n", con_time);
    }
 #endif
+   //if (MYTHREAD == 0) {
+   // pdht_print_active(pdht, mkprinter, mvprinter);
+   //}
    
    /* UU-mer graph traversal */
 
@@ -505,7 +542,6 @@ int main(int argc, char **argv) {
 #endif
    
    upc_barrier;
-   printf("%d: local: %d remote: %d\n", MYTHREAD, llookups, rlookups);
 
    return 0;
 }

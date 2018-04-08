@@ -228,22 +228,24 @@ htentry_t *lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *km
    unsigned char packed_key[KMER_PACKED_LENGTH];
    unsigned char remote_packed_key[KMER_PACKED_LENGTH];
    pdht_status_t ret;
+   memset(cached_copy, 0, sizeof(htentry_t));
 
    packSequence(kmer, packed_key, KMER_LENGTH);
    //shared[] list_t *result;
    bucket_t local_buc;
-
-   ret = pdht_get(pdht, packed_key, &cached_copy);
+   //mkprinter(packed_key);
+   ret = pdht_get(pdht, packed_key, cached_copy);
+   //mkprinter(cached_copy->packed_key);
    if (ret != PdhtStatusOK) {
      switch (ret) {
      case PdhtStatusNotFound:
-       LOG("pdht entry not found\n");
+       //LOG("%d: lookup_kmer_and_copy: pdht entry not found\n", MYTHREAD);
        break;
      case PdhtStatusCollision:
-       LOG("pdht lookup collision\n");
+       LOG("%d: pdht lookup collision : %d\n", MYTHREAD, cached_copy->check);
        break;
      default:
-       LOG("pdht lookup error\n");
+       LOG("%d: lookup_kmer_and_copy: pdht lookup error : %d\n", MYTHREAD, cached_copy->check);
        break;
      }
      return NULL;
@@ -286,9 +288,8 @@ htentry_t *lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *km
 #endif // #if 0 non-PDHT removal
 }
 
-htentry_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer) {
-   htentry_t cached_copy;
-   return lookup_kmer_and_copy(hashtable, kmer, &cached_copy);
+htentry_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer, htentry_t *cached_copy) {
+   return lookup_kmer_and_copy(hashtable, kmer, cached_copy);
 }
 
 /* find the entry for this kmer or reverse complement */
@@ -305,7 +306,7 @@ htentry_t *lookup_least_kmer_and_copy(hash_table_t *dist_hashtable, const char *
 }
 
 htentry_t *lookup_least_kmer(hash_table_t *dist_hashtable, const char *next_kmer, int *was_least) {
-   htentry_t cached_copy;
+   htentry_t cached_copy; // XXX wrongness - this function not used
    return lookup_least_kmer_and_copy(dist_hashtable, next_kmer, &cached_copy, was_least);
 }
 
@@ -340,7 +341,7 @@ htentry_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const char *
    if (lookup_res == NULL) {
       return lookup_res;
    }
-   
+
    /* Find extensions of the new kmer found in the hashtable */
    set_ext_of_kmer(&copy, is_least, new_seed_le, new_seed_re);
    

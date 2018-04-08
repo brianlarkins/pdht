@@ -13,14 +13,22 @@ SHARED_HEAP=192M
 #tag=ecoli
 
 export PTL_IGNORE_UMMUNOTIFY=1
+#export PTL_LOG_LEVEL=2
+#export PTL_DEBUG=1
+export UPC_NODE_LOCAL_MEM=0
 
 KMER_LENGTH=51
 ufx=./human-chr14.txt.ufx.bin
 tag=human-chr14
 
+rm -f logs/mer.*
 #srun -n 20 -N 2 env GASNET_PHYSMEM_MAX='83 GB' ./meraculous-$KMER_LENGTH-testing \
 #srun -n 280 -N 28 -c 2 --ntasks-per-node=10 env UPC_SHARED_HEAP_SIZE=2G ./meraculous-$KMER_LENGTH-testing \
-srun -n 80 -N 8 -c 2 --ntasks-per-node=10 env UPC_SHARED_HEAP_SIZE=2G ./meraculous-$KMER_LENGTH-testing \
+#srun -n 120 -N 12 --ntasks-per-node=10 env UPC_SHARED_HEAP_SIZE=4G ./meraculous-$KMER_LENGTH-tes
+#srun -o out.log -n 40 -N 8 -c 2 --ntasks-per-node=5 env UPC_SHARED_HEAP_SIZE=8G ./meraculous-$KMER_LENGTH-testing \
+#srun -n 40 -N 8 -c 2 --ntasks-per-node=5 env UPC_SHARED_HEAP_SIZE=8G ./meraculous-$KMER_LENGTH-testing \
+#srun -o logs/mer.%t -n 40 -N 20 -c 2 --ntasks-per-node=2 env UPC_SHARED_HEAP_SIZE=8G ./meraculous-$KMER_LENGTH-testing  \
+srun -n 40 -N 20 -c 2 --ntasks-per-node=2 env UPC_SHARED_HEAP_SIZE=8G ./meraculous-$KMER_LENGTH-testing \
 		-m  $KMER_LENGTH \
 		-i $ufx \
 		-o $tag \

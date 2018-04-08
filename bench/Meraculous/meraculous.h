@@ -16,6 +16,8 @@
 /* TODO: Define different block sizes according to data structure */
 #define BS 1
 
+int eprintf(const char *format, ...);
+
 FILE *mylog;
 #define LOG(...) fprintf(mylog == NULL ? stderr : mylog, __VA_ARGS__)
 
@@ -246,6 +248,7 @@ struct list_t{
 
 struct htentry_s {
   UPC_INT64_T used_flag;
+  int check;
   shared[] contig_ptr_box_list_t *my_contig;     /* Pointer to the "box" of the contig ptr this k-mer has been added to */ \
   unsigned char packed_key[KMER_PACKED_LENGTH];  /* The packed key of the k-mer */       \
   unsigned char packed_extensions;               /* The packed extensions of the k-mer */
@@ -288,6 +291,18 @@ struct contigScaffoldMap_t {
    int sStart;
    int sEnd;
 };
+
+void print_key(unsigned char k[KMER_PACKED_LENGTH]) {
+  printf("%d: key: ");
+  for (int i=0; i<KMER_PACKED_LENGTH; i++) {
+    printf("%d ");
+  }
+  printf("\n"); fflush(stdout);
+}
+
+void fkprinter(FILE *f, void *key);
+void mkprinter(void *key);
+void mvprinter(void *value);
 
 #endif // MERACULOUS_H
 

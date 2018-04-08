@@ -67,7 +67,7 @@ char reverseComplementBaseExt(const char base) {
 		case 'X':
 			rc = 'X'; break;
 		default:
-			fprintf(stderr, "unexpected base in revereseComplementBaseExt: %c\n", base);
+			fprintf(stderr, "%d: unexpected base in revereseComplementBaseExt: %d\n", MYTHREAD, base);
 			assert(0);
 	}
 	return rc;
