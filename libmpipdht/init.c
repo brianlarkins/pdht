@@ -26,12 +26,10 @@ void pdht_init() {
   
   MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
-
   char pname[MPI_MAX_PROCESSOR_NAME];
   int nlen;
   //MPI_Get_processor_name(pname, &nlen);
   //printf("%d: %s\n", my_rank, pname);
-  fflush(stdout);
   // setup global context
   c = (pdht_context_t *)malloc(sizeof(pdht_context_t));
   memset(c, 0, sizeof(pdht_context_t));
@@ -41,7 +39,9 @@ void pdht_init() {
   c->rank = my_rank;
   c->maxbufsize = 0;
   c->pid = getpid();
-  
+  if(!c->reply_buf){
+    c->reply_buf = malloc(sizeof(int));
+  }
   if(c->rank % 2){
     MPI_Comm_split(MPI_COMM_WORLD, SERVER_COLOR, c->rank, &(c->split_comm));
   }
@@ -113,7 +113,7 @@ pdht_t *pdht_create(int keysize, int elemsize, pdht_mode_t mode) {
     memcpy(msg->key + sizeof(int), &elemsize, sizeof(int));
 
     MPI_Ssend(buf, buflen, MPI_CHAR, target_rank, PDHT_TAG_COMMAND, MPI_COMM_WORLD);
-
+    MPI_Barrier(MPI_COMM_WORLD);
   }
 
   c->hts[c->dhtcount] = dht;
@@ -206,7 +206,7 @@ void *pdht_comm(void *arg) {
 
         reply = (reply_t *)buf; // cast so we can set header values
        
-        HASH_FIND_INT(dht->ht,&(msg->mbits),instance);
+        HASH_FIND(hh, dht->ht, &(msg->mbits), sizeof(unsigned long), instance);
 
         if (instance) {
       // found entry
@@ -223,7 +223,7 @@ void *pdht_comm(void *arg) {
       case pdhtPut:
         // put request, check for existence and add/overwrite as needed
         
-        HASH_FIND_INT(dht->ht,&msg->mbits,instance);
+        HASH_FIND(hh, dht->ht ,&msg->mbits, sizeof(unsigned long), instance);
         
         if (!instance) {
           // new entry -- create new HT entry
@@ -231,10 +231,7 @@ void *pdht_comm(void *arg) {
           instance->key = msg->mbits;
           instance->value = malloc(PDHT_MAXKEYSIZE + dht->elemsize);
 
-
-          HASH_ADD_INT(dht->ht,key,instance);  
-
-
+          HASH_ADD(hh, dht->ht, key, sizeof(unsigned long), instance);  
         }
         // update HT entry with PUT data
         memcpy(instance->value,msg->key,PDHT_MAXKEYSIZE + dht->elemsize);
@@ -286,6 +283,7 @@ void *pdht_comm(void *arg) {
         c->maxbufsize = c->maxbufsize >= htbuflen ?  c->maxbufsize : htbuflen;
         bufs = realloc(bufs, c->size / 2 * c->maxbufsize);
         //msgbuf = realloc(msgbuf, c->maxbufsize);
+	MPI_Barrier(MPI_COMM_WORLD);
         break;
     }
     MPI_Irecv(bufs + offset, c->maxbufsize, MPI_CHAR, last * 2, PDHT_TAG_COMMAND, MPI_COMM_WORLD, &requests[last]);
@@ -317,6 +315,9 @@ void pdht_fini() {
   
   MPI_Ssend(&msg, sizeof(message_t), MPI_CHAR, target_rank, 1, MPI_COMM_WORLD);
   MPI_Finalize();
+  if(c->reply_buf){
+    free(c->reply_buf);
+  }
   free(c);
 }
 

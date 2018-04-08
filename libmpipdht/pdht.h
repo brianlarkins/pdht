@@ -100,6 +100,7 @@ struct pdht_context_s {
   int            maxbufsize;           // maximum MPI receive buffer size for all HTs
   MPI_Comm       split_comm;
   int            pid;
+  int           *reply_buf;
 };
 typedef struct pdht_context_s pdht_context_t;
 

@@ -1,26 +1,30 @@
 \section{Introduction}
 
-% high-level -> optimizing systems to permit high-performance within
-% context of high core-count hardware
+Partitioned Global Address Space (PGAS) parallel programming models, such as
+OpenSHMEM~\cite{openshmem-1.3}, Unified Parallel C~\cite{upc-13-spec}, Fortran
+2008 Coarrays~\cite{reid:08,fortran-2008}, and the MPI Remote Memory Access
+(RMA) interface MPI~\cite{mpi-forum:15}, have become popular as a means for
+supporting distributed, shared global data.  In particular, PGAS models have
+been shown to be especially effective when used to store dense arrays and
+several models have been designed to support this type of
+data~\cite{ga,kamil:14,ddi,niu:16}.
 
-Recent trends in high-performance hardware design have led to a
-dramatic increase in processor core count. While these advances have
-increased the capability of high-performance computing (HPC) systems,
-they have also introduced new challenges. With higher processor core
-density comes greater contention for memory and a renewed interest
-in memory-efficient sparse data structures as well as Partitioned 
-Global Address Space (PGAS) parallel programming models.
+While PGAS models are commonly used with regularly structured data, they have
+had limited success with irregular and sparse data.  Such data structures are
+accessed indirectly and an additional indexing operation is needed to resolve
+the location of a data element.  Indexing structures grow proportional to the
+data size; thus, for the large data volumes that necessitate a PGAS solution, these
+structures must also be distributed.  As a result, resolving the index of a data item
+within the global address space is not possible using only local information.
 
-Many parallel programming frameworks support PGAS memory models, 
-including OpenSHMEM~\cite{openshmem-1.3}, Unified Parallel 
-C~\cite{upc-13-spec}, Fortran 2008 Coarrays~\cite{reid:08}, and 
-the Remote Memory Access (RMA) interface, supported within 
-MPI~\cite{mpi-forum:15}.
-
-% PGAS -> provides more memory
-%   great for dense, hard for sparse
-PGAS programming models help address memory contention by permitting 
-one-sided access to large distributed data structures. 
+Remote direct memory access (RDMA) read, write, and atomic update operations
+are commonly supported by the high-speed fabrics used to construct HPC systems
+and these operations are used to accelerate remote access operations performed
+by PGAS models.  RDMA operations map well to remote array access operations,
+since the locations to be accessed can be determined at the initiator of the
+operation.  However, the indirect addressing required to remotely access sparse or
+irregularly structured data presents challenges to existing RDMA interfaces
+and can result in significant overheads.
 
 % many applications that use sparse data structures are naturally expressed
 % using logical addresses, such as a coordinate/level system in a spatial
@@ -76,58 +80,55 @@ one-sided access to large distributed data structures.
 %    a conventional hash table structure
 
 
-Greater contention for memory resources is a well-studied
-consequence of higher core counts. Likewise, access to the
-interconnect can also be a bottleneck, greatly limiting overall system
-communication throughput. To remedy this problem, several approaches
-aim to address network interface contention by providing
-hardware-based solutions that offload communication
-processing. 
+The Portals 4.1 network programming interface~\cite{portals4} provides a
+well-known interconnect programming model that is designed to permit efficient
+hardware offload of communication processing. For example, the Bull\othertm{}
+BXI\othertm{} interconnect~\cite{bxi} provides a hardware accelerated
+implementation of the Portals 4.1 interface and the Cray\othertm{}
+Seastar\othertm{} interconnect~\cite{brightwell:micro:06} provided a hardware
+accelerated implementation of the Portals 3.0 interface.  Parallel programs
+written using programming models that are built on the Portals interface will
+be able to take advantage of network offload hardware.  The problem, of course,
+is to map application-level data and task abstractions onto programming
+constructs that are aligned with the communication operations supported by
+low-level communications systems. 
 
-Recent updates to the Portals 4.0 communications interface provide
-additions to a well-known interconnect programming model that permits
-efficient hardware offload of communication traffic. The latest BXI
-interconnect hardware from Bull has provided a hardware implementation
-of the Portals interface.  Parallel programs written using middleware
-systems that are built on the Portals interface will be able to take
-advantage of network offload hardware without special consideration. 
-The problem of course, is to map data and task abstractions onto
-programming constructs that match the communication operations
-supported by the low-level communications systems (Portals). 
-
-Portals is designed as a low-level abstraction layer for the network
-interface hardware. The provided operations are meant to support the
-efficient implementation of high-performance programming interfaces
-and runtime systems that provide either message-passing semantics
-(such as MPI), or one-sided, partitioned global address (PGAS) based
-activities. For message-passing systems, Portals provides a {\em
-  matching interface} that allows runtime implementators to robustly
-support a two-sided (matched sends and receives) communication
-model. Alternatively, Portals also provides a {\em non-matching
-  interface} that sheds much of the complexity in matching messages
-for one-sided communication operations found in PGAS systems and
-languages.
+Portals is designed as a low-level abstraction layer for the network interface
+hardware. The Portals communication operations operations are
+meant to support the efficient implementation of high-performance programming
+interfaces and runtime systems that provide either message-passing semantics
+(such as MPI), or one-sided, partitioned global address (PGAS) support. For
+message-passing systems, Portals provides a {\em matching interface} that
+allows communication middleware to robustly support a two-sided (matched sends
+and receives) communication model. Alternatively, Portals also provides a {\em
+non-matching interface} that sheds much of the complexity in matching messages
+for efficient handling of one-sided communication operations found in PGAS
+systems and languages.
 
 Rather than considering the matching and non-matching interfaces as
 the basis for higher-level communication systems, we have developed a
 system that provides a distributed key/value storage that use Portals
 primitives in a novel manner, leading towards a hardware accelerated
-hash table system. In this paper, we describe the implementation of a
+hash table system providing a PGLAS programming model. In this paper, we describe the implementation of a
 parallel distributed hash table (PDHT) that is implemented directly
 using the Portals programming interface. This work is based on the
 following insights: (1) implementing data structures using Portals
-leads to an opportunity for efficient implementation with respect to
-known hardware offload engines and (2) that operations on a hash-table
-can be readily mapped to hardware accelerated operations within
+leads to an opportunity to leverage efficient, hardware accelerated
+implementations of Portals and (2) that operations on a hash-table
+can be readily mapped to operations within
 Portals that would be difficult to express exclusively within an
 MPI-like system or a PGAS system.
 
-This work makes the following contributions: First, we describe the
-design and implementation of a one-sided distributed hash table that
-is amenable to network hardware offload. Second, we describe a novel
-application of Portals matching interface operations to realize a
-distributed data structure. Lastly, we provide an experimental validation of
-our approach.
+This work makes the following contributions: We identify the
+logically-addressed PGLAS paradigm as a novel extension to existing PGAS
+programming concepts, which improves support for sparse and loosely structured
+data.  We demonstrate the utility of this model through two representative
+scientific applications, MADNESS and Meraculous, from the computational
+chemistry and genomics domains, respectively.  We describe a new PGLAS model,
+PDHT, a one-sided distributed hash table that is implemented using a novel
+application of Portals matching interface operations. Lastly, we provide an
+experimental validation, indicating that this approach can yield significant
+performance improvements for these classes of applications.
 
 % high performance interconnect hardware
 %  - provides hardware optimized for use cases

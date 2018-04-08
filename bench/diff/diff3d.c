@@ -31,13 +31,13 @@
 // 1e-16  84745 nodes
 // 1e-17 461513 nodes
 #define THRESHOLD_TEST  .1
-#define THRESHOLD_SMALL  1e-6
-#define THRESHOLD_MEDIUM 1e-16
+#define THRESHOLD_SMALL  1e-16
+#define THRESHOLD_MEDIUM .5e-17
 //#define THRESHOLD_LARGE  1e-14
-#define THRESHOLD_LARGE 1e-17
-#define INITIAL_LEVEL    3
+#define THRESHOLD_LARGE 1e-18
+#define INITIAL_LEVEL    4
 
-#define PAR_LEVEL        3
+#define PAR_LEVEL        4
 
 #define TASK_AFFINITY_HIGH 0
 #define TASK_AFFINITY_LOW  1
@@ -97,7 +97,6 @@ static double test1(double x, double y, double z);
 void      usage(char **argv);
 int       main(int argc, char **argv, char **envp);
 
-
 void bthandler(int sig) {
   void *a[100];
   size_t size;
@@ -106,7 +105,6 @@ void bthandler(int sig) {
   backtrace_symbols_fd(a,size, STDERR_FILENO);
   exit(1);
 }
-
 /*
  * initializes a new function octtree
  */
@@ -167,8 +165,8 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
     // initial function projection @ parlvl 
     // - need to project to subtrees[] level + 1, because refine requires children
     
+    pdht_barrier();
 
-    PDHT_INIT_ATIMER(initialization_timer);
     fine_scale_projection(fun, &root, parlvl+1);
     //print_subtree_keys(fun->subtrees, fun->stlen);
     eprintf("   projection done.\n");
@@ -190,7 +188,7 @@ func_t *init_function(int k, double thresh, double (* test)(double x, double y, 
 #endif
       st = pdht_counter_inc(fun->ftree, fun->counter, 1);
     }
-
+    PDHT_STOP_ATIMER(initialization_timer);
     pdht_fence(fun->ftree);
     // timing!
 #ifdef DIFF_UPDATES
@@ -500,6 +498,7 @@ void par_compress(func_t *f, int limit) {
   // bottom up parallel compression, seeding
   //   parallel tasks using subtrees setup in tree creation
 
+  PDHT_START_ATIMER(compress_timer);
   pdht_counter_reset(f->ftree, f->counter);
 
 
@@ -519,6 +518,7 @@ void par_compress(func_t *f, int limit) {
   if (c->rank == 0) {
     compress(f, &rootkey, limit, 1);
   }
+  PDHT_STOP_ATIMER(compress_timer);
   pdht_fence(f->ftree);
   f->compressed = 1;
 }
@@ -681,7 +681,7 @@ void par_reconstruct(func_t *f, int limit) {
     }
   }
   pdht_fence(f->ftree);
-
+  PDHT_START_ATIMER(reconstruct_timer);
   // parallel reconstruction starts at limit depth
   pdht_counter_reset(f->ftree, f->counter);
   st = pdht_counter_inc(f->ftree, f->counter, 1);
@@ -713,6 +713,7 @@ void par_reconstruct(func_t *f, int limit) {
   }
 
   f->compressed = 0;
+  PDHT_STOP_ATIMER(reconstruct_timer);
   pdht_fence(f->ftree);
 }
 
@@ -1007,7 +1008,8 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   // create output tree
   fprime = (func_t *)malloc(sizeof(func_t));
   fprime->ftree = create_tree(); // safe to call eprintf() after this
-  PDHT_START_ATIMER(diff_timer);
+  pdht_barrier();
+
   fprime->compressed = 0;
   fprime->k         = DEFAULT_K;
   fprime->npt       = DEFAULT_K;
@@ -1045,10 +1047,12 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
   //print_subtree_keys(fun->subtrees, fun->stlen);
   eprintf("    projection done.\n",c->rank);
   
+
   pdht_fence(fprime->ftree);
   
   pdht_barrier();
 
+  PDHT_START_ATIMER(diff_timer);
   // parallel differentiation starts at limit depth
   pdht_counter_reset(f->ftree, f->counter);
   st = pdht_counter_inc(f->ftree, f->counter, 1);
@@ -1083,7 +1087,7 @@ func_t *par_diff(func_t *f, diffdim_t wrtdim, int thresh,  double (* test)(doubl
     st = pdht_counter_inc(f->ftree, f->counter, 1);
     /* temp */
   }
-
+  PDHT_STOP_ATIMER(diff_timer);
   pdht_fence(f->ftree);
   return fprime;
 }
@@ -1451,7 +1455,7 @@ int main(int argc, char **argv, char **envp) {
   
 
   pdht_config_t cfg;
-
+  PDHT_INIT_ATIMER(initialization_timer);
   PDHT_INIT_ATIMER(compress_timer);
   PDHT_INIT_ATIMER(reconstruct_timer);
 
@@ -1463,7 +1467,7 @@ int main(int argc, char **argv, char **envp) {
   cfg.pendq_size = 10000;
   // deal with cli args
   cfg.maxentries = 30000;
-  while ((arg = getopt(argc, argv, "ehsmlt:C:cp:M:q")) != -1) {
+  while ((arg = getopt(argc, argv, "ehsmlt:C:cp:M:qL")) != -1) {
     switch (arg) {
       case 'c':
         caching = 1;
@@ -1492,6 +1496,9 @@ int main(int argc, char **argv, char **envp) {
       case 'p':
         cfg.pendq_size = atoi(optarg);
         break;
+      case 'L':
+	cfg.local_gets = PdhtSearchLocal;
+	break;
       case 'M':
         cfg.maxentries = atoi(optarg);
         break;
@@ -1501,7 +1508,7 @@ int main(int argc, char **argv, char **envp) {
         exit(1);
     }
   }
-  //signal(SIGSEGV, bthandler);
+  signal(SIGINT, bthandler);
 
   test  = test1;
   //
@@ -1517,7 +1524,7 @@ int main(int argc, char **argv, char **envp) {
   pdht_tune(PDHT_TUNE_ALL, &cfg);
   //init timer gets started in init_function
   f = init_function(k, threshold, test1, defaultparlvl);
-  PDHT_STOP_ATIMER(initialization_timer);
+
   
 //  printf("c->rank : %d pid : %d \n", c->rank, getpid());
   pdht_barrier();
@@ -1528,18 +1535,15 @@ int main(int argc, char **argv, char **envp) {
   eprintf("function tree initialization complete. tree contains %d nodes\n", totalnodes);
   
   eprintf("compress.\n");
-  PDHT_START_ATIMER(compress_timer);
+
   par_compress(f, defaultparlvl);
-  PDHT_STOP_ATIMER(compress_timer);
   
   pdht_barrier();
   //print_tree(f);
 
   eprintf("reconstruct.\n");
 
-  PDHT_START_ATIMER(reconstruct_timer);
   par_reconstruct(f, defaultparlvl);
-  PDHT_STOP_ATIMER(reconstruct_timer);
   // have to initialize fprime for differentiation
   //   - don't need to init_function entire tree
   //   - just create tree-top and add subtrees
@@ -1550,7 +1554,6 @@ int main(int argc, char **argv, char **envp) {
   eprintf("diff.\n");
   //diff timer gets started in diff
   fprime = par_diff(f,Diff_wrtX, threshold,  test1, defaultparlvl);
-  PDHT_STOP_ATIMER(diff_timer);
   
   pdht_barrier();
 

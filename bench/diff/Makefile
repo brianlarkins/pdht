@@ -25,7 +25,7 @@ OBJS =  alloc.o          \
 all: diff
 
 diff: pdhtlibs $(OBJS) diff3d.o 
-	$(CC) $(CFLAGS) -o diff diff3d.o $(OBJS) $(PDHT_LIBS)
+	$(CC) $(CFLAGS) -lrt -o diff diff3d.o $(OBJS) $(PDHT_LIBS)
 
 diffMPI: pdhtmpilibs $(OBJS) diff3d.o
 	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o diffMPI diff3d.o $(OBJS) $(PDHT_MPILIBS)

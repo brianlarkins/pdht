@@ -1,1 +1,36 @@
 \section{Conclusion}
+
+This paper has presented the partitioned global logical address space (PGLAS)
+programming model and its first realization through the Parallel Distributed
+Hash Table (PDHT).  PDHT system makes novel use of the Portals networking
+interface by re-purposing its message-matching system to operate as an
+acceleration mechanism for a global, distributed key/value store.
+
+This work has led to several insights into adapting Portals abstractions onto
+higher-level programming models. In particular, the separation of the message
+matching mechanics from required delivery ordering is key to good
+performance with PDHT. We see future opportunities for adapting the Portals
+triggered operations to manage PDHT structures. Lastly, this work has motivated
+several extensions to the Portals model, including functionality allowing
+applications to search the priority list when responding to local matching
+queries.
+
+We envision that a number of applications that rely on sparse methods and
+irregularly structured data can be readily adapted to the PGLAS parallel
+programming model.  We identified two representative applications from the
+computational chemistry and genomics domains and applied PDHT as a system for
+managing the sparse spatial and loosely structured data arising in these
+domains.  Experimental results are promising and indicate that Portals can
+provide efficient and productive support for such data structures.
+
+\begin{acks}
+This work used the Extreme Science and Engineering Discovery Environment
+(XSEDE), which is supported by National Science Foundation grant number
+ACI-1053575.
+
+We would like to acknowledge Ryan Grant and Todd Kordenbrock at Sandia
+National Laboratories for their help with Portals-related issues and the
+use of Sandia facilities as well as Evangelos Georganas at
+Intel for his assistance with the Meraculous benchmark.
+\end{acks}
+\vspace{-3mm}

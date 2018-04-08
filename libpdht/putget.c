@@ -354,7 +354,7 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
     }
     pthread_mutex_unlock(&dht->completion_mutex);
 
-    if (dht->local_get_flag){
+    if (dht->local_get_flag == -1){
       dht->stats.notfound++;
       rval = PdhtStatusNotFound;
       goto done;
@@ -474,6 +474,7 @@ pdht_status_t pdht_persistent_get(pdht_t *dht, void *key, void *value){
     pdht_status_t ret;
     while(1){
       ret = pdht_get(dht, key, value);
+      //printf("%d: persistent get ret : %d ok : %d \n", c->rank, ret, PdhtStatusOK);
       if (ret == PdhtStatusOK) return ret;
     }
 }
