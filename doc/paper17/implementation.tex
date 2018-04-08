@@ -419,7 +419,7 @@ In traditional hash tables, a hashed key, $K$, is used with modular arithmetic
 to select a location in an array of elements of size $N$. The hash function
 gives a mapping between $K \rightarrow N$ elements.  If the size of the key
 space, $|K|$, is much larger than $N$, the likelihood of collisions increases.
-Conventional approaches store a lists of objects within each array entry
+Conventional approaches store a list of objects within each array entry
 (chaining) to limit the overhead of collisions.
 
 While PDHT also uses an array to hold the collection of hash table entries, the
