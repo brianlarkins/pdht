@@ -30,6 +30,8 @@ int64_t success = 0;
 #include "kmer_hash.h"
 #include "kmer_handling.h"
 
+int goof = 0;
+
 #if defined(DETAILED_BUILD_PROFILE) || defined(IO_TIME_PROFILE)
 double fileIOTime = 0.0;
 #endif
@@ -92,6 +94,32 @@ int prank;
   //*ptindex = *mbits % ht->ptl.nptes;
   //(*rank).rank = *mbits % c->size;
 //}
+
+
+void sanity(int where) {
+  pdht_timer_t timer;
+  pdht_iter_t sanity_iter;
+  htentry_t *bar;
+  int sanity = 1, count = 0;
+
+  pdht_iterate(pdht, &sanity_iter);
+  PDHT_START_ATIMER(timer);
+  while (pdht_hasnext(&sanity_iter)) {
+    bar = pdht_getnext(&sanity_iter, NULL);
+    if (bar->check != 42) {
+      sanity = 0;
+    }
+    count++;
+  }
+  PDHT_STOP_ATIMER(timer);
+  if (sanity) {
+    if (where == 0) 
+      printf("%3d: %2d sanity checks out (%d entries): %12.7f\n", MYTHREAD, where, count, PDHT_READ_ATIMER_SEC(timer));
+  } else {
+    printf("%3d: %2d created table has corrupted entries: %12.7f\n", MYTHREAD, where, PDHT_READ_ATIMER_SEC(timer));
+  }
+}
+
 
 void mkprinter(void *key) {
   char *p = (char *)key;
@@ -223,6 +251,7 @@ int main(int argc, char **argv) {
      cfg.maxentries = 2000000;
      //cfg.maxentries = 100000;
      cfg.pendq_size = 1000000;
+     cfg.pendq_size = 0;
      cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
      cfg.quiet = 1;
      cfg.local_gets = PdhtSearchLocal;

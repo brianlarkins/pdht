@@ -13,6 +13,8 @@
 #include "kmer_handling.h"
 #include "packingDNAseq.h"
 
+#define PDHT_RETRY_ATTEMPTS 1
+
 extern int64_t  local_allocs;
 
 #ifndef COLL_ALLOC
@@ -228,28 +230,35 @@ htentry_t *lookup_kmer_and_copy(hash_table_t *hashtable, const unsigned char *km
    unsigned char packed_key[KMER_PACKED_LENGTH];
    unsigned char remote_packed_key[KMER_PACKED_LENGTH];
    pdht_status_t ret;
-   memset(cached_copy, 0, sizeof(htentry_t));
+   int attempts = 0;
+   htentry_t pre;
 
    packSequence(kmer, packed_key, KMER_LENGTH);
-   //shared[] list_t *result;
-   bucket_t local_buc;
-   //mkprinter(packed_key);
-   ret = pdht_get(pdht, packed_key, cached_copy);
-   //mkprinter(cached_copy->packed_key);
-   if (ret != PdhtStatusOK) {
-     switch (ret) {
-     case PdhtStatusNotFound:
-       //LOG("%d: lookup_kmer_and_copy: pdht entry not found\n", MYTHREAD);
-       break;
-     case PdhtStatusCollision:
-       LOG("%d: pdht lookup collision : %d\n", MYTHREAD, cached_copy->check);
-       break;
-     default:
-       LOG("%d: lookup_kmer_and_copy: pdht lookup error : %d\n", MYTHREAD, cached_copy->check);
-       break;
-     }
-     return NULL;
+
+   while (attempts < PDHT_RETRY_ATTEMPTS) {
+     memset(&pre, 0, sizeof(htentry_t));
+     ret = pdht_get(pdht, packed_key, &pre);
+     //mkprinter(cached_copy->packed_key);
+     if (ret != PdhtStatusOK) {
+       switch (ret) {
+         case PdhtStatusNotFound:
+           //LOG("%d: lookup_kmer_and_copy: pdht entry not found\n", MYTHREAD);
+           break;
+         case PdhtStatusCollision:
+           LOG("%d: pdht lookup collision : %d\n", MYTHREAD, cached_copy->check);
+           break;
+         default:
+           LOG("%d: lookup_kmer_and_copy: pdht lookup error : %d\n", MYTHREAD, cached_copy->check);
+           break;
+       }
+     } else if (IS_VALID_UPC_PTR(pre.my_contig))
+       goto done;
+     attempts++;
    }
+   //printf("%d: lookup_kmer_and_copy gave up looking\n", MYTHREAD);
+   return NULL;
+done:
+   memcpy(cached_copy, &pre, sizeof(htentry_t));
    return cached_copy;
 
 #if 0
@@ -296,11 +305,14 @@ htentry_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer, htent
 htentry_t *lookup_least_kmer_and_copy(hash_table_t *dist_hashtable, const char *next_kmer, htentry_t *cached_copy, int *is_least) {
    char auxiliary_kmer[KMER_LENGTH+1];
    char *kmer_to_search;
+
    auxiliary_kmer[KMER_LENGTH] = '\0';
    /* Search for the canonical kmer */
    kmer_to_search = getLeastKmer(next_kmer, auxiliary_kmer);
    *is_least = (kmer_to_search == next_kmer) ? 1 : 0;
+
    htentry_t *res = lookup_kmer_and_copy(dist_hashtable, (unsigned char*) kmer_to_search, cached_copy);
+  
    if (VERBOSE > 2) LOG("Thread %d: lookup_least_kmer2(%s) is_least: %d res: %s\n", MYTHREAD, next_kmer, *is_least, res == NULL ? " not found" : "found");
    return res;
 }
@@ -327,23 +339,22 @@ void set_ext_of_kmer(htentry_t *lookup_res, int is_least, char *new_seed_le, cha
 }
 
 /* find the entry for this kmer or reverse complement, set the left and right extensions */
-htentry_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const char *next_kmer, char *new_seed_le, char *new_seed_re)
+htentry_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, htentry_t *copy, const char *next_kmer, char *new_seed_le, char *new_seed_re)
 {
    int is_least;
    htentry_t *lookup_res;
-   htentry_t copy;
    *new_seed_le = '\0';
    *new_seed_re = '\0';
    
    /* Search for the canonical kmer */
-   lookup_res = lookup_least_kmer_and_copy(dist_hashtable, next_kmer, &copy, &is_least);
+   lookup_res = lookup_least_kmer_and_copy(dist_hashtable, next_kmer, copy, &is_least);
    
    if (lookup_res == NULL) {
       return lookup_res;
    }
 
    /* Find extensions of the new kmer found in the hashtable */
-   set_ext_of_kmer(&copy, is_least, new_seed_le, new_seed_re);
+   set_ext_of_kmer(copy, is_least, new_seed_le, new_seed_re);
    
    return lookup_res;
 }
@@ -352,16 +363,29 @@ htentry_t *lookup_and_get_ext_of_kmer(hash_table_t *dist_hashtable, const char *
 shared[] contig_ptr_box_list_t *get_contig_box_of_kmer(htentry_t *lookup_res, int follow_list) {
    shared[] contig_ptr_box_list_t *box_ptr = NULL;
    kmer_and_ext_t kmer_and_ext;
-
-   // PDHT lookup_res->my_contig should have been updated before now, locally 
-   //   (and via atomic cswap), so no need for communication?
+   htentry_t copy;
+   pdht_status_t ret;
+   int attempts = 0;
    
    if (lookup_res == NULL)
       printf("FATAL ERROR: K-mer should not be NULL here (right walk)\n");
    assert(lookup_res != NULL);
    assert(lookup_res->used_flag == USED);
 #ifdef MERACULOUS
-   loop_until ( box_ptr = lookup_res->my_contig, box_ptr != NULL && IS_VALID_UPC_PTR(box_ptr)  );
+   //loop_until ( box_ptr = lookup_res->my_contig, box_ptr != NULL && IS_VALID_UPC_PTR(box_ptr)  );
+   memset(&copy, 0, sizeof(htentry_t));
+   while (attempts < 1000) {
+     ret = pdht_get(pdht, lookup_res->packed_key, &copy);
+     if (ret == PdhtStatusOK) {
+       if (IS_VALID_UPC_PTR(copy.my_contig))
+         box_ptr = copy.my_contig;
+         goto done;
+     }
+     attempts++;
+     if (attempts > 10) { LOG("%d: retrying a lot for contig box\n"); }
+   }
+   LOG("%d: get_contig_box_of_kmer() never found contig\n", MYTHREAD);
+done:
 #endif
    // follow box to tail
    while(follow_list && box_ptr->next != NULL) {
