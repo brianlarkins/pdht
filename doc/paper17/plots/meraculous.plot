@@ -11,9 +11,9 @@ set xlabel "Processes"
 set logscale x 2
 set xtics (10, 20, 40, 60, 80, 120)
 set ylabel "Execution Time (sec)"
-set yrange [0:175]
-set ytics (0, 25, 50, 75 ,100, 125, 150, 175)
+set yrange [0:225]
+set ytics (0, 25, 50, 75 ,100, 125, 150, 175, 200, 225)
 set key top right
 
-plot 'shepard.meraculous.dat' index 0 using 1:3 title "GCC-UPC" lw 2, \
-     'shepard.meraculous.dat' index 0 using 1:5 title "PDHT"
+plot 'shepard.meraculous.dat' index 0 using 1:5 title "PDHT" lw 2,  \
+     'shepard.meraculous.dat' index 0 using 1:3 title "GCC-UPC" lw 2

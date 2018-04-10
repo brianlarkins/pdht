@@ -23,5 +23,5 @@ set key top left
 # throughput = volume / seconds in reads/sec
 
 # plotting #procs vs. (#procs * 10000 reads each) / (time-in-ms / 1000)
-plot 'comet.scaling.dat' index 1 using 1:($1*10000)/(($2/1000)*1000000) title "MVAPICH2" lw 2, \
-     'comet.scaling.dat' index 1 using 1:($1*10000)/(($4/1000)*1000000) title "PDHT" lw 2
+plot 'comet.scaling.dat' index 1 using 1:($1*10000)/(($4/1000)*1000000) title "PDHT" lw 2, \
+     'comet.scaling.dat' index 1 using 1:($1*10000)/(($2/1000)*1000000) title "MVAPICH2" lw 2

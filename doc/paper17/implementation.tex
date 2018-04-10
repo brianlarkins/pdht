@@ -6,11 +6,11 @@ Portals4 network interface~\cite{portals4}. The Portals framework provides sever
 data abstractions that map nicely onto the PGLAS operations supported by PDHT.
 
 PDHT adopts a one-sided communication model which operates with PGAS-like
-semantics. By implementing PDHT directly with the Portals interface, we can
-take advantage of message-passing features that permit an efficient,
-hardware-offload friendly version of a PGLAS. Describing
-some of the primary abstractions with the Portals network model is helpful 
-to better understand the PDHT implementation.
+semantics, providing put, get, and atomic operations. By implementing PDHT directly
+with the Portals interface, we can take advantage of message-passing features
+that permit an efficient, hardware-offload friendly version of a PGLAS.
+Describing some of the primary abstractions with the Portals network model is
+helpful to better understand the PDHT implementation.
 
 \subsection{Portals Networking Interface}
 
@@ -83,14 +83,14 @@ that must be an exact match in order for an incoming request to to proceed
 with the given ME. For example, a process may post an {\tt MPI\_Recv()}, which
 creates a new ME on the target PTE with a specific match bits value. Later,
 another process would issue an {\tt MPI\_Send()} communication request with
-the same match bits that corresponds to the previous receive operation.
+the same match bits that correspond to the previous receive operation.
 
 Portals also provides {\em event queues} and {\em event counters} that can be
 used to track data movement in and out of memory regions related to Portals
-communication operations. Events and counters also log failure events and other
-information. Counting events are lightweight operations and only record the
-success or failure of a given operation. Full events incur more overhead but
-contain detailed information about the event and the corresponding
+communication operations. Events and counters also log failure events and
+additional information. Counting events are lightweight operations and only
+record the success or failure of a given operation. Full events incur more
+overhead but contain detailed information about the event and the corresponding
 communication operation. Event queues may be associated with an MD
 (initiator-side) or a PTE (target-side). 
 
@@ -132,7 +132,7 @@ techniques but are traditionally implemented sequentially as an array of
 pointers to objects.  Parallel implementations typically distribute entries
 across nodes. In contrast to sequential versions, the distributed store must
 hold the entire value object, rather than just holding a reference to the value
-object.
+object (to avoid another communication).
 
 % parallel programming model
 %  - key/value pairs
@@ -382,10 +382,10 @@ implementation.
 
 \subsubsection{Local Match List Searching}
 
-Initially, all accesses to
-distributed value objects were made using {\tt PtlGet()} operations. The
-Portals reference implementation makes no distinction between local and remote
-data, which adds substantial overhead for operations on local data.  
+Initially, all accesses to distributed value objects were made using {\tt
+  PtlGet()} operations. The Portals reference implementation makes no
+distinction between local and remote data, which adds substantial overhead for
+operations on local data.  
 
 Every Portals matching PTE contains two message match lists -- the unexpected
 list and priority list. In two-sided communication, such as MPI, an 
@@ -398,11 +398,11 @@ process.
 We added a new priority match list search call to the Portals API and adapted
 the existing code in Portals to provide this functionality. When the new search
 function is called, an event is generated containing a pointer to the value
-object if found, or a failure event otherwise. PDHT get operations check the
-rank component of the tuple returned by the hash function. When the object's
-rank matches the local process, PDHT calls the search function for local
-entries rather than calling {\tt PtlGet()}. This optimization led to a dramatic
-improvement in access to local data.
+object if found, or a failure event otherwise. PDHT get and update operations
+check the rank component of the tuple returned by the hash function. When the
+object's rank matches the local process, PDHT calls the search function for
+local entries rather than calling {\tt PtlGet()} or {\tt PtlPut()}. This
+optimization led to a dramatic improvement in access to local data.
 
 \subsection{Hash Collisions} 
 

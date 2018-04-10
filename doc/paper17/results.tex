@@ -13,17 +13,21 @@
 %are connected using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric.
 
 Performance results were gathered using a prototype implementation of \pdht
-running on a version the Portals reference
-implementation~\cite{portals-code} that was modified to support the features
-presented in Section~\ref{sec:ptl-ext}. Results were gathered on the Comet
-cluster
+running on a version of the Portals reference implementation~\cite{portals-code}
+that was modified to support the features presented in
+Section~\ref{sec:ptl-ext}. MPI comparisons were performed on the Comet cluster
 system at the San Diego Supercomputer Center with access provided through the
 Extreme Science and Engineering Discovery Environment (XSEDE) program. Comet
 contains nodes with several configurations; these experiments were conducted a
 portion of the 1944 nodes with Intel\regtm Xeon\regtm E5 processors, comprising
 Dell\othertm PowerEdge\othertm C6320 server each with dual 12-core Intel\regtm
 Xeon\regtm E5-2680 processors and 128 gigabytes of memory. Nodes are connected
-using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric.
+using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric. UPC experiments
+were run on an Advanced Systems Technology cluster at Sandia National
+Laboratories.  The cluster contains 36 compute nodes, constructed with dual
+16-core Intel\regtm Haswell\regtm processors and 128 gigabytes of memory. Nodes
+are connected using a Mellanox\othertm FDR 56Gb/s InfiniBand\othertm fabric.
+
 
 \subsection{Experimental Setup}
 
@@ -44,6 +48,8 @@ to use Portals 4 as the message transport layer for all communication
 operations. The MPICH MPI tests are run with version 3.2.1 using Portals 4 as
 the {\tt ch3} netmod. The MVAPICH2 tests are run with version 2.1 and the
 runtime is configured to directly use the InfiniBand\othertm Verbs interface.
+UPC experiments were run using GCC UPC 5.2.0.1 configured to use Portals 4 for
+communication.
 
 One of the primary challenges in deriving performance results for this work is
 that the Portals 4 runtime library was developed as an exploratory framework
@@ -98,24 +104,27 @@ implementations tested with both MPICH and OpenMPI using Portals communication
 channels. This microbenchmark tests the latency with local hash table sizes of a varying
 number of items. The MPI PDHT implementation tested with the MVAPICH2 system
 outperforms all Portals implementations in a raw performance test. We attribute
-this to the different design goals of the two systems as mentioned above. Of
-particular note are the greatly increasing latencies for the initial native
-PDHT implementation. This is caused by the default $O(N)$ linked-list searching in the
-Portals reference implementation. When using the unordered matching option, the
-native PDHT access times are flat $O(1)$ over all match list lengths.
+this to the different design goals of the two systems as mentioned above. 
+
 
 
 Next, we examine the impact of different native PDHT implementation techniques
-described in the implementation section. Figure~\ref{fig:pdht-latency} compares
-the default version with growing latencies with respect to match list length.
-By spreading the key/value entries over multiple Portal table entries (i.e.
+described in the implementation section in Figure~\ref{fig:pdht-latency}.  
+Of particular note are the greatly increasing latencies for the initial native
+PDHT implementation. This is caused by the default $O(N)$ linked-list searching
+in the Portals reference implementation. When using the unordered matching
+option, the native PDHT access times are flat $O(1)$ over all match list
+lengths.
+
+The default version shows growing latencies with respect to match list length.
+However, by spreading the key/value entries over multiple Portal table entries (i.e.
 multiple match lists), we see that performance improves, but latencies still
-grow as more entries are added. Using the unordered matching
-feature in the current version of Portals, we see that PDHT is able to run with
-good, flat latencies as the number of local entries increases. Lastly, we see
-the impact of searching the local match list rather than performing a full {\tt
-  PtlGet()} when fetching entries on the local process rank. This lowers the
-access latency by an order of magnitude.
+grow as more entries are added. Using the unordered matching feature in the
+current version of Portals, we see that PDHT is able to run with good, flat
+latencies as the number of local entries increases. Lastly, we see the impact
+of searching the local match list rather than performing a full {\tt PtlGet()}
+when fetching entries on the local process rank. This lowers the access latency
+by an order of magnitude.
 
 \begin{figure}
     \centering
@@ -133,23 +142,26 @@ access latency by an order of magnitude.
     \label{fig:throughput-big}
 \end{figure}
 
-As shown in Figure~\ref{fig:throughput-small}, we measure the weak scaling
-of \pdht read operations on the key/value store by examining the
-overall throughput of the system. A total of twelve processes are run per node, allowing
-additional cores to be used for Portals progress threads or MPI companion processes.  Each process owns a fixed number of
-hash table elements that are read by a neighboring process. With overall
-system throughput increasing with the number of processes involved, 
-the system performs as expected under weak scaling. We compare
-PDHT native performance against MPI using the MVAPICH2 runtime.
+As shown in Figure~\ref{fig:throughput-small}, we measure the weak scaling of
+\pdht read operations on the key/value store by examining the overall
+throughput of the system. A total of twelve processes are run per node,
+allowing additional cores to be used for Portals progress threads or MPI
+companion processes.  Each process owns a fixed number of hash table elements
+that are read by a neighboring process. With overall system throughput
+increasing with the number of processes involved, the system performs as
+expected under weak scaling. We compare PDHT native performance against MPI
+using the MVAPICH2 runtime.
 
-With smaller
-entry sizes, we can see that MVAPICH2 performs better than PDHT. 
+With smaller entry sizes, we can see that MVAPICH2 performs better than PDHT.
 This performance gap is largely due to the increased latencies when using a
-software simulation of Portals on an InfiniBand network. By increasing the size of a key/value entry to
-64KB, data transfers become bandwidth bound and the impact of these overheads on performance becomes negligible.
+software simulation of Portals on an InfiniBand network. By increasing the size
+of a key/value entry to 64KB, data transfers become bandwidth bound and the
+impact of these overheads on performance becomes negligible.
 Figure~\ref{fig:throughput-big} shows the convergence in overall system
 throughput. Portals-based MPI implementations did not scale favorably with
-either PDHT or optimized MPI; thus we do not report results for these implementations because of performance bugs.
+either PDHT or optimized MPI; thus we do not report results for these
+implementations because of performance bugs.
+
 %XXX This is where we should do some 
 %analysis with round-trip communications in native vs. MPI implementations. It's late.
 
@@ -168,19 +180,19 @@ either PDHT or optimized MPI; thus we do not report results for these implementa
 %list traversal overhead that is proportional to the number of elements
 %visited before finding a match.
 
-Collisions are a source of overhead in any distributed hash table. We also explored
-how the design of the PDHT system can reduce the number of collisions that 
-occur when compared with  more traditional direct
-array-indexed distributed tables. The benchmark code used in another comparison
-of UPC, MPI, and SHMEM-based approaches to distributed hash
-tables~\cite{maynard:12} was adapted for use with PDHT. This benchmark is
-designed to create collision conditions with moderately sized tables. We
-compared the OpenSHMEM version of this benchmark against PDHT and found that
-with an 80,000 element local table size, the OpenSHMEM implementation had
-79,542 collisions for 160,000 insertions. The same set of insertions made with
-PDHT resulted in no collisions, due to the indirection provided by the
-64-bit match bits as opposed to a direct array index. In practice, we have
-not seen collisions in any of the benchmarks described in this section.
+%Collisions are a source of overhead in any distributed hash table. We also explored
+%how the design of the PDHT system can reduce the number of collisions that 
+%occur when compared with  more traditional direct
+%array-indexed distributed tables. The benchmark code used in another comparison
+%of UPC, MPI, and SHMEM-based approaches to distributed hash
+%tables~\cite{maynard:12} was adapted for use with PDHT. This benchmark is
+%designed to create collision conditions with moderately sized tables. We
+%compared the OpenSHMEM version of this benchmark against PDHT and found that
+%with an 80,000 element local table size, the OpenSHMEM implementation had
+%79,542 collisions for 160,000 insertions. The same set of insertions made with
+%PDHT resulted in no collisions, due to the indirection provided by the
+%64-bit match bits as opposed to a direct array index. In practice, we have
+%not seen collisions in any of the benchmarks described in this section.
 
 
 
@@ -260,7 +272,7 @@ The differentiation operation is an irregular operation and is easily expressed
 using spatial tree coordinates, but is very difficult using traditional
 message-passing (due to tree irregularity) and PGAS (due to physical addressing
 requirements). As shown in a Fig.~\ref{fig:diff}a with a 1-D function tree,
-taking the derivative at node $i$ requires a convolution with coefficients
+taking the derivative at node $i$ requires a contraction with coefficients
 from nodes $i-1$ and $i+1$ at the same level within the tree. If these nodes
 do not exist, the closest ancestor node must be found and expanded to provide
 coefficients at the correct level. 
@@ -273,14 +285,14 @@ Portals-based PDHT implementation relative to the MPI implementation.
 \begin{figure}
   \centering
   \includegraphics[width=.88\linewidth]{plots/compress}
-  \caption{MADNESS compression performance ($\mu$ sec)}
+  \caption{MADNESS compression performance (sec)}
   \label{fig:mad-compress}
 \end{figure}
 
 \begin{figure}
   \centering
   \includegraphics[width=.88\linewidth]{plots/reconstruct}
-  \caption{MADNESS reconstruction performance ($\mu$ sec)}
+  \caption{MADNESS reconstruction performance (sec)}
   \label{fig:mad-reconstruct}
 \end{figure}
 
@@ -288,7 +300,7 @@ Portals-based PDHT implementation relative to the MPI implementation.
 \begin{figure}
   \centering
   \includegraphics[width=.88\linewidth]{plots/diff}
-  \caption{MADNESS differentiation performance ($\mu$ sec)}
+  \caption{MADNESS differentiation performance (sec)}
   \label{fig:mad-diff}
 \end{figure}
 
@@ -307,12 +319,11 @@ We have adapted the Meraculous benchmark~\cite{georganas:14} to store the de
 Bruijn graph using \pdht instead of a UPC hash table. Both structures utilize
 the same key structure and creation algorithm. The graph traversal is performed
 in parallel by iterating through all local entries in the table and walking
-both the left and right ends of the sequence. The results of this experiment
-are shown in Figure~\ref{fig:meraculous}\footnote{We are in the process of
-  gathering a full set of data for this experiment.}. The input file for this
+both the left and right ends of the sequence.  The input file for this
 experiment was the {\tt human-chr14.txt.ufx.bin} data set available as a part
 of the NERSC benchmark suite. This input set consists of 96 million sequences,
-each of which must have an ME in Portals. At small scale, this consumes a much
+each of which must have an ME in Portals.  The results of this experiment are
+shown in Figure~\ref{fig:meraculous}.  At small scale, this consumes a much
 greater number of Portals resources than is typically supported. \pdht,
 however, completes without encountering collisions. On the other end, adding
 processes reduces Portals resources but runs out of work quickly. 
@@ -322,9 +333,9 @@ processes reduces Portals resources but runs out of work quickly.
   \centering
   \begin{tabular}[h]{|c|c|c|}\hline
     processes & UPC & PDHT \\\hline
-    10 & 43.225\% & 0.0\%\\\hline
-    20 & 41.953\% & 0.0\%\\\hline
-    40 & 41.344\% & 0.0\%\\\hline
+    10 & 43.23\% & 0.0\%\\\hline
+    20 & 41.95\% & 0.0\%\\\hline
+    40 & 41.34\% & 0.0\%\\\hline
   \end{tabular}
   \vspace{1mm}
   \caption{Meraculous UPC vs PDHT collisions}
@@ -333,19 +344,35 @@ processes reduces Portals resources but runs out of work quickly.
 }
 \vspace{-5mm}
 
-Table~\ref{tbl:collisions} provides additional evidence that PDHT outperforms
-the default UPC array-based implementation of a hash table with respect to
-collisions. Collisions are counted as any global hash table access that is not
-satisfied without traversing a portion of the linked-list chain for a given 
-hash table array element.
+Collisions are a source of overhead in any distributed hash table. We also
+explored how the design of the PDHT system can reduce the number of collisions
+that occur when compared with  more traditional direct array-indexed
+distributed tables.  Table~\ref{tbl:collisions} provides additional evidence
+that PDHT outperforms the default UPC array-based implementation of a hash
+table with respect to collisions. Collisions are counted as any global hash
+table access that is not satisfied without traversing a portion of the
+linked-list chain for a given hash table array element. We also noticed similar
+behavior using a PDHT variant of a benchmark designed to compare UPC, MPI, and
+OpenSHMEM-based hash tables~\cite{maynard:12}.
 
     
+
+%The benchmark code used in another comparison
+%of UPC, MPI, and SHMEM-based approaches to distributed hash
+%tables~\cite{maynard:12} was adapted for use with PDHT. This benchmark is
+%designed to create collision conditions with moderately sized tables. We
+%compared the OpenSHMEM version of this benchmark against PDHT and found that
+%with an 80,000 element local table size, the OpenSHMEM implementation had
+%79,542 collisions for 160,000 insertions. The same set of insertions made with
+%PDHT resulted in no collisions, due to the indirection provided by the
+%64-bit match bits as opposed to a direct array index. In practice, we have
+%not seen collisions in any of the benchmarks described in this section.
 
 \begin{figure}
   \centering
   %\fbox{\rule{2.5in}{0pt}\rule[-2.5in]{0pt}{4ex}}  
   \includegraphics[width=.9\linewidth]{plots/meraculous}
-  \caption{Meraculous UPC vs PDHT performance($\mu$ sec)}
+  \caption{Meraculous UPC vs PDHT performance (sec)}
   \label{fig:meraculous}
 \end{figure}
 
