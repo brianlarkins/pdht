@@ -86,6 +86,7 @@ pdht_status_t pdht_atomic_cswap(pdht_t *ht, void *key, size_t offset, int64_t *o
   ptl_process_t rank;
   _pdht_atomic_data_t *as;
   ptl_size_t oldoff, newoff;
+  int retries = 5;
   int ret;
 
   // find out where we need to perform operation
@@ -100,51 +101,56 @@ pdht_status_t pdht_atomic_cswap(pdht_t *ht, void *key, size_t offset, int64_t *o
   oldoff = offsetof(_pdht_atomic_data_t, old);
   newoff = offsetof(_pdht_atomic_data_t, new);
 
-  PtlCTGet(ht->ptl.atomic_ct, &ctevent);
-  //eprintf("pdht_atomic_cswap: pre: success: %lu fail: %lu rank: %lu\n", ctevent.success, ctevent.failure, rank.rank);
+  do {
+    PtlCTGet(ht->ptl.atomic_ct, &ctevent);
+    //eprintf("pdht_atomic_cswap: pre: success: %lu fail: %lu rank: %lu\n", ctevent.success, ctevent.failure, rank.rank);
 
-  // perform atomic cswap
-  ret = PtlSwap(ht->ptl.atomic_md, oldoff, ht->ptl.atomic_md, newoff,
-      sizeof(int64_t), rank, ptl_ptindex, mbits, offset + PDHT_MAXKEYSIZE,
-      NULL, 0, &as->compare, PTL_CSWAP, PTL_INT64_T);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_atomic_cswap: PtlSwap failed\n");
-    return PdhtStatusError;
-  }
-  
+    // perform atomic cswap
+    ret = PtlSwap(ht->ptl.atomic_md, oldoff, ht->ptl.atomic_md, newoff,
+        sizeof(int64_t), rank, ptl_ptindex, mbits, offset + PDHT_MAXKEYSIZE,
+        NULL, 0, &as->compare, PTL_CSWAP, PTL_INT64_T);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_atomic_cswap: PtlSwap failed\n");
+      return PdhtStatusError;
+    }
+
 #define RELIABLE_TARGETS
 #ifdef RELIABLE_TARGETS
-  // wait for completion
-  ret = PtlCTWait(ht->ptl.atomic_ct, ctevent.success+1, &ct2);
-  if (ret != PTL_OK) {
-    pdht_dprintf("pdht_atomic_cswap: PtlCTWait failed\n");
-    return PdhtStatusError;
-  }
+    // wait for completion
+    ret = PtlCTWait(ht->ptl.atomic_ct, ctevent.success+1, &ct2);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_atomic_cswap: PtlCTWait failed\n");
+      return PdhtStatusError;
+    }
 #else
-  ptl_size_t splusone = ctevent.success+1;
-  int which;
-  ret = PtlCTPoll(&ht->ptl.atomic_ct, &splusone, 1, 4, &ct2, &which);
-  if (ret == PTL_CT_NONE_REACHED) {
-    pdht_dprintf("pdht_atomic_cswap: timed out waiting for reply\n");
-    return PdhtStatusError;
-  } else if (ret != PTL_OK) {
-    pdht_dprintf("pdht_atomic_cswap: PtlCTPoll failed\n");
-    return PdhtStatusError;
-  }
+    ptl_size_t splusone = ctevent.success+1;
+    int which;
+    ret = PtlCTPoll(&ht->ptl.atomic_ct, &splusone, 1, 4, &ct2, &which);
+    if (ret == PTL_CT_NONE_REACHED) {
+      pdht_dprintf("pdht_atomic_cswap: timed out waiting for reply\n");
+      return PdhtStatusError;
+    } else if (ret != PTL_OK) {
+      pdht_dprintf("pdht_atomic_cswap: PtlCTPoll failed\n");
+      return PdhtStatusError;
+    }
 #endif
 
-  if (ct2.failure > ctevent.failure) {
-    pdht_dprintf("pdht_atomic_cswap: found a failure : %d : %d\n", c->rank, rank.rank);
-    ct2.success = 0;
-    ct2.failure = -1;
-    PtlCTInc(ht->ptl.atomic_ct, ct2);
-    return PdhtStatusError;
-  }
+    if (ct2.failure > ctevent.failure) {
+      ct2.success = 0;
+      ct2.failure = -1;
+      PtlCTInc(ht->ptl.atomic_ct, ct2);
+      retries--;
+    } else {
+      *old = as->old;
+      retries = -1;
+      return PdhtStatusOK;
+    }
+  } while (retries > 0);
 
   //printf("oldoff: %d newoff: %d offset: %d %12"PRIx64" %d, %d %ld\n", oldoff, newoff, offset, mbits, ptl_ptindex, rank, as->old);
-  *old = as->old;
-  
-  return PdhtStatusOK;
+  //pdht_dprintf("pdht_atomic_cswap: failure : %d : %d\n", c->rank, rank.rank);
+
+  return PdhtStatusError;
 }
 
 /*

@@ -17,6 +17,7 @@
 #define BS 1
 
 int eprintf(const char *format, ...);
+extern int goof;
 
 FILE *mylog;
 #define LOG(...) fprintf(mylog == NULL ? stderr : mylog, __VA_ARGS__)
@@ -100,12 +101,13 @@ extern pdht_iter_t pdht_iter;
 
 #define loop_until( stmt, cond ) \
 { \
+   int warned = 0; \
    long attempts = 0; do \
    { \
       stmt; \
       if ( cond ) break; \
       UPC_POLL; \
-      if (++attempts % LOOP_CHECK_INTERVAL == 0) LOG("possible infinite loop in loop_until(" #stmt ", " #cond "): %s:%u\n",  __FILE__, __LINE__); \
+      if ((warned == 0) && (++attempts % LOOP_CHECK_INTERVAL == 0)) LOG("%d: possible infinite loop in %d:%d loop_until(" #stmt ", " #cond "): %s:%u\n",  MYTHREAD, goof, warned++, __FILE__, __LINE__);  \
    } while( 1 ); \
    assert( cond ); \
 }
@@ -300,6 +302,7 @@ void print_key(unsigned char k[KMER_PACKED_LENGTH]) {
   printf("\n"); fflush(stdout);
 }
 
+void sanity(int where);
 void fkprinter(FILE *f, void *key);
 void mkprinter(void *key);
 void mvprinter(void *value);

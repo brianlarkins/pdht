@@ -517,9 +517,10 @@ void pdht_fini(void) {
 
 //extern void print_madnode(void *node);
 static void pdht_exit_handler(void) {
+   //printf("%d: exiting foo\n", c->rank);
    //pdht_print_active(c->hts[0], print_madnode);
    //pdht_print_stats(c->hts[0]);
-   //;
+   ;
 }
 
 

@@ -110,6 +110,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     dht->stats.pendputs++;
   } else {
     ptl_pt_index = dht->ptl.getindex[ptindex];  // update to active
+    check = *(int *)ptr;
   }
 
   // handle local updates
@@ -300,6 +301,9 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   int ret;
   pdht_status_t rval = PdhtStatusOK;
 
+  int check, c2 = -1;
+  char *ptr;
+
   PDHT_START_TIMER(dht, gtimer);
 
   dht->stats.gets++;
@@ -454,10 +458,15 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
 
   // looks good, copy value to application buffer
   // skipping over the embedded key data (for collision detection)
-
   memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
 
 done:
+  if (rval == PdhtStatusOK) {
+    ptr = value;
+    ptr += 8;
+    check = *(int *)ptr;
+    if (check != 42) { pdht_dprintf("pdht_get found badness: %d %d\n", rank.rank, c2); }
+  }
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type
   // ni_fail_type should be: PTL_NI_DROPPED
@@ -499,9 +508,8 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   // find our next spot 
 
   // iterator = ht[PTE * QSIZE] (i.e. PENDINGQ_SIZE per PTE)
-  //index = (char *)dht->ht;
-  index = (char *)dht->ht + ((dht->pendq_size * ptindex) * dht->entrysize);
-  // XXX don't like this, because it too, ignores multiple PTEs
+  //index = (char *)dht->ht + ((dht->pendq_size * ptindex) * dht->entrysize);
+  index = (char *)dht->ht;
   index += (dht->nextfree * dht->entrysize); // pointer math
 
   switch (dht->pmode) {
@@ -527,8 +535,12 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
   me.ct_handle     = PTL_CT_NONE;
   me.uid           = PTL_UID_ANY;
   // disable auto-unlink events, we just check for PUT completion
-  me.options       = PTL_ME_OP_GET | PTL_ME_IS_ACCESSIBLE 
-    | PTL_ME_EVENT_UNLINK_DISABLE | PTL_ME_EVENT_LINK_DISABLE;
+  me.options       = PTL_ME_OP_GET 
+                   | PTL_ME_OP_PUT
+                   | PTL_ME_IS_ACCESSIBLE 
+                   | PTL_ME_EVENT_COMM_DISABLE
+                   | PTL_ME_EVENT_LINK_DISABLE
+                   | PTL_ME_EVENT_UNLINK_DISABLE;
   me.match_id.rank = PTL_RANK_ANY;
   me.match_bits    = bits;
   me.ignore_bits   = 0;
@@ -547,11 +559,6 @@ pdht_status_t pdht_insert(pdht_t *dht, ptl_match_bits_t bits, uint32_t ptindex, 
     pdht_dprintf("pdht_insert: ME append failed (active) : %s\n", pdht_ptl_error(ret));
     exit(1);
   }
-  if (foo) {
-    pdht_dprintf("hte entry: %p : %p : %d\n", thte, &thte->ame, (int)thte->ame);
-    foo = 0; 
-  }
-
   dht->nextfree++;
 
   return PdhtStatusOK;

@@ -257,7 +257,6 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
   //sprintf(fname, "foo.%d", MYTHREAD);
   //FILE *kfile = fopen(fname, "w");
 
-  htentry_t vv;
   for (heap_entry = 0; heap_entry < memory_heap.heap_indices[MYTHREAD]; heap_entry++) {
     unpackSequence((unsigned char*) &(local_filled_heap[heap_entry].packed_key), (unsigned char*) unpacked_kmer, KMER_LENGTH);
     htentry_t value;
@@ -271,13 +270,23 @@ hash_table_t* buildUFXhash(int64_t size, FILE *fd, memory_heap_t *memory_heap_re
     ptl_process_t remote;
     pdht->hashfn(pdht, value.packed_key, &hashval, &ptindex, &remote);
     assert(remote.rank ==  c->rank);
-    if (pdht_put(pdht, value.packed_key, &value) != PdhtStatusOK) {
+    //if (pdht_put(pdht, value.packed_key, &value) != PdhtStatusOK) {
+    if (pdht_insert(pdht, hashval, ptindex, value.packed_key, &value) != PdhtStatusOK) {
+      printf("%d: ack!\n", c->rank);
       LOG("pdht_insert error.\n");
       return NULL; // suspect
     }
-    //if ((heap_entry % 10000) == 0) 
-    //  pdht_fence(pdht);
+#if 0
+    fprintf(kfile, "%d\n", -heap_entry);
+    if ((heap_entry % 5000) == 0) {
+      pdht_fence(pdht);
+      upc_fence;
+      upc_barrier;
+    }
+#endif
   }
+  //fprintf(kfile, "\nfinished\n");
+  //fclose(kfile);
 
   upc_barrier;
   upc_fence;
