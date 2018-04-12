@@ -1,9 +1,0 @@
-# data from shepard - 5 procs / node 
-#
-#120      24.235531              45.183474
-# procs   GCC-UPC-construction GCC-UPC-traversal  PDHT-UPC-construction PDHT-UPC-traversal  collisions
-10        8.032297             212.424082           16.570781            193.926610
-20       14.794861             119.116827           23.242610             93.181856
-40       16.139733              58.524467            5.477269             51.825081
-60       17.279487              44.543904            7.742218             39.549630
-80       13.580149              37.852228            7.405036             38.281269
