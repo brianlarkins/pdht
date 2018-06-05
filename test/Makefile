@@ -62,6 +62,9 @@ optimes: pdhtlibs optimes.c
 optimesMPI: pdhtmpilibs optimes.c
 	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o optimesMPI optimes.c $(PDHT_MPILIBS)
 
+optimesSHMEM: pdhtoshmemlibs optimes.c
+	$(OSHCC) $(CFLAGSOSHMEM) -o optimesSHMEM optimes.c $(PDHT_OSHMEMLIBS)
+
 oshbench: pdhtlibs oshbench.c
 	$(CC) $(CFLAGS) -o oshbench oshbench.c $(PDHT_LIBS)
 
