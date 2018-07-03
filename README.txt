@@ -3,6 +3,11 @@ One day this will tell a nice story.
 For now, we put all of the DHT library code in libpdht and any testing drivers
 in test.
 
+To run openSHMEM version, you need the shmem-am of snyjm-18 fork of 
+osss-ucx. To build that you need the ucx-shmem-dev branch of snyjm-18
+fork of UCX. See those two README 's for further instructions ons building and
+running those
+
 To build:
 
 First need to build Portals 4:
