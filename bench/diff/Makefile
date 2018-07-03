@@ -14,6 +14,8 @@ include $(PDHT_TOP)/pdht.mk
 
 diffMPI: CC = $(MPICC)
 diffMPI: CFLAGS = $(CFLAGSMPI) -DMPI
+diffSHMEM: CC = $(OSHCC)
+diffSHMEM: CFLAGS = $(CFLAGSOSHMEM)
 
 OBJS =  alloc.o          \
 				init.o           \
@@ -26,6 +28,9 @@ all: diff
 
 diff: pdhtlibs $(OBJS) diff3d.o 
 	$(CC) $(CFLAGS) -lrt -o diff diff3d.o $(OBJS) $(PDHT_LIBS)
+
+diffSHMEM: pdhtoshmemlibs $(OBJS) diff3d.o 
+	$(OSHCC) $(CFLAGSOSHMEM) -o diffSHMEM diff3d.o $(OBJS) $(PDHT_OSHMEMLIBS)
 
 diffMPI: pdhtmpilibs $(OBJS) diff3d.o
 	$(MPICC) $(CFLAGSMPI) -DMPI=1 -o diffMPI diff3d.o $(OBJS) $(PDHT_MPILIBS)

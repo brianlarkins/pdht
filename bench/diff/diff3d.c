@@ -232,9 +232,7 @@ void fine_scale_projection(func_t *f, madkey_t *nkey, long initial_level) {
   // only rank 0 adds nodes to global space, everyone else is just
   // creating the work-sharing array
   if ((c->rank == 0) && (nkey->level != 0)) {
-
-
-    //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, node.a.x, node.a.y, node.a.z, node.a.level);
+    //printf("%d: putting: <%ld,%ld,%ld> @ %ld\n", c->rank, nkey->x, nkey->y, nkey->z, nkey->level);
     if (pdht_put(f->ftree, nkey, &node) != PdhtStatusOK) { // store new node in PDHT
       printf("%d: fine_scale_projection: put error\n", c->rank);
       exit(1);
@@ -394,7 +392,6 @@ void refine_fine_scale_project(func_t *f, madkey_t *nkey) {
           cnode.valid = (cnode.valid == madCoeffBoth) ? madCoeffWavelet : madCoeffNone;
           cnode.children = 1;
 
-
           //printf("%d: updating: <%ld,%ld,%ld> @ %ld\n", c->rank, cnode.a.x, cnode.a.y, cnode.a.z, cnode.a.level);
           pdht_update(f->ftree, &ckey, &cnode);
           fine_scale_project(f, &ckey);
@@ -542,6 +539,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
   int i, j, k;
   double t;
 
+
   //printf("%d: compress of <%ld,%ld,%ld> @ %ld keep = %s\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level, keep == 0 ? "no" : "yes");
 
   // get the current node
@@ -557,7 +555,6 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
     // base case, leaf node in octree 
 
     //print_madnode(&node); printf("\n");
-
     // copy our scaling coeffs for our caller
     sc = tensor_copy((tensor_t *)&node.s); // cast from tensor3dk_t
     node.valid = (node.valid == madCoeffBoth ? madCoeffWavelet : madCoeffNone); // mark scaling coeffs as invalid 
@@ -566,6 +563,7 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
     // landing spot for children scaling coeffs
     ss = tensor_create3d(2*f->k,2*f->k,2*f->k, TENSOR_ZERO);
 
+    //printf("%d: compress of <%ld,%ld,%ld> @ %ld keep = %s\n", c->rank, nkey->x,nkey->y,nkey->z,nkey->level, keep == 0 ? "no" : "yes");
     // interior node, recur down to bottom of octree
 
     // for each child of ours
@@ -642,7 +640,6 @@ tensor_t *compress(func_t *f, madkey_t *nkey, int limit, int keep) {
 
   // update global copy of our node
   //print_madnode(&node); printf("\n");
-  
   //printf("%d: update2: <%ld,%ld,%ld> @ %ld\n", c->rank, node.a.x, node.a.y, node.a.z, node.a.level);
   pdht_update(f->ftree, nkey, &node);
 

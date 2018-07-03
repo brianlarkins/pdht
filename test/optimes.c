@@ -20,7 +20,7 @@ int main(int argc, char **argv);
 void localhash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptindex, ptl_process_t *rank) {
   (*rank).rank = 0;
   *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
+//  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   //*ptindex = 1;
 }
 
@@ -31,7 +31,7 @@ void remotehash(pdht_t *dht, void *key, ptl_match_bits_t *mbits, uint32_t *ptind
   (*rank).rank = 2;
 #endif
   *mbits = *(unsigned long *)key;
-  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
+//  *ptindex = *(unsigned long *)key % dht->ptl.nptes;
   //*ptindex = 1;
 }
 
@@ -57,14 +57,14 @@ int main(int argc, char **argv) {
   maxentries = 50000;
   maxiters   = NITER;
   cfg.nptes        = 1;
-  cfg.pendmode     = PdhtPendingTrig;
+  //cfg.pendmode     = PdhtPendingTrig;
   cfg.maxentries   = maxentries < 100000 ? 101000 : 2*maxentries;
   //cfg.pendq_size   = maxentries < 100000 ? 51000 : maxentries+1;
   cfg.pendq_size   = 50000;
   cfg.ptalloc_opts = 0;
   cfg.quiet        = 0;
   cfg.local_gets   = PdhtRegular;
-  cfg.rank         = PDHT_DEFAULT_RANK_HINT;
+  //cfg.rank         = PDHT_DEFAULT_RANK_HINT;
 
   while ((opt = getopt(argc, argv, "dhi:n:s:puUl")) != -1) {
     switch (opt) {
@@ -95,10 +95,10 @@ int main(int argc, char **argv) {
         elemsize = atoi(optarg);
         break;
       case 'p':
-        cfg.pendmode = PdhtPendingPoll;
+        //cfg.pendmode = PdhtPendingPoll;
         break;
       case 'u':
-        cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
+        //cfg.ptalloc_opts = PTL_PT_MATCH_UNORDERED;
         
         break;
       case 'U':
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
   memset(val,0,elemsize);
 
   // create hash table
-  pdht_tune(PDHT_TUNE_ALL, &cfg);
+  //pdht_tune(PDHT_TUNE_ALL, &cfg);
   ht = pdht_create(sizeof(unsigned long), elemsize, PdhtModeStrict);
   pdht_barrier();
 /*
@@ -138,6 +138,7 @@ int main(int argc, char **argv) {
 
   PDHT_START_ATIMER(total);
 
+  /*
   // TIMING: latency for local not found elements
   // nothing should be in hash, so everything should be not found
   key = 1; // local uses odds
@@ -149,7 +150,7 @@ int main(int argc, char **argv) {
     } 
     PDHT_STOP_ATIMER(lnotfound);
   }
-
+  
 
   // TIMING: latency for remote not found elements
   pdht_barrier();
@@ -164,7 +165,7 @@ int main(int argc, char **argv) {
     } 
     PDHT_STOP_ATIMER(rnotfound);
   }
-
+  */
 
   // timing put / update / get operations
 
@@ -290,23 +291,23 @@ int main(int argc, char **argv) {
 
   //pdht_print_stats(ht);
 
-  if (!rawmode) {
+  if (!rawmode && c->rank == 0) {
     // element size, # of elements, iterations
-    eprintf("\n\nelemsize %lu elements: %d iterations: %d elapsed time: %12.7f s\n", 
+    printf("\n\nelemsize %lu elements: %d iterations: %d elapsed time: %12.7f s\n", 
         elemsize, maxentries, maxiters, PDHT_READ_ATIMER_SEC(total));
 
     // not found
-    eprintf("  unit: local notfound: %12.7f us remote notfound %12.7f us\n",
+    printf("  unit: local notfound: %12.7f us remote notfound %12.7f us\n",
         (PDHT_READ_ATIMER_USEC(lnotfound)/(double)maxentries),
         (PDHT_READ_ATIMER_USEC(rnotfound)/(double)maxentries));
-    eprintf("  unit: local put:      %12.7f us remote put:     %12.7f us\n",
+    printf("  unit: local put:      %12.7f us remote put:     %12.7f us\n",
         (PDHT_READ_ATIMER_USEC(lput)/(double)maxentries), 
         (PDHT_READ_ATIMER_USEC(rput)/(double)maxentries));
-    eprintf("  unit: local update:   %12.7f us remote update:  %12.7f us\n",
+    printf("  unit: local update:   %12.7f us remote update:  %12.7f us\n",
         (PDHT_READ_ATIMER_USEC(lupdate)/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rupdate)/(double)maxiters));
     for (int e=0; e<10; e++) {
-      eprintf("  [%7d]: local get: %12.7f us remote get:     %12.7f us\n", mlistentry[e],
+      printf("  [%7d]: local get: %12.7f us remote get:     %12.7f us\n", mlistentry[e],
         (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
         (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
     }
@@ -322,9 +323,11 @@ int main(int argc, char **argv) {
 #endif
     // { 1, 10, 100, 1000, 10000, 50000 }
     for (int e=0; e<10; e++) {
-      eprintf(" %7d %9.5f %9.5f\n", mlistentry[e],
-        (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
-        (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
+      if(c->rank == 0){
+        printf(" %7d %9.5f %9.5f\n", mlistentry[e],
+          (PDHT_READ_ATIMER_USEC(lgets[e])/(double)maxiters), 
+          (PDHT_READ_ATIMER_USEC(rgets[e])/(double)maxiters));
+      }
     }
   }
 done:

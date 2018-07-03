@@ -32,6 +32,10 @@ static inline struct timespec pdht_get_wtime(){
 #define PDHT_READ_ATIMER_MSEC(TMR)  PDHT_READ_ATIMER(TMR)/(double)1e6
 #define PDHT_READ_ATIMER_SEC(TMR)   PDHT_READ_ATIMER(TMR)/(double)1e9
 
+#define PdhtPendingTrig 0
+#define PTL_PT_MATCH_UNORDERED 0
+#define PDHT_DEFAULT_RANK_HINT 0 
+#define PDHT_TUNE_ALL 0
 
 typedef struct ht_s{
   uint64_t        key;
@@ -111,8 +115,10 @@ struct pdht_s;
 typedef void (*pdht_hashfunc)(struct pdht_s *dht, void *key, ptl_match_bits_t *bits, uint32_t *ptindex, ptl_process_t *rank);
 
 typedef struct pdht_s{
+  int          *counters;
+  int           next_counter;
   unsigned      keysize;
-  unsigned       elemsize;
+  unsigned      elemsize;
   pdht_hashfunc hashfn;
   ht_t         *ht;
   void         *ht_shmem_space;
@@ -127,6 +133,8 @@ typedef struct pdht_context_s{
   shmem_am_handle_t put_handle;
   size_t            data_offset;
   size_t            value_offset;
+  void             *pSync;
+  void             *pWrk;
 } pdht_context_t;
 
 extern pdht_context_t *c;
@@ -135,7 +143,6 @@ extern pdht_context_t *c;
 pdht_t *pdht_create(size_t keysize, size_t elemsize, pdht_mode_t mode);
 void pdht_free(pdht_t *dht);
 void pdht_tune(unsigned opts, pdht_config_t *config);
-
 //synchonization
 void            pdht_barrier(void);
 void            pdht_fence(pdht_t *dht);
@@ -154,7 +161,9 @@ void            pdht_sethash(pdht_t *dht, pdht_hashfunc hfun);
 //utility stuff
 void            pdht_print_stats(pdht_t *dht);
 double          pdht_average_time(pdht_t *dht, pdht_timer_t timer);
+int eprintf(const char *format, ...);
 
-
-
+int pdht_counter_init(pdht_t *dht, int init_val);
+int pdht_counter_inc(pdht_t *dht, int counter, int inc_val);
+void pdht_counter_reset(pdht_t *dht, int counter);
 
