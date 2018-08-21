@@ -1,9 +1,5 @@
 
 #pdht w/ mpi make file
-#its shitty cause jack wrote it
-
-
-
 
 CFLAGS=$(GCFLAGS) -I. -I../include -I$(PORTALS_INCLUDEDIR)
 
