@@ -13,7 +13,7 @@ PORTALS_LIBDIR     = $(HOME)/opt/lib
 CC = gcc
 MPICC = mpicc
 OSHCC = oshcc
-GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L  # development
+GCFLAGS = --std=c99 -rdynamic -g -O3 -D_POSIX_C_SOURCE=199309L  # development
 #GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = -g -Wall
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
@@ -22,6 +22,7 @@ GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L  # development
 #GCFLAGS = -O3
 CFLAGS = $(GCFLAGS) -I. -I$(PDHT_TOP)/include -I$(PORTALS_INCLUDEDIR)
 CFLAGSMPI = $(GCFLAGS) -I. -I$(PDHT_TOP)/includempi -I$(PORTALS_INCLUDEDIR)
+CFLAGSOSHMEM = $(GCFLAGS) -I. -I$(PDHT_TOP)/includeoshmem 
 
 #LDFLAGS=-L$(PORTALS_LIBDIR)
 MATH_LIB            = -lm
@@ -32,9 +33,11 @@ PTHREAD_LIB         = -lpthread
 PDHT_INSTALL_LIBDIR = $(PDHT_TOP)/lib
 PDHT_LIBPDHT        = $(PDHT_INSTALL_LIBDIR)/libpdht.a
 PDHT_LIBMPIPDHT     = $(PDHT_INSTALL_LIBDIR)/libmpipdht.a
+PDHT_LIBOSHMEMPDHT      = $(PDHT_INSTALL_LIBDIR)/liboshmempdht.a
 
 PDHT_LIBDIRS = $(PDHT_TOP)/libpdht
 PDHT_LIBMPIDIRS = $(PDHT_TOP)/libmpipdht
+PDHT_LIBOSHMEMDIRS = $(PDHT_TOP)/liboshmempdht
 
 PDHT_LIBS = -L$(PORTALS_LIBDIR) -Wl,-rpath=$(PORTALS_LIBDIR) $(PDHT_LIBPDHT) $(PTHREAD_LIB) $(PMI_LIB) $(PORTALS_LIB) $(MATH_LIB)
 PDHT_MPILIBS = $(PDHT_LIBMPIPDHT) $(MATH_LIB)
@@ -64,6 +67,9 @@ pdhtlibs: pdhtheaders $(PDHT_LIBDIRS)
 
 .PHONY: pdhtlibs $(PDHT_LIBMPIDIRS)
 pdhtmpilibs: pdhtheaders $(PDHT_LIBMPIDIRS)
+
+.PHONY: pdhtlibs $(PDHT_LIBOSHMEMDIRS)
+pdhtoshmemlibs: pdhtheaders $(PDHT_LIBOSHMEMDIRS)
 
 .PHONY: checkflags pdhtheaders
 pdhtheaders: 
