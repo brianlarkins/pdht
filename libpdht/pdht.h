@@ -118,14 +118,18 @@ struct pdht_portals_s {
   ptl_process_t   *mapping;             //!< physical/logical NI mapping
   ptl_handle_md_t  collective_md;       //!< collective MD handle
   ptl_handle_me_t  barrier_me;          //!< barrier ME handle
+  ptl_handle_ct_t  barrier_ct;          //!< barrier CT handle
+  ptl_size_t       barrier_count;       //!< barrier  count
   ptl_handle_me_t  reduce_lme;          //!< reduce left ME handle
   ptl_handle_me_t  reduce_rme;          //!< reduce right ME handle
-  ptl_handle_ct_t  barrier_ct;          //!< barrier CT handle
-  ptl_handle_ct_t  collective_ct;       //!< collective CT handle
-  ptl_size_t       collective_count;    //!< collective count
-  ptl_size_t       barrier_count;       //!< barrier  count
+  ptl_handle_ct_t  reduce_ct;           //!< reduce CT handle
+  ptl_size_t       reduce_count;        //!< collective count
+  ptl_handle_me_t  bcast_me;           //!< bcast ME handle
+  ptl_handle_ct_t  bcast_ct;            //!< bcast CT handle
+  ptl_size_t       bcast_count;         //!< broadcast count
   void            *collective_lscratch; //!< scratch space for collective ops
   void            *collective_rscratch; //!< scratch space for collective ops
+  void            *collective_scratch;  //!< scratch space for collective ops
   u_int32_t        pt_nextfree;         //!< next available PTE index
 };
 typedef struct pdht_portals_s pdht_portals_t;

@@ -110,7 +110,6 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
     dht->stats.pendputs++;
   } else {
     ptl_pt_index = dht->ptl.getindex[ptindex];  // update to active
-    check = *(int *)ptr;
   }
 
   // handle local updates
@@ -583,7 +582,7 @@ static void pdht_dump_entry(pdht_t *dht, void *exp, void *act) {
   printf("\n");
   dht->hashfn(dht, exp, &ehash, &ptindex, &rank);
   dht->hashfn(dht, act, &ahash, &ptindex, &rank);
-  printf("    hashes: exp: %llx act: %llx\n", ehash, ahash);
+  //printf("    hashes: exp: %llx act: %llx\n", ehash, ahash);
 }
 
   static void pdht_keystr(void *key, char* str) {

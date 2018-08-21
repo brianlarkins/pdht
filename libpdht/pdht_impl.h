@@ -41,8 +41,8 @@
 #define PDHT_DEFAULT_NUM_PTES  1
 #define PDHT_COUNT_PTES 1
 #define PDHT_COMPLETION_CTS 1
-#define PDHT_COLLECTIVE_PTES 1
-#define PDHT_COLLECTIVE_CTS 2
+#define PDHT_COLLECTIVE_PTES 3 // barrier, mutex, termination
+#define PDHT_COLLECTIVE_CTS 4  // 
 #define PDHT_ATOMIC_CTS PDHT_MAX_TABLES
 
 #define PDHT_MAXKEYSIZE 32 // size in bytes (32 for MADNESS)
@@ -58,9 +58,10 @@
 
 
 #define __PDHT_COLLECTIVE_INDEX 0
-#define __PDHT_BARRIER_MATCH 0xdeadbeef
+#define __PDHT_BARRIER_MATCH  0xdeadbeef
 #define __PDHT_REDUCE_LMATCH  0xfa570911
 #define __PDHT_REDUCE_RMATCH  0xfa570991
+#define __PDHT_BCAST_MATCH    0xffffffff
 #define __PDHT_COUNTER_INDEX 1
 #define __PDHT_COUNTER_MATCH 0xdeadbeef
 

@@ -35,13 +35,15 @@ void pdht_collective_init(pdht_context_t *c) {
   int ret;
 
   // initialize our collective count to one (for ourself)
-  c->ptl.collective_count = 1; // keep general collective op counts separate from barriers
-  c->ptl.barrier_count = 1;
+  c->ptl.barrier_count    = 0;
+  c->ptl.bcast_count      = 0;
+  c->ptl.reduce_count     = 0;
 
   // allocate some scratch place for reductions (assumes longs/doubles are 64-bits each)
-  c->ptl.collective_lscratch = calloc(2*PDHT_MAX_REDUCE_ELEMS, sizeof(uint64_t));
+  c->ptl.collective_lscratch = calloc(3*PDHT_MAX_REDUCE_ELEMS, sizeof(uint64_t));
   // set start to middle of scratch space (danger, pointer math)
   c->ptl.collective_rscratch = ((char *)(c->ptl.collective_lscratch)) + (PDHT_MAX_REDUCE_ELEMS * sizeof(uint64_t));
+  c->ptl.collective_scratch = ((char *)(c->ptl.collective_rscratch)) + (PDHT_MAX_REDUCE_ELEMS * sizeof(uint64_t));
 
   // create/bind send side MD
   md.start     = NULL;
@@ -63,11 +65,19 @@ void pdht_collective_init(pdht_context_t *c) {
   } 
 
   // create ME with counter for collective message send/receive
-  c->ptl.collective_ct = PTL_INVALID_HANDLE;
   c->ptl.barrier_ct    = PTL_INVALID_HANDLE;
+  c->ptl.bcast_ct      = PTL_INVALID_HANDLE;
+  c->ptl.reduce_ct     = PTL_INVALID_HANDLE;
 
   // get counter to attach to match entry
-  ret = PtlCTAlloc(c->ptl.lni, &c->ptl.collective_ct);
+  ret = PtlCTAlloc(c->ptl.lni, &c->ptl.bcast_ct);
+  if (ret != PTL_OK)  {
+    pdht_dprintf("collective_init: CTAlloc failed\n");
+    exit(1);
+  } 
+
+  // get another for reductions
+  ret = PtlCTAlloc(c->ptl.lni, &c->ptl.reduce_ct);
   if (ret != PTL_OK)  {
     pdht_dprintf("collective_init: CTAlloc failed\n");
     exit(1);
@@ -95,10 +105,21 @@ void pdht_collective_init(pdht_context_t *c) {
     exit(1);
   } 
 
+  // allocate matchlist entry for broadcasts
+  me.start      = c->ptl.collective_lscratch; // re-use common scratch space
+  me.length     = sizeof(uint64_t)*PDHT_MAX_REDUCE_ELEMS;
+  me.ct_handle  = c->ptl.bcast_ct;
+  me.match_bits  = __PDHT_BCAST_MATCH;
+  ret = PtlMEAppend(c->ptl.lni, __PDHT_COLLECTIVE_INDEX, &me, PTL_PRIORITY_LIST, NULL, &c->ptl.bcast_me);
+  if (ret != PTL_OK)  {
+    pdht_dprintf("collective_init: PtlMEAppend failed\n");
+    exit(1);
+  } 
+
   // allocate left matchlist entry for reductions
   me.start      = c->ptl.collective_lscratch;
   me.length     = sizeof(uint64_t)*PDHT_MAX_REDUCE_ELEMS;
-  me.ct_handle  = c->ptl.collective_ct;
+  me.ct_handle  = c->ptl.reduce_ct;
   me.match_bits  = __PDHT_REDUCE_LMATCH;
   ret = PtlMEAppend(c->ptl.lni, __PDHT_COLLECTIVE_INDEX, &me, PTL_PRIORITY_LIST, NULL, &c->ptl.reduce_lme);
   if (ret != PTL_OK)  {
@@ -128,7 +149,8 @@ void pdht_collective_fini(void) {
   PtlMEUnlink(c->ptl.barrier_me);
   PtlMEUnlink(c->ptl.reduce_lme);
   PtlMEUnlink(c->ptl.reduce_rme);
-  PtlCTFree(c->ptl.collective_ct);
+  PtlCTFree(c->ptl.bcast_ct);
+  PtlCTFree(c->ptl.reduce_ct);
   PtlCTFree(c->ptl.barrier_ct);
   PtlPTFree(c->ptl.lni, __PDHT_COLLECTIVE_INDEX);
   PtlMDRelease(c->ptl.collective_md);
@@ -141,74 +163,68 @@ void pdht_collective_fini(void) {
  */ 
 void pdht_barrier(void) {
   ptl_process_t  p, l, r;
-  ptl_size_t     test;
-  ptl_ct_event_t cval, cval2;
+  int nchildren = 0;
+  int nparent   = (c->rank != 0) ? 1 : 0; // root has no parent
+  ptl_size_t     count_base;
+  ptl_ct_event_t cval;
   int ret; 
   int x = 1;
+
   // use binary tree of processes
   p.rank = ((c->rank + 1) >> 1) - 1;
   l.rank = ((c->rank + 1) << 1) - 1;
   r.rank = l.rank + 1;
 
-  PtlCTGet(c->ptl.barrier_ct, &cval2);
+  //PtlCTGet(c->ptl.barrier_ct, &cval2);
   //pdht_dprintf("**** p: %lu l: %lu r: %lu barrier_count: %d counter: %lu\n", p.rank, l.rank, r.rank, c->ptl.barrier_count, cval2.success);
 
-  // wait for children to enter barrier
-  int orig = c->ptl.barrier_count;
+  // barrier_count tracks barrier events, the number of received messages is related to
+  // our tree connectivity
+  count_base = c->ptl.barrier_count * (nparent + nchildren);
 
-  test = 0;
-
-  if (l.rank < c->size) 
-    test = c->ptl.barrier_count++;
-  if (r.rank < c->size) 
-    test = c->ptl.barrier_count++;
-
-  if (test > orig) {
-    //pdht_dprintf("waiting for %d messages from l: %lu r: %lu \n", test, l.rank, r.rank);
-
-    ret = PtlCTWait(c->ptl.barrier_ct, orig+1, &cval);
+  // if we have children, wait for them to send us a barrier entry message
+  if (nchildren > 0) {
+    //pdht_dprintf("waiting for %d messages from l: %lu r: %lu \n", nchildren, l.rank, r.rank);
+    ret = PtlCTWait(c->ptl.barrier_ct, count_base + nchildren, &cval);
     if (ret != PTL_OK) {
-      pdht_dprintf("barrier: CTWait failed (children)\n");
+      pdht_dprintf("pdht_barrier: CTWait failed (children)\n");
       exit(1);
     }
-    //pdht_dprintf("got one message: s:%d f:%d\n",cval.success, cval.failure);
 
-    if ((orig+2) == test) {
-      ret = PtlCTWait(c->ptl.barrier_ct, test, &cval);
-      if (ret != PTL_OK) {
-        pdht_dprintf("barrier: CTWait failed (children)\n");
-        exit(1);
-      }
-      //pdht_dprintf("got other message: s:%d f:%d\n",cval.success, cval.failure);
+    if (cval.failure > 0) {
+      pdht_dprintf("pdht_barrier: found failure event waiting on child messages\n");
+      exit(1);
     }
   }
-  ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "children have entered barrier\n");
 
-  // children tell parents that they have entered
+
+  // if we are a child, send a message to our parent (our subtree has all arrived at barrier)
   if (c->rank > 0)  {
-    //pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", p.rank);
-    PtlCTGet(c->ptl.barrier_ct, &cval2);
+
     //pdht_dprintf("notifying %lu : ct: %d count: %d\n", p.rank, cval2.success, c->ptl.barrier_count);
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX,
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (put parent): %s\n", pdht_ptl_error(ret));
       exit(1);
     }
-    test = c->ptl.barrier_count++;
 
-    ret = PtlCTWait(c->ptl.barrier_ct, test, &cval);
+    // wait for downward broadcast from parent
+    ret = PtlCTWait(c->ptl.barrier_ct, count_base + (nchildren + nparent), &cval);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: CTWait failed (parent)\n");
+      exit(1);
+    }
+    if (cval.failure > 0) {
+      pdht_dprintf("pdht_barrier: found failure event waiting on child messages\n");
       exit(1);
     }
   }
 
   // wake up waiting children
-  if (l.rank < c->size) {
-    //pdht_lprintf(PDHT_DEBUG_VERBOSE, "waking %lu\n", l.rank);
+  if (nchildren > 0) {
     //pdht_dprintf("waking left: %lu\n", l.rank);
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX,
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (wake left): %s\n", pdht_ptl_error(ret));
@@ -216,16 +232,18 @@ void pdht_barrier(void) {
     }
   }
 
-  if (r.rank < c->size) {
-    ////pdht_lprintf(PDHT_DEBUG_VERBOSE, "notifying %lu\n", r.rank);
+  if (nchildren > 1) {
     //pdht_dprintf("waking right: %lu\n", l.rank);
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX, 
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX,
         __PDHT_BARRIER_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("barrier: Put failed (wake right): %s\n", pdht_ptl_error(ret));
       exit(1);
     }
   }
+
+  // keep track of how many barriers have occurred
+  c->ptl.barrier_count++;
 }
 
 
@@ -241,14 +259,12 @@ void pdht_barrier(void) {
  */ 
 pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype_t type, int elems) {
   ptl_process_t  p, l, r;
-  ptl_size_t     test;
-  ptl_ct_event_t cval, cval2;
+  int nchildren = 0;
+  int nparent   = (c->rank != 0) ? 1 : 0; // root has no parent
+  ptl_size_t     count_base;
+  ptl_ct_event_t cval;
   ptl_match_bits_t destme;
-  int kids = 0;
-  int ret; 
-  int tysize = 0;
-
-  tysize = pdht_collective_size(type);
+  int ret = 0, tysize = 0, x = 0;
 
   switch (op) {
   case PdhtReduceOpSum:
@@ -256,47 +272,98 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
   case PdhtReduceOpMax:
     break;
   default:
-
     pdht_dprintf("pdht_reduce: unsupported reduction operation\n");
     exit(1);
   }
+
+  tysize = pdht_collective_size(type);
+
   // figure out if we are the left or right child of our parent
   destme = ((c->rank % 2) != 0) ? __PDHT_REDUCE_LMATCH : __PDHT_REDUCE_RMATCH;
 
   // use binary tree of processes
+  p.rank = ((c->rank + 1) >> 1) - 1;
   l.rank = ((c->rank + 1) << 1) - 1;
   r.rank = l.rank + 1;
-  p.rank = ((c->rank + 1) >> 1) - 1;
 
-  // parents wait for children to send reduce buffers
-  if (l.rank < c->size) {
-    kids++;
-    test = c->ptl.collective_count++;
-    if (r.rank < c->size)  {
-      test = c->ptl.collective_count++;
-      kids++;
-    }
-    //pdht_dprintf("waiting for %d messages from l: %lu r: %lu\n", test, l.rank, r.rank);
-    ret = PtlCTWait(c->ptl.collective_ct, test, &cval);
+  if (l.rank < c->size)
+    nchildren++;
+  if (r.rank < c->size)
+    nchildren++;
+
+  // reduce_count tracks reduce events, the number of received messages is related to
+  // our tree connectivity
+  count_base = c->ptl.reduce_count * (nparent + nchildren);
+
+  // if we have children, wait for them to send us reduce message
+  if (nchildren > 0) {
+    //pdht_dprintf("pdht_reduce: waiting for %d messages from l: %lu r: %lu \n", nchildren, l.rank, r.rank);
+    ret = PtlCTWait(c->ptl.reduce_ct, count_base + nchildren, &cval);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_reduce: CTWait failed (children)\n");
-      
+      exit(1);
+    } else if (cval.failure > 0) {
+      pdht_dprintf("pdht_reduce: found failure event waiting on child messages\n");
       exit(1);
     }
   }
-  if (kids > 0) {
+
+	memcpy(c->ptl.collective_scratch, in, (tysize*elems));
+  if (nchildren > 0) {
     reduce_zip(in, c->ptl.collective_lscratch, op, type, elems);
-    if (kids == 2) 
+    if (nchildren == 2) 
       reduce_zip(in, c->ptl.collective_rscratch, op, type, elems);
   }
+
   // send our reduced buffer to our parent
   if (c->rank > 0)  {
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)in, tysize*elems, PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX, 
+    //pdht_dprintf("notifying %lu : ct: %d count: %d\n", p.rank, cval2.success, c->ptl.barrier_count);
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)c->ptl.collective_scratch, tysize*elems, PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX,
         destme, 0, NULL, 0);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_reduce: Put failed (put parent): %s\n", pdht_ptl_error(ret));
+      exit(1);
+    }
+
+    // wait for downward broadcast from parent
+    ret = PtlCTWait(c->ptl.reduce_ct, count_base + (nchildren + nparent), &cval);
+    if (ret != PTL_OK) {
+      pdht_dprintf("barrier: CTWait failed (parent)\n");
+      exit(1);
+    }
+    if (cval.failure > 0) {
+      pdht_dprintf("pdht_barrier: found failure event waiting on child messages\n");
+      exit(1);
+    }
   } else {
     // we're the root our local data has been zipped with each l/r subtree
-    memcpy(out, in, tysize*elems);
+    memcpy(out, c->ptl.collective_scratch, tysize*elems);
   }
+
+  // wake up waiting children
+  if (nchildren > 0) {
+    //pdht_dprintf("waking left: %lu\n", l.rank);
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, l, __PDHT_COLLECTIVE_INDEX,
+        __PDHT_REDUCE_LMATCH, 0, NULL, 0);
+    if (ret != PTL_OK) {
+      pdht_dprintf("barrier: Put failed (wake left): %s\n", pdht_ptl_error(ret));
+      exit(1);
+    }
+  }
+
+  if (nchildren > 1) {
+    //pdht_dprintf("waking right: %lu\n", l.rank);
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, r, __PDHT_COLLECTIVE_INDEX,
+        __PDHT_REDUCE_LMATCH, 0, NULL, 0);
+    if (ret != PTL_OK) {
+      pdht_dprintf("barrier: Put failed (wake right): %s\n", pdht_ptl_error(ret));
+      exit(1);
+    }
+  }
+
+  // keep track of how many reductions have occurred
+  c->ptl.reduce_count++;
+
   return PdhtStatusOK;
 } 
 
@@ -311,25 +378,30 @@ pdht_status_t pdht_reduce(void *in, void *out, pdht_reduceop_t op, pdht_datatype
  */
 pdht_status_t pdht_broadcast(void *buf, pdht_datatype_t type, int elems) {
   ptl_process_t  p, l, r;
-  ptl_size_t     test;
-  ptl_ct_event_t cval, cval2;
-  ptl_match_bits_t destme;
-  int ret; 
-  int tysize = 0;
-
-  // always use left ME for broadcast
-  destme = __PDHT_REDUCE_LMATCH; 
+  ptl_size_t     bcast_base;
+  ptl_ct_event_t cval;
+  int nparent   = (c->rank != 0) ? 1 : 0; // root has no parent
+  int tysize = 0, nchildren = 0, ret, x;
 
   // use binary tree of processes
+  p.rank = ((c->rank + 1) >> 1) -1;
   l.rank = ((c->rank + 1) << 1) - 1;
   r.rank = l.rank + 1;
 
   tysize = pdht_collective_size(type);
 
+  if (l.rank < c->size)
+    nchildren++;
+  if (r.rank < c->size)
+    nchildren++;
+
+  // bcast_count tracks broadcast events, compute the right number of
+  //    expected messages for our counter threshold
+  bcast_base = c->ptl.bcast_count * (nparent + nchildren);
+
   // wait for parent to send message
   if (c->rank > 0) {
-    test = c->ptl.collective_count++;
-    ret = PtlCTWait(c->ptl.collective_ct, test, &cval);
+    ret = PtlCTWait(c->ptl.bcast_ct, bcast_base + nparent, &cval);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_broadcast: CTWait failed (parent)\n");
       exit(1);
@@ -339,23 +411,48 @@ pdht_status_t pdht_broadcast(void *buf, pdht_datatype_t type, int elems) {
   }
 
   // parents send the message to children (if any)
-  if (l.rank < c->size) {
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)buf, tysize*elems, PTL_NO_ACK_REQ, l, 
-                 __PDHT_COLLECTIVE_INDEX, destme, 0, NULL, 0);
+  if (nchildren > 0) {
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)buf, tysize*elems, PTL_NO_ACK_REQ, l,
+                 __PDHT_COLLECTIVE_INDEX, __PDHT_BCAST_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
       pdht_dprintf("pdht_broadcast: Put failed (send left)\n");
       exit(1);
     }
   }
 
-  if (r.rank < c->size) {
-    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)buf, tysize*elems, PTL_NO_ACK_REQ, r, 
-                 __PDHT_COLLECTIVE_INDEX, destme, 0, NULL, 0);
+  if (nchildren > 1) {
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)buf, tysize*elems, PTL_NO_ACK_REQ, r,
+                 __PDHT_COLLECTIVE_INDEX, __PDHT_BCAST_MATCH, 0, NULL, 0);
     if (ret != PTL_OK) {
-      pdht_dprintf("pdht_broadcast: Put failed (send left)\n");
+      pdht_dprintf("pdht_broadcast: Put failed (send right)\n");
       exit(1);
     }
   }
+
+  // now we need to wait for confirmation from our children
+  if (nchildren != 0)  {
+    ret = PtlCTWait(c->ptl.bcast_ct, bcast_base + (nparent + nchildren), &cval);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_broadcast: CTWait failed (parent)\n");
+      exit(1);
+    }
+  }
+
+  // notify our parent that we've received the broadcast
+  if (c->rank > 0) {
+    x = 0;
+    ret = PtlPut(c->ptl.collective_md, (ptl_size_t)&x, sizeof(x), PTL_NO_ACK_REQ, p, __PDHT_COLLECTIVE_INDEX,
+        __PDHT_BCAST_MATCH, 0, NULL, 0);
+    if (ret != PTL_OK) {
+      pdht_dprintf("pdht_broadcast: Put failed (parent confirmation)\n");
+
+
+      exit(1);
+    }
+  }
+
+  c->ptl.bcast_count++;
+  return PdhtStatusOK;
 }
 
 
