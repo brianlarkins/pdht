@@ -213,7 +213,7 @@ static inline pdht_status_t pdht_do_put(pdht_t *dht, void *key, void *value, pdh
           pdht_dump_event(&fault);
         }
 
-        // vim auto indenting is dumb as shit.
+        // vim auto indenting is dumb
         } else {
           pdht_dprintf("pdht_put: PtlEQWait() error: %s\n", pdht_ptl_error(ret));
         }

@@ -19,7 +19,6 @@ pdht_context_t *c = NULL;       // a global variable. for shame.
 pdht_config_t   *__pdht_config = NULL; // another one. i'm over it. (used only during init)
 
 static void pdht_exit_handler(void);
-static void print_fucking_mapping(void);
 void pdht_bthandler(int sig);
 
 /**
@@ -448,8 +447,6 @@ void pdht_init(pdht_config_t *cfg) {
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_war_ordered_size: %d\n", c->ptl.ni_limits.max_war_ordered_size);
   pdht_eprintf(PDHT_DEBUG_WARN, "\tmax_volatile_size: %d\n", c->ptl.ni_limits.max_volatile_size);
 
-  //print_fucking_mapping();
-
   ret = PtlSetMap(c->ptl.lni, c->size, c->ptl.mapping);
   if (ret != PTL_OK) {
     pdht_eprintf(PDHT_DEBUG_NONE, "Portals physical/logical mapping failed : %s.\n", pdht_ptl_error(ret));
@@ -521,16 +518,6 @@ static void pdht_exit_handler(void) {
    //pdht_print_active(c->hts[0], print_madnode);
    //pdht_print_stats(c->hts[0]);
    ;
-}
-
-
-
-static void print_fucking_mapping() {
-  int i;
-  for (i=0;i<c->size;i++) {
-    printf("process %d: map[%u] nid: %u pid: %u\n", c->rank, i, c->ptl.mapping[i].phys.nid, c->ptl.mapping[i].phys.pid);
-    fflush(stdout);
-  }
 }
 
 

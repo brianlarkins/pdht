@@ -5,8 +5,8 @@
 # created: 3/20/2016
 #
 
-PORTALS_INCLUDEDIR = /opt/hpctools/include
-PORTALS_LIBDIR = /opt/hpctools/lib
+PORTALS_INCLUDEDIR = $(HOME)/opt/include
+PORTALS_LIBDIR = $(HOME)/opt/lib
 PDHT_TOP = .
 
 include pdht.mk

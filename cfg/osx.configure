@@ -1,3 +1,0 @@
-cd ../portals4
-./autogen.sh
-./configure --prefix=$HOME/research/pdht/opt --with-ev=$HOME/research/pdht/opt --disable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-transport-shmem --enable-unordered-matching --enable-reliable-udp
