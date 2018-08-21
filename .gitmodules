@@ -1,3 +1,0 @@
-[submodule "bench/hash-table-benchmark"]
-	path = bench/hash-table-benchmark
-	url = https://github.com/openshmem-org/hash-table-benchmark.git
