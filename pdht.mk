@@ -13,7 +13,7 @@ PORTALS_LIBDIR     = $(HOME)/opt/lib
 CC = gcc
 MPICC = mpicc
 OSHCC = oshcc
-GCFLAGS = --std=c99 -g -O3 -D_POSIX_C_SOURCE=199309L  # development
+GCFLAGS = --std=c99 -rdynamic -g -O3 -D_POSIX_C_SOURCE=199309L  # development
 #GCFLAGS = -std=c99 -g -D_POSIX_C_SOURCE=199309L
 #GCFLAGS = -g -Wall
 #GCFLAGS = -g -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast

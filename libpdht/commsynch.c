@@ -177,6 +177,12 @@ void pdht_barrier(void) {
 
   //PtlCTGet(c->ptl.barrier_ct, &cval2);
   //pdht_dprintf("**** p: %lu l: %lu r: %lu barrier_count: %d counter: %lu\n", p.rank, l.rank, r.rank, c->ptl.barrier_count, cval2.success);
+  
+
+  if (l.rank < c->size)
+    nchildren++;
+  if (r.rank < c->size)
+    nchildren++;
 
   // barrier_count tracks barrier events, the number of received messages is related to
   // our tree connectivity

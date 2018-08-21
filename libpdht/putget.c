@@ -460,12 +460,6 @@ pdht_status_t pdht_get(pdht_t *dht, void *key, void *value) {
   memcpy(value, buf + PDHT_MAXKEYSIZE, dht->elemsize); // pointer math
 
 done:
-  if (rval == PdhtStatusOK) {
-    ptr = value;
-    ptr += 8;
-    check = *(int *)ptr;
-    if (check != 42) { pdht_dprintf("pdht_get found badness: %d %d\n", rank.rank, c2); }
-  }
   // get of non-existent entry should hit fail counter + PTL_EVENT_REPLY event
   // in PTL_EVENT_REPLY event, we should get ni_fail_type
   // ni_fail_type should be: PTL_NI_DROPPED
